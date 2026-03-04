@@ -1,0 +1,573 @@
+"use client";
+
+import { useState } from "react";
+import { useParams, useSearchParams, useRouter } from "next/navigation";
+import Link from "next/link";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Separator } from "@/components/ui/separator";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  ChevronLeft,
+  Clock,
+  Calendar,
+  Users,
+  MapPin,
+  CreditCard,
+  Lock,
+  Check,
+  User,
+  Mail,
+  Phone,
+  Shield,
+} from "lucide-react";
+import { format, parseISO } from "date-fns";
+
+// Mock tour data (replace with actual fetch)
+const tour = {
+  id: "1",
+  slug: "sunset-sailing-cruise",
+  name: "Sunset Sailing Cruise",
+  shortDescription: "Experience breathtaking views as the sun sets over the horizon",
+  duration: 120,
+  price: 89,
+  image: "https://images.unsplash.com/photo-1544551763-46a013bb70d5?w=800&q=80",
+  location: "Marina Bay",
+  meetingPoint: "Marina Bay Dock, Pier 7",
+  requiresWaiver: true,
+};
+
+const countryCodes = [
+  { code: "+1", country: "US/CA" },
+  { code: "+44", country: "UK" },
+  { code: "+61", country: "AU" },
+  { code: "+971", country: "UAE" },
+  { code: "+91", country: "IN" },
+];
+
+interface GuestInfo {
+  firstName: string;
+  lastName: string;
+  email: string;
+}
+
+export default function BookingPage() {
+  const params = useParams();
+  const searchParams = useSearchParams();
+  const router = useRouter();
+
+  const date = searchParams.get("date") || "";
+  const time = searchParams.get("time") || "";
+  const guestCount = parseInt(searchParams.get("guests") || "1");
+  const pricePerPerson = 89; // Would come from availability
+
+  const [step, setStep] = useState(1);
+  const [isProcessing, setIsProcessing] = useState(false);
+
+  // Form state
+  const [primaryGuest, setPrimaryGuest] = useState({
+    firstName: "",
+    lastName: "",
+    email: "",
+    phone: "",
+    countryCode: "+1",
+  });
+
+  const [additionalGuests, setAdditionalGuests] = useState<GuestInfo[]>(
+    Array.from({ length: guestCount - 1 }, () => ({
+      firstName: "",
+      lastName: "",
+      email: "",
+    }))
+  );
+
+  const [notes, setNotes] = useState("");
+  const [agreeTerms, setAgreeTerms] = useState(false);
+  const [agreeWaiver, setAgreeWaiver] = useState(false);
+
+  const totalPrice = pricePerPerson * guestCount;
+
+  const updateGuest = (index: number, field: keyof GuestInfo, value: string) => {
+    const newGuests = [...additionalGuests];
+    newGuests[index] = { ...newGuests[index], [field]: value };
+    setAdditionalGuests(newGuests);
+  };
+
+  const handleSubmit = async () => {
+    setIsProcessing(true);
+    // Simulate API call
+    await new Promise((resolve) => setTimeout(resolve, 2000));
+    // Redirect to confirmation page
+    router.push(`/booking/BK${Date.now().toString().slice(-8)}`);
+  };
+
+  const isStep1Valid =
+    primaryGuest.firstName &&
+    primaryGuest.lastName &&
+    primaryGuest.email &&
+    primaryGuest.phone &&
+    additionalGuests.every((g) => g.firstName && g.lastName);
+
+  const isStep2Valid = agreeTerms && agreeWaiver;
+
+  return (
+    <div className="py-8 min-h-screen bg-gradient-to-b from-muted/30 to-background">
+      <div className="container mx-auto px-4">
+        {/* Back link */}
+        <Link
+          href={`/tours/${tour.slug}`}
+          className="inline-flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors mb-6"
+        >
+          <ChevronLeft className="h-4 w-4" />
+          Back to tour details
+        </Link>
+
+        {/* Progress Steps */}
+        <div className="flex items-center justify-center gap-4 mb-8">
+          {[
+            { num: 1, label: "Guest Details" },
+            { num: 2, label: "Review & Pay" },
+          ].map((s, index) => (
+            <div key={s.num} className="flex items-center">
+              <div
+                className={`flex items-center justify-center w-10 h-10 rounded-full font-semibold transition-colors ${
+                  step >= s.num
+                    ? "bg-primary text-primary-foreground"
+                    : "bg-muted text-muted-foreground"
+                }`}
+              >
+                {step > s.num ? <Check className="h-5 w-5" /> : s.num}
+              </div>
+              <span
+                className={`ml-2 font-medium ${
+                  step >= s.num ? "text-foreground" : "text-muted-foreground"
+                }`}
+              >
+                {s.label}
+              </span>
+              {index < 1 && (
+                <div
+                  className={`w-16 h-0.5 mx-4 ${
+                    step > s.num ? "bg-primary" : "bg-muted"
+                  }`}
+                />
+              )}
+            </div>
+          ))}
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          {/* Main Content */}
+          <div className="lg:col-span-2 space-y-6">
+            {step === 1 && (
+              <>
+                {/* Primary Guest */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <User className="h-5 w-5 text-primary" />
+                      Primary Guest (Lead Booker)
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="firstName">First Name *</Label>
+                        <Input
+                          id="firstName"
+                          placeholder="John"
+                          value={primaryGuest.firstName}
+                          onChange={(e) =>
+                            setPrimaryGuest({ ...primaryGuest, firstName: e.target.value })
+                          }
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="lastName">Last Name *</Label>
+                        <Input
+                          id="lastName"
+                          placeholder="Smith"
+                          value={primaryGuest.lastName}
+                          onChange={(e) =>
+                            setPrimaryGuest({ ...primaryGuest, lastName: e.target.value })
+                          }
+                        />
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="email">Email Address *</Label>
+                      <div className="relative">
+                        <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                        <Input
+                          id="email"
+                          type="email"
+                          placeholder="john@example.com"
+                          className="pl-10"
+                          value={primaryGuest.email}
+                          onChange={(e) =>
+                            setPrimaryGuest({ ...primaryGuest, email: e.target.value })
+                          }
+                        />
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        Confirmation and waiver will be sent to this email
+                      </p>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="phone">Phone Number *</Label>
+                      <div className="flex gap-2">
+                        <Select
+                          value={primaryGuest.countryCode}
+                          onValueChange={(v) =>
+                            setPrimaryGuest({ ...primaryGuest, countryCode: v })
+                          }
+                        >
+                          <SelectTrigger className="w-[100px]">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {countryCodes.map((c) => (
+                              <SelectItem key={c.code} value={c.code}>
+                                {c.code} {c.country}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <div className="relative flex-1">
+                          <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                          <Input
+                            id="phone"
+                            type="tel"
+                            placeholder="(555) 123-4567"
+                            className="pl-10"
+                            value={primaryGuest.phone}
+                            onChange={(e) =>
+                              setPrimaryGuest({ ...primaryGuest, phone: e.target.value })
+                            }
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Additional Guests */}
+                {additionalGuests.length > 0 && (
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        <Users className="h-5 w-5 text-primary" />
+                        Additional Guests
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-6">
+                      {additionalGuests.map((guest, index) => (
+                        <div key={index}>
+                          {index > 0 && <Separator className="mb-6" />}
+                          <p className="font-medium mb-4">Guest {index + 2}</p>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                              <Label>First Name *</Label>
+                              <Input
+                                placeholder="First name"
+                                value={guest.firstName}
+                                onChange={(e) =>
+                                  updateGuest(index, "firstName", e.target.value)
+                                }
+                              />
+                            </div>
+                            <div className="space-y-2">
+                              <Label>Last Name *</Label>
+                              <Input
+                                placeholder="Last name"
+                                value={guest.lastName}
+                                onChange={(e) =>
+                                  updateGuest(index, "lastName", e.target.value)
+                                }
+                              />
+                            </div>
+                          </div>
+                          <div className="space-y-2 mt-4">
+                            <Label>Email (Optional)</Label>
+                            <Input
+                              type="email"
+                              placeholder="Email address"
+                              value={guest.email}
+                              onChange={(e) =>
+                                updateGuest(index, "email", e.target.value)
+                              }
+                            />
+                            <p className="text-xs text-muted-foreground">
+                              They&apos;ll receive a separate waiver to sign
+                            </p>
+                          </div>
+                        </div>
+                      ))}
+                    </CardContent>
+                  </Card>
+                )}
+
+                {/* Special Requests */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Special Requests</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <Textarea
+                      placeholder="Any special requirements, dietary restrictions, celebrations..."
+                      value={notes}
+                      onChange={(e) => setNotes(e.target.value)}
+                      rows={3}
+                    />
+                  </CardContent>
+                </Card>
+
+                <Button
+                  className="w-full h-12 gradient-primary border-0 shadow-lg shadow-primary/25"
+                  onClick={() => setStep(2)}
+                  disabled={!isStep1Valid}
+                >
+                  Continue to Payment
+                </Button>
+              </>
+            )}
+
+            {step === 2 && (
+              <>
+                {/* Review Details */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Review Your Booking</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="flex items-start gap-4">
+                      <img
+                        src={tour.image}
+                        alt={tour.name}
+                        className="w-24 h-24 rounded-lg object-cover"
+                      />
+                      <div>
+                        <h3 className="font-semibold">{tour.name}</h3>
+                        <p className="text-sm text-muted-foreground mb-2">
+                          {tour.shortDescription}
+                        </p>
+                        <div className="flex flex-wrap gap-3 text-sm text-muted-foreground">
+                          <span className="flex items-center gap-1">
+                            <Calendar className="h-4 w-4" />
+                            {date && format(parseISO(date), "EEE, MMM d, yyyy")}
+                          </span>
+                          <span className="flex items-center gap-1">
+                            <Clock className="h-4 w-4" />
+                            {time}
+                          </span>
+                          <span className="flex items-center gap-1">
+                            <Users className="h-4 w-4" />
+                            {guestCount} guests
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                    <Separator />
+                    <div>
+                      <p className="font-medium mb-2">Primary Guest</p>
+                      <p className="text-sm text-muted-foreground">
+                        {primaryGuest.firstName} {primaryGuest.lastName}
+                      </p>
+                      <p className="text-sm text-muted-foreground">{primaryGuest.email}</p>
+                      <p className="text-sm text-muted-foreground">
+                        {primaryGuest.countryCode} {primaryGuest.phone}
+                      </p>
+                    </div>
+                    {additionalGuests.length > 0 && (
+                      <>
+                        <Separator />
+                        <div>
+                          <p className="font-medium mb-2">Additional Guests</p>
+                          {additionalGuests.map((guest, index) => (
+                            <p key={index} className="text-sm text-muted-foreground">
+                              {guest.firstName} {guest.lastName}
+                              {guest.email && ` (${guest.email})`}
+                            </p>
+                          ))}
+                        </div>
+                      </>
+                    )}
+                  </CardContent>
+                </Card>
+
+                {/* Payment */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <CreditCard className="h-5 w-5 text-primary" />
+                      Payment Details
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="space-y-2">
+                      <Label>Card Number</Label>
+                      <Input placeholder="4242 4242 4242 4242" />
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label>Expiry Date</Label>
+                        <Input placeholder="MM/YY" />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>CVC</Label>
+                        <Input placeholder="123" />
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <Lock className="h-4 w-4" />
+                      <span>Your payment info is secure and encrypted</span>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Terms */}
+                <Card>
+                  <CardContent className="pt-6 space-y-4">
+                    <div className="flex items-start gap-3">
+                      <Checkbox
+                        id="terms"
+                        checked={agreeTerms}
+                        onCheckedChange={(checked) => setAgreeTerms(!!checked)}
+                      />
+                      <label htmlFor="terms" className="text-sm">
+                        I agree to the{" "}
+                        <Link href="/terms" className="text-primary hover:underline">
+                          Terms of Service
+                        </Link>{" "}
+                        and{" "}
+                        <Link href="/cancellation" className="text-primary hover:underline">
+                          Cancellation Policy
+                        </Link>
+                      </label>
+                    </div>
+                    {tour.requiresWaiver && (
+                      <div className="flex items-start gap-3">
+                        <Checkbox
+                          id="waiver"
+                          checked={agreeWaiver}
+                          onCheckedChange={(checked) => setAgreeWaiver(!!checked)}
+                        />
+                        <label htmlFor="waiver" className="text-sm">
+                          <Shield className="inline h-4 w-4 mr-1 text-primary" />
+                          I understand that all guests must sign a{" "}
+                          <span className="text-primary">liability waiver</span> before the tour.
+                          A link will be sent to each guest&apos;s email.
+                        </label>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+
+                <div className="flex gap-4">
+                  <Button
+                    variant="outline"
+                    className="flex-1 h-12"
+                    onClick={() => setStep(1)}
+                  >
+                    Back
+                  </Button>
+                  <Button
+                    className="flex-1 h-12 gradient-primary border-0 shadow-lg shadow-primary/25"
+                    onClick={handleSubmit}
+                    disabled={!isStep2Valid || isProcessing}
+                  >
+                    {isProcessing ? (
+                      <>
+                        <div className="h-4 w-4 border-2 border-white/30 border-t-white rounded-full animate-spin mr-2" />
+                        Processing...
+                      </>
+                    ) : (
+                      <>
+                        <Lock className="h-4 w-4 mr-2" />
+                        Pay ${totalPrice}
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </>
+            )}
+          </div>
+
+          {/* Order Summary Sidebar */}
+          <div className="lg:col-span-1">
+            <Card className="sticky top-24 shadow-xl border-0">
+              <CardHeader>
+                <CardTitle>Booking Summary</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex gap-4">
+                  <img
+                    src={tour.image}
+                    alt={tour.name}
+                    className="w-20 h-20 rounded-lg object-cover"
+                  />
+                  <div>
+                    <h3 className="font-semibold">{tour.name}</h3>
+                    <p className="text-sm text-muted-foreground flex items-center gap-1">
+                      <MapPin className="h-3 w-3" />
+                      {tour.location}
+                    </p>
+                  </div>
+                </div>
+
+                <Separator />
+
+                <div className="space-y-2 text-sm">
+                  <div className="flex items-center gap-2">
+                    <Calendar className="h-4 w-4 text-muted-foreground" />
+                    <span>{date && format(parseISO(date), "EEEE, MMMM d, yyyy")}</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Clock className="h-4 w-4 text-muted-foreground" />
+                    <span>{time} ({tour.duration / 60} hours)</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Users className="h-4 w-4 text-muted-foreground" />
+                    <span>{guestCount} {guestCount === 1 ? "guest" : "guests"}</span>
+                  </div>
+                </div>
+
+                <Separator />
+
+                <div className="space-y-2">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">
+                      ${pricePerPerson} x {guestCount} guests
+                    </span>
+                    <span>${totalPrice}</span>
+                  </div>
+                  <div className="flex justify-between font-semibold text-lg pt-2 border-t">
+                    <span>Total</span>
+                    <span className="text-primary">${totalPrice}</span>
+                  </div>
+                </div>
+
+                <div className="bg-green-50 border border-green-200 rounded-lg p-3">
+                  <p className="text-sm text-green-800 flex items-center gap-2">
+                    <Check className="h-4 w-4" />
+                    Free cancellation up to 24 hours before
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
