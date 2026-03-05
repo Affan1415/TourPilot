@@ -98,6 +98,12 @@ export async function GET(request: NextRequest) {
     });
   } catch (error: any) {
     console.error('Error fetching messages:', error);
+    console.error('Error details:', {
+      code: error.code,
+      message: error.message,
+      response: error.response?.data,
+      status: error.response?.status,
+    });
 
     // Check if it's an auth error
     if (error.code === 401 || error.message?.includes('invalid_grant')) {
@@ -107,8 +113,18 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    // Check if Gmail API is not enabled
+    if (error.message?.includes('Gmail API has not been used') ||
+        error.message?.includes('accessNotConfigured') ||
+        error.code === 403) {
+      return NextResponse.json(
+        { error: 'Gmail API is not enabled. Please enable it in Google Cloud Console.' },
+        { status: 403 }
+      );
+    }
+
     return NextResponse.json(
-      { error: 'Failed to fetch messages' },
+      { error: error.message || 'Failed to fetch messages' },
       { status: 500 }
     );
   }

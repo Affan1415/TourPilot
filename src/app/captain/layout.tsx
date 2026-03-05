@@ -15,20 +15,13 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
-  Ship,
+  Anchor,
   LayoutDashboard,
   Calendar,
   ClipboardList,
-  Users,
-  UserCog,
-  FileText,
-  MessageSquare,
-  BarChart3,
-  Settings,
   Menu,
   X,
   Bell,
-  Search,
   ChevronDown,
   LogOut,
   User,
@@ -38,19 +31,12 @@ import { createClient } from "@/lib/supabase/client";
 import type { User as SupabaseUser } from "@supabase/supabase-js";
 
 const navigation = [
-  { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
-  { name: "Calendar", href: "/dashboard/calendar", icon: Calendar },
-  { name: "Bookings", href: "/dashboard/bookings", icon: ClipboardList },
-  { name: "Customers", href: "/dashboard/customers", icon: Users },
-  { name: "Manifest", href: "/dashboard/manifest", icon: FileText },
-  { name: "Tours", href: "/dashboard/tours", icon: Ship },
-  { name: "Staff", href: "/dashboard/staff", icon: UserCog },
-  { name: "Communications", href: "/dashboard/communications", icon: MessageSquare },
-  { name: "Reports", href: "/dashboard/reports", icon: BarChart3 },
-  { name: "Settings", href: "/dashboard/settings", icon: Settings },
+  { name: "My Tours", href: "/captain", icon: LayoutDashboard },
+  { name: "Schedule", href: "/captain/schedule", icon: Calendar },
+  { name: "Manifest", href: "/captain/manifest", icon: ClipboardList },
 ];
 
-export default function DashboardLayout({
+export default function CaptainLayout({
   children,
 }: {
   children: React.ReactNode;
@@ -59,10 +45,10 @@ export default function DashboardLayout({
   const router = useRouter();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [user, setUser] = useState<SupabaseUser | null>(null);
+  const [staffName, setStaffName] = useState<string>("");
   const [loading, setLoading] = useState(true);
   const [mounted, setMounted] = useState(false);
 
-  // Prevent hydration mismatch by only rendering active states after mount
   useEffect(() => {
     setMounted(true);
   }, []);
@@ -70,16 +56,28 @@ export default function DashboardLayout({
   useEffect(() => {
     const supabase = createClient();
 
-    // Get initial user
     const getUser = async () => {
       const { data: { user } } = await supabase.auth.getUser();
       setUser(user);
+
+      if (user) {
+        // Get staff name
+        const { data: staffData } = await supabase
+          .from('staff')
+          .select('name')
+          .eq('user_id', user.id)
+          .single();
+
+        if (staffData) {
+          setStaffName(staffData.name);
+        }
+      }
+
       setLoading(false);
     };
 
     getUser();
 
-    // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (_event, session) => {
         setUser(session?.user ?? null);
@@ -98,9 +96,8 @@ export default function DashboardLayout({
     router.refresh();
   };
 
-  // Get user display info
-  const userEmail = user?.email || "user@example.com";
-  const userName = user?.user_metadata?.full_name || userEmail.split("@")[0];
+  const userEmail = user?.email || "captain@example.com";
+  const userName = staffName || user?.user_metadata?.full_name || userEmail.split("@")[0];
   const userInitials = userName
     .split(" ")
     .map((n: string) => n[0])
@@ -128,11 +125,14 @@ export default function DashboardLayout({
         <div className="flex h-full flex-col">
           {/* Logo */}
           <div className="flex h-16 items-center justify-between px-4 border-b border-sidebar-border">
-            <Link href="/dashboard" className="flex items-center gap-2">
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground">
-                <Ship className="h-4 w-4" />
+            <Link href="/captain" className="flex items-center gap-2">
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-600 text-white">
+                <Anchor className="h-4 w-4" />
               </div>
-              <span className="font-bold text-lg">TourPilot</span>
+              <div>
+                <span className="font-bold text-lg">TourPilot</span>
+                <span className="text-xs text-sidebar-foreground/60 block -mt-1">Captain</span>
+              </div>
             </Link>
             <Button
               variant="ghost"
@@ -148,7 +148,6 @@ export default function DashboardLayout({
           <ScrollArea className="flex-1 px-3 py-4">
             <nav className="space-y-1">
               {navigation.map((item) => {
-                // Only calculate active state after mount to prevent hydration mismatch
                 const isActive = mounted && (pathname === item.href || pathname.startsWith(item.href + "/"));
                 return (
                   <Link
@@ -157,7 +156,7 @@ export default function DashboardLayout({
                     className={cn(
                       "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors",
                       isActive
-                        ? "bg-sidebar-primary text-sidebar-primary-foreground"
+                        ? "bg-indigo-600 text-white"
                         : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
                     )}
                   >
@@ -174,13 +173,13 @@ export default function DashboardLayout({
             <div className="flex items-center gap-3">
               <Avatar className="h-9 w-9">
                 <AvatarImage src={user?.user_metadata?.avatar_url} />
-                <AvatarFallback className="bg-sidebar-primary text-sidebar-primary-foreground">
+                <AvatarFallback className="bg-indigo-600 text-white">
                   {userInitials}
                 </AvatarFallback>
               </Avatar>
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium truncate">{userName}</p>
-                <p className="text-xs text-sidebar-foreground/60 truncate">{userEmail}</p>
+                <p className="text-xs text-sidebar-foreground/60 truncate">Captain</p>
               </div>
             </div>
           </div>
@@ -201,31 +200,13 @@ export default function DashboardLayout({
               <Menu className="h-5 w-5" />
             </Button>
 
-            {/* Search */}
-            <div className="hidden md:flex items-center gap-2 px-3 py-2 bg-muted rounded-lg w-64">
-              <Search className="h-4 w-4 text-muted-foreground" />
-              <input
-                type="text"
-                placeholder="Search bookings..."
-                className="bg-transparent border-none outline-none text-sm flex-1"
-              />
-              <kbd className="px-1.5 py-0.5 text-xs bg-background rounded border">⌘K</kbd>
-            </div>
+            <h1 className="text-lg font-semibold hidden md:block">Captain Dashboard</h1>
           </div>
 
           <div className="flex items-center gap-3">
-            {/* Quick actions */}
-            <Link href="/dashboard/bookings/new">
-              <Button size="sm" className="hidden sm:flex gap-2 gradient-primary border-0">
-                <span className="text-lg leading-none">+</span>
-                New Booking
-              </Button>
-            </Link>
-
             {/* Notifications */}
             <Button variant="ghost" size="icon" className="relative">
               <Bell className="h-5 w-5" />
-              <span className="absolute top-1 right-1 h-2 w-2 rounded-full bg-destructive" />
             </Button>
 
             {/* User menu */}
@@ -234,7 +215,7 @@ export default function DashboardLayout({
                 <Button variant="ghost" className="gap-2 px-2">
                   <Avatar className="h-8 w-8">
                     <AvatarImage src={user?.user_metadata?.avatar_url} />
-                    <AvatarFallback>{userInitials}</AvatarFallback>
+                    <AvatarFallback className="bg-indigo-600 text-white">{userInitials}</AvatarFallback>
                   </Avatar>
                   <ChevronDown className="h-4 w-4 text-muted-foreground" />
                 </Button>
@@ -248,15 +229,9 @@ export default function DashboardLayout({
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem asChild>
-                  <Link href="/dashboard/settings">
+                  <Link href="/captain/profile">
                     <User className="mr-2 h-4 w-4" />
                     Profile
-                  </Link>
-                </DropdownMenuItem>
-                <DropdownMenuItem asChild>
-                  <Link href="/dashboard/settings">
-                    <Settings className="mr-2 h-4 w-4" />
-                    Settings
                   </Link>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />

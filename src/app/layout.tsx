@@ -10,7 +10,7 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "TourBooking - Book Your Next Adventure",
+  title: "TourPilot - Book Your Next Adventure",
   description: "Book tours and activities with ease. Digital waivers, instant confirmations, and seamless check-in.",
 };
 

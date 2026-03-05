@@ -1,6 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { nanoid } from "nanoid";
+import { resend, FROM_EMAIL, COMPANY_NAME, APP_URL } from "@/lib/email/resend";
+import { BookingConfirmationEmail } from "@/lib/email/templates/booking-confirmation";
+
+function generateBookingReference(): string {
+  const timestamp = Date.now().toString(36).toUpperCase();
+  const random = nanoid(4).toUpperCase();
+  return `BK${timestamp}${random}`;
+}
 
 export async function GET(request: NextRequest) {
   try {
@@ -99,17 +108,61 @@ export async function POST(request: NextRequest) {
       customerId = newCustomer.id;
     }
 
-    // 2. Create booking
+    // 2. Get availability to check capacity and update booked_count
+    const { data: availability, error: availabilityError } = await adminClient
+      .from("availabilities")
+      .select(`
+        id,
+        date,
+        start_time,
+        booked_count,
+        capacity_override,
+        status,
+        tours (
+          name,
+          max_capacity,
+          meeting_point,
+          requires_waiver
+        )
+      `)
+      .eq("id", availability_id)
+      .single();
+
+    if (availabilityError || !availability) {
+      return NextResponse.json({ error: "Availability not found" }, { status: 404 });
+    }
+
+    // tours is a single object when using a foreign key relationship
+    const tourData = availability.tours as unknown as {
+      name: string;
+      max_capacity: number;
+      meeting_point: string;
+      requires_waiver: boolean;
+    } | null;
+    const maxCapacity = availability.capacity_override || tourData?.max_capacity || 10;
+    const availableSpots = maxCapacity - availability.booked_count;
+
+    if (guest_count > availableSpots) {
+      return NextResponse.json({ error: `Only ${availableSpots} spots available` }, { status: 400 });
+    }
+
+    if (availability.status !== "available") {
+      return NextResponse.json({ error: "This time slot is no longer available" }, { status: 400 });
+    }
+
+    // 3. Create booking
+    const bookingReference = generateBookingReference();
     const { data: booking, error: bookingError } = await adminClient
       .from("bookings")
       .insert([{
+        booking_reference: bookingReference,
         customer_id: customerId,
         availability_id,
         guest_count,
         total_price,
         notes,
-        status: "pending",
-        payment_status: "pending",
+        status: "confirmed",
+        payment_status: "paid",
       }])
       .select()
       .single();
@@ -118,7 +171,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: bookingError.message }, { status: 500 });
     }
 
-    // 3. Create booking guests
+    // 4. Create booking guests
     const guestRecords = guests.map((guest: any, index: number) => ({
       booking_id: booking.id,
       first_name: guest.first_name,
@@ -136,29 +189,70 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: guestsError.message }, { status: 500 });
     }
 
-    // 4. Create waivers for each guest
-    const { data: activeWaiver } = await adminClient
-      .from("waiver_templates")
-      .select("id")
-      .eq("is_active", true)
-      .single();
+    // 5. Create waivers for each guest (if tour requires waivers)
+    if (tourData?.requires_waiver) {
+      const { data: activeWaiver } = await adminClient
+        .from("waiver_templates")
+        .select("id")
+        .eq("is_active", true)
+        .single();
 
-    if (activeWaiver && createdGuests) {
-      const waiverRecords = createdGuests.map((guest: any) => ({
-        booking_id: booking.id,
-        guest_id: guest.id,
-        waiver_template_id: activeWaiver.id,
-        status: "pending",
-      }));
+      if (activeWaiver && createdGuests) {
+        const waiverRecords = createdGuests.map((guest: any) => ({
+          booking_id: booking.id,
+          guest_id: guest.id,
+          waiver_template_id: activeWaiver.id,
+          status: "pending",
+        }));
 
-      await adminClient.from("waivers").insert(waiverRecords);
+        await adminClient.from("waivers").insert(waiverRecords);
+      }
+    }
+
+    // 6. Update availability booked count
+    const newBookedCount = availability.booked_count + guest_count;
+    await adminClient
+      .from("availabilities")
+      .update({
+        booked_count: newBookedCount,
+        status: newBookedCount >= maxCapacity ? "full" : "available",
+      })
+      .eq("id", availability_id);
+
+    // 7. Send confirmation email
+    try {
+      const waiverUrl = `${APP_URL}/waiver/${booking.booking_reference}`;
+      const bookingUrl = `${APP_URL}/booking/${booking.booking_reference}`;
+
+      await resend.emails.send({
+        from: `${COMPANY_NAME} <${FROM_EMAIL}>`,
+        to: [customer.email],
+        subject: `Booking Confirmed! ${tourData?.name || 'Your Tour'} - ${booking.booking_reference}`,
+        react: BookingConfirmationEmail({
+          customerName: `${customer.first_name} ${customer.last_name}`,
+          bookingReference: booking.booking_reference,
+          tourName: tourData?.name || 'Your Tour',
+          tourDate: availability.date,
+          tourTime: availability.start_time?.slice(0, 5) || '',
+          guestCount: guest_count,
+          totalAmount: total_price,
+          meetingPoint: tourData?.meeting_point || '',
+          waiverUrl,
+          bookingUrl,
+          companyName: COMPANY_NAME,
+        }),
+      });
+    } catch (emailError) {
+      // Log but don't fail the booking if email fails
+      console.error("Failed to send confirmation email:", emailError);
     }
 
     return NextResponse.json({
       data: {
         ...booking,
         guests: createdGuests,
-      }
+      },
+      booking_reference: booking.booking_reference,
     }, { status: 201 });
   } catch (error) {
     console.error("Booking creation error:", error);

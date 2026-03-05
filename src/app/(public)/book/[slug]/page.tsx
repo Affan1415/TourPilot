@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useParams, useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
@@ -30,22 +30,17 @@ import {
   Mail,
   Phone,
   Shield,
+  AlertCircle,
+  Loader2,
 } from "lucide-react";
 import { format, parseISO } from "date-fns";
+import { createClient } from "@/lib/supabase/client";
+import type { Tour, Availability } from "@/types";
 
-// Mock tour data (replace with actual fetch)
-const tour = {
-  id: "1",
-  slug: "sunset-sailing-cruise",
-  name: "Sunset Sailing Cruise",
-  shortDescription: "Experience breathtaking views as the sun sets over the horizon",
-  duration: 120,
-  price: 89,
-  image: "https://images.unsplash.com/photo-1544551763-46a013bb70d5?w=800&q=80",
-  location: "Marina Bay",
-  meetingPoint: "Marina Bay Dock, Pier 7",
-  requiresWaiver: true,
-};
+interface TourWithAvailability {
+  tour: Tour | null;
+  availability: (Availability & { price: number }) | null;
+}
 
 const countryCodes = [
   { code: "+1", country: "US/CA" },
@@ -66,13 +61,22 @@ export default function BookingPage() {
   const searchParams = useSearchParams();
   const router = useRouter();
 
+  const slug = params.slug as string;
   const date = searchParams.get("date") || "";
   const time = searchParams.get("time") || "";
+  const availabilityId = searchParams.get("availability") || "";
   const guestCount = parseInt(searchParams.get("guests") || "1");
-  const pricePerPerson = 89; // Would come from availability
 
   const [step, setStep] = useState(1);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [tourData, setTourData] = useState<TourWithAvailability>({
+    tour: null,
+    availability: null,
+  });
+
+  const pricePerPerson = tourData.availability?.price || 0;
 
   // Form state
   const [primaryGuest, setPrimaryGuest] = useState({
@@ -97,6 +101,64 @@ export default function BookingPage() {
 
   const totalPrice = pricePerPerson * guestCount;
 
+  // Fetch tour and availability data
+  useEffect(() => {
+    async function fetchData() {
+      setLoading(true);
+      setError(null);
+
+      try {
+        const supabase = createClient();
+
+        // Fetch tour by slug
+        const { data: tour, error: tourError } = await supabase
+          .from("tours")
+          .select("*")
+          .eq("slug", slug)
+          .eq("status", "active")
+          .single();
+
+        if (tourError || !tour) {
+          setError("Tour not found");
+          setLoading(false);
+          return;
+        }
+
+        // Fetch availability
+        if (availabilityId) {
+          const { data: availability, error: availError } = await supabase
+            .from("availabilities")
+            .select("*")
+            .eq("id", availabilityId)
+            .eq("tour_id", tour.id)
+            .single();
+
+          if (availError || !availability) {
+            setError("Selected time slot is no longer available");
+            setLoading(false);
+            return;
+          }
+
+          const price = availability.price_override || tour.base_price;
+
+          setTourData({
+            tour,
+            availability: { ...availability, price },
+          });
+        } else {
+          setError("No time slot selected");
+        }
+      } catch (err) {
+        console.error("Error fetching booking data:", err);
+        setError("Failed to load booking information");
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    fetchData();
+  }, [slug, availabilityId]);
+
   const updateGuest = (index: number, field: keyof GuestInfo, value: string) => {
     const newGuests = [...additionalGuests];
     newGuests[index] = { ...newGuests[index], [field]: value };
@@ -104,11 +166,62 @@ export default function BookingPage() {
   };
 
   const handleSubmit = async () => {
+    if (!tourData.availability) return;
+
     setIsProcessing(true);
-    // Simulate API call
-    await new Promise((resolve) => setTimeout(resolve, 2000));
-    // Redirect to confirmation page
-    router.push(`/booking/BK${Date.now().toString().slice(-8)}`);
+    setError(null);
+
+    try {
+      // Build guests array
+      const allGuests = [
+        {
+          first_name: primaryGuest.firstName,
+          last_name: primaryGuest.lastName,
+          email: primaryGuest.email,
+          is_primary: true,
+        },
+        ...additionalGuests.map((g) => ({
+          first_name: g.firstName,
+          last_name: g.lastName,
+          email: g.email || undefined,
+          is_primary: false,
+        })),
+      ];
+
+      const response = await fetch("/api/bookings", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          availability_id: tourData.availability.id,
+          guest_count: guestCount,
+          total_price: totalPrice,
+          customer: {
+            first_name: primaryGuest.firstName,
+            last_name: primaryGuest.lastName,
+            email: primaryGuest.email,
+            phone: primaryGuest.phone,
+            country_code: primaryGuest.countryCode,
+          },
+          guests: allGuests,
+          notes: notes || undefined,
+        }),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || "Failed to create booking");
+      }
+
+      // Redirect to confirmation page with the real booking reference
+      router.push(`/booking/${result.booking_reference}`);
+    } catch (err) {
+      console.error("Booking error:", err);
+      setError(err instanceof Error ? err.message : "Failed to complete booking");
+      setIsProcessing(false);
+    }
   };
 
   const isStep1Valid =
@@ -118,7 +231,43 @@ export default function BookingPage() {
     primaryGuest.phone &&
     additionalGuests.every((g) => g.firstName && g.lastName);
 
-  const isStep2Valid = agreeTerms && agreeWaiver;
+  const isStep2Valid = agreeTerms && (tourData.tour?.requires_waiver ? agreeWaiver : true);
+
+  // Loading state
+  if (loading) {
+    return (
+      <div className="py-8 min-h-screen bg-gradient-to-b from-muted/30 to-background">
+        <div className="container mx-auto px-4 flex items-center justify-center min-h-[60vh]">
+          <div className="text-center">
+            <Loader2 className="h-8 w-8 animate-spin mx-auto text-primary" />
+            <p className="mt-4 text-muted-foreground">Loading booking details...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Error state
+  if (error || !tourData.tour || !tourData.availability) {
+    return (
+      <div className="py-8 min-h-screen bg-gradient-to-b from-muted/30 to-background">
+        <div className="container mx-auto px-4">
+          <Card className="max-w-md mx-auto">
+            <CardContent className="pt-6 text-center">
+              <AlertCircle className="h-12 w-12 text-destructive mx-auto mb-4" />
+              <h2 className="text-xl font-semibold mb-2">Unable to Complete Booking</h2>
+              <p className="text-muted-foreground mb-6">{error || "Tour information is not available"}</p>
+              <Link href="/tours">
+                <Button>Browse Tours</Button>
+              </Link>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    );
+  }
+
+  const { tour, availability } = tourData;
 
   return (
     <div className="py-8 min-h-screen bg-gradient-to-b from-muted/30 to-background">
@@ -352,23 +501,23 @@ export default function BookingPage() {
                   <CardContent className="space-y-4">
                     <div className="flex items-start gap-4">
                       <img
-                        src={tour.image}
+                        src={tour.images?.[0] || "/placeholder-tour.jpg"}
                         alt={tour.name}
                         className="w-24 h-24 rounded-lg object-cover"
                       />
                       <div>
                         <h3 className="font-semibold">{tour.name}</h3>
                         <p className="text-sm text-muted-foreground mb-2">
-                          {tour.shortDescription}
+                          {tour.short_description}
                         </p>
                         <div className="flex flex-wrap gap-3 text-sm text-muted-foreground">
                           <span className="flex items-center gap-1">
                             <Calendar className="h-4 w-4" />
-                            {date && format(parseISO(date), "EEE, MMM d, yyyy")}
+                            {availability.date && format(parseISO(availability.date), "EEE, MMM d, yyyy")}
                           </span>
                           <span className="flex items-center gap-1">
                             <Clock className="h-4 w-4" />
-                            {time}
+                            {availability.start_time}
                           </span>
                           <span className="flex items-center gap-1">
                             <Users className="h-4 w-4" />
@@ -455,7 +604,7 @@ export default function BookingPage() {
                         </Link>
                       </label>
                     </div>
-                    {tour.requiresWaiver && (
+                    {tour.requires_waiver && (
                       <div className="flex items-start gap-3">
                         <Checkbox
                           id="waiver"
@@ -512,7 +661,7 @@ export default function BookingPage() {
               <CardContent className="space-y-4">
                 <div className="flex gap-4">
                   <img
-                    src={tour.image}
+                    src={tour.images?.[0] || "/placeholder-tour.jpg"}
                     alt={tour.name}
                     className="w-20 h-20 rounded-lg object-cover"
                   />
@@ -530,11 +679,11 @@ export default function BookingPage() {
                 <div className="space-y-2 text-sm">
                   <div className="flex items-center gap-2">
                     <Calendar className="h-4 w-4 text-muted-foreground" />
-                    <span>{date && format(parseISO(date), "EEEE, MMMM d, yyyy")}</span>
+                    <span>{availability.date && format(parseISO(availability.date), "EEEE, MMMM d, yyyy")}</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <Clock className="h-4 w-4 text-muted-foreground" />
-                    <span>{time} ({tour.duration / 60} hours)</span>
+                    <span>{availability.start_time} ({tour.duration_minutes / 60} hours)</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <Users className="h-4 w-4 text-muted-foreground" />

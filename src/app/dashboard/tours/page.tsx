@@ -881,6 +881,10 @@ export default function ToursPage() {
                           <Calendar className="h-4 w-4 mr-2" />
                           Manage Availability
                         </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => router.push(`/dashboard/tours/assign-staff?tour=${tour.id}`)}>
+                          <Users className="h-4 w-4 mr-2" />
+                          Assign Staff
+                        </DropdownMenuItem>
                         <DropdownMenuItem onClick={() => router.push(`/dashboard/reports?tour=${tour.id}`)}>
                           <BarChart3 className="h-4 w-4 mr-2" />
                           View Analytics

@@ -130,15 +130,18 @@ export default function CommunicationsPage() {
         return;
       }
 
+      const data = await response.json();
+
       if (!response.ok) {
-        throw new Error("Failed to fetch messages");
+        throw new Error(data.error || "Failed to fetch messages");
       }
 
-      const data = await response.json();
       setMessages(data.messages || []);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error fetching messages:", error);
-      toast.error("Failed to load messages");
+      toast.error("Failed to load messages", {
+        description: error.message || "Please try again"
+      });
     } finally {
       setRefreshing(false);
     }

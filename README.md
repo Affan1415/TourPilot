@@ -1,4 +1,4 @@
-# TourBooking - FareHarbor Clone
+# TourPilot - FareHarbor Clone
 
 A modern, sleek booking system for tours and activities built with Next.js 14 and Supabase. Save 6-8% on booking fees by owning your platform!
 

@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
@@ -19,48 +20,142 @@ import {
   FileText,
   AlertCircle,
   ChevronRight,
+  Ship,
+  Loader2,
 } from "lucide-react";
-import { format } from "date-fns";
+import { format, parseISO } from "date-fns";
 import { toast } from "sonner";
 
-// Mock booking data (replace with actual fetch)
-const booking = {
-  reference: "BK26030412",
-  status: "confirmed",
-  paymentStatus: "paid",
+interface BookingData {
+  reference: string;
+  status: string;
+  paymentStatus: string;
   tour: {
-    name: "Sunset Sailing Cruise",
-    shortDescription: "Experience breathtaking views as the sun sets over the horizon",
-    duration: 120,
-    image: "https://images.unsplash.com/photo-1544551763-46a013bb70d5?w=800&q=80",
-    location: "Marina Bay",
-    meetingPoint: "Marina Bay Dock, Pier 7. Look for the blue flag near the entrance.",
-  },
-  date: "2026-03-10",
-  time: "17:30",
-  guestCount: 3,
-  totalPrice: 297,
+    name: string;
+    shortDescription: string;
+    duration: number;
+    image: string | null;
+    location: string;
+    meetingPoint: string;
+  };
+  date: string;
+  time: string;
+  guestCount: number;
+  totalPrice: number;
   customer: {
-    firstName: "John",
-    lastName: "Smith",
-    email: "john@example.com",
-    phone: "+1 (555) 123-4567",
-  },
-  guests: [
-    { id: "1", firstName: "John", lastName: "Smith", waiverSigned: true },
-    { id: "2", firstName: "Sarah", lastName: "Smith", waiverSigned: true },
-    { id: "3", firstName: "Tom", lastName: "Smith", waiverSigned: false },
-  ],
-  createdAt: "2026-03-04T12:00:00Z",
-};
+    firstName: string;
+    lastName: string;
+    email: string;
+    phone: string;
+  };
+  guests: {
+    id: string;
+    firstName: string;
+    lastName: string;
+    waiverSigned: boolean;
+  }[];
+  createdAt: string;
+}
 
 export default function BookingConfirmationPage() {
   const params = useParams();
+  const reference = params.reference as string;
+
+  const [loading, setLoading] = useState(true);
+  const [booking, setBooking] = useState<BookingData | null>(null);
+
+  useEffect(() => {
+    const fetchBooking = async () => {
+      try {
+        // Use API route to bypass RLS - booking reference acts as the auth token
+        const response = await fetch(`/api/bookings/${reference}`);
+
+        if (!response.ok) {
+          console.error('Error fetching booking:', response.statusText);
+          setLoading(false);
+          return;
+        }
+
+        const data = await response.json();
+
+        const bookingData: BookingData = {
+          reference: data.booking_reference,
+          status: data.status,
+          paymentStatus: data.payment_status,
+          tour: {
+            name: data.availabilities?.tours?.name || 'Tour',
+            shortDescription: data.availabilities?.tours?.short_description || '',
+            duration: data.availabilities?.tours?.duration_minutes || 0,
+            image: data.availabilities?.tours?.images?.[0] || null,
+            location: data.availabilities?.tours?.location || '',
+            meetingPoint: data.availabilities?.tours?.meeting_point || '',
+          },
+          date: data.availabilities?.date || '',
+          time: data.availabilities?.start_time?.slice(0, 5) || '',
+          guestCount: data.guest_count,
+          totalPrice: data.total_price,
+          customer: {
+            firstName: data.customers?.first_name || '',
+            lastName: data.customers?.last_name || '',
+            email: data.customers?.email || '',
+            phone: data.customers?.phone || '',
+          },
+          guests: (data.booking_guests || []).map((g: any) => ({
+            id: g.id,
+            firstName: g.first_name,
+            lastName: g.last_name,
+            waiverSigned: g.waivers?.some((w: any) => w.status === 'signed') || false,
+          })),
+          createdAt: data.created_at,
+        };
+
+        setBooking(bookingData);
+      } catch (error) {
+        console.error('Error fetching booking:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchBooking();
+  }, [reference]);
+
+  if (loading) {
+    return (
+      <div className="py-8 min-h-screen">
+        <div className="container mx-auto px-4 max-w-4xl">
+          <div className="flex items-center justify-center min-h-[400px]">
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (!booking) {
+    return (
+      <div className="py-8 min-h-screen">
+        <div className="container mx-auto px-4 max-w-4xl">
+          <div className="text-center py-16">
+            <Ship className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
+            <h1 className="text-2xl font-bold mb-2">Booking Not Found</h1>
+            <p className="text-muted-foreground mb-4">
+              We couldn't find a booking with reference "{reference}"
+            </p>
+            <Link href="/booking/lookup">
+              <Button>Look Up Booking</Button>
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   const allWaiversSigned = booking.guests.every((g) => g.waiverSigned);
   const signedCount = booking.guests.filter((g) => g.waiverSigned).length;
+  const pricePerPerson = booking.guestCount > 0 ? booking.totalPrice / booking.guestCount : 0;
 
   const handleDownload = () => {
-    // Generate a simple text version of the booking confirmation
     const content = `
 BOOKING CONFIRMATION
 ====================
@@ -70,7 +165,7 @@ Status: ${booking.status}
 TOUR DETAILS
 ------------
 Tour: ${booking.tour.name}
-Date: ${format(new Date(booking.date), "EEEE, MMMM d, yyyy")}
+Date: ${format(parseISO(booking.date), "EEEE, MMMM d, yyyy")}
 Time: ${booking.time}
 Duration: ${booking.tour.duration / 60} hours
 Guests: ${booking.guestCount} people
@@ -103,7 +198,7 @@ Please arrive 15 minutes early. All guests must sign waivers before the tour.
   const handleShare = async () => {
     const shareData = {
       title: `Booking Confirmation - ${booking.reference}`,
-      text: `I've booked ${booking.tour.name} on ${format(new Date(booking.date), "MMMM d, yyyy")}!`,
+      text: `I've booked ${booking.tour.name} on ${format(parseISO(booking.date), "MMMM d, yyyy")}!`,
       url: window.location.href,
     };
 
@@ -115,7 +210,6 @@ Please arrive 15 minutes early. All guests must sign waivers before the tour.
         toast.success("Link copied", { description: "Booking link copied to clipboard." });
       }
     } catch (err) {
-      // User cancelled or error
       console.log('Share cancelled');
     }
   };
@@ -189,11 +283,17 @@ Please arrive 15 minutes early. All guests must sign waivers before the tour.
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="flex gap-4">
-                <img
-                  src={booking.tour.image}
-                  alt={booking.tour.name}
-                  className="w-24 h-24 rounded-lg object-cover"
-                />
+                {booking.tour.image ? (
+                  <img
+                    src={booking.tour.image}
+                    alt={booking.tour.name}
+                    className="w-24 h-24 rounded-lg object-cover"
+                  />
+                ) : (
+                  <div className="w-24 h-24 rounded-lg bg-muted flex items-center justify-center">
+                    <Ship className="h-8 w-8 text-muted-foreground" />
+                  </div>
+                )}
                 <div>
                   <h3 className="font-semibold">{booking.tour.name}</h3>
                   <p className="text-sm text-muted-foreground">
@@ -210,7 +310,7 @@ Please arrive 15 minutes early. All guests must sign waivers before the tour.
                   <div>
                     <p className="text-sm text-muted-foreground">Date</p>
                     <p className="font-medium">
-                      {format(new Date(booking.date), "EEEE, MMMM d, yyyy")}
+                      {format(parseISO(booking.date), "EEEE, MMMM d, yyyy")}
                     </p>
                   </div>
                 </div>
@@ -257,10 +357,12 @@ Please arrive 15 minutes early. All guests must sign waivers before the tour.
                   <Mail className="h-4 w-4 text-muted-foreground" />
                   <span>{booking.customer.email}</span>
                 </div>
-                <div className="flex items-center gap-3">
-                  <Phone className="h-4 w-4 text-muted-foreground" />
-                  <span>{booking.customer.phone}</span>
-                </div>
+                {booking.customer.phone && (
+                  <div className="flex items-center gap-3">
+                    <Phone className="h-4 w-4 text-muted-foreground" />
+                    <span>{booking.customer.phone}</span>
+                  </div>
+                )}
               </CardContent>
             </Card>
 
@@ -292,8 +394,8 @@ Please arrive 15 minutes early. All guests must sign waivers before the tour.
                       <Badge
                         className={
                           guest.waiverSigned
-                            ? "waiver-signed"
-                            : "waiver-pending"
+                            ? "bg-green-100 text-green-800 hover:bg-green-100"
+                            : "bg-orange-100 text-orange-800 hover:bg-orange-100"
                         }
                       >
                         {guest.waiverSigned ? "Waiver Signed" : "Pending"}
@@ -321,14 +423,14 @@ Please arrive 15 minutes early. All guests must sign waivers before the tour.
                 <div className="space-y-2 text-sm">
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">
-                      $99 × {booking.guestCount} guests
+                      ${pricePerPerson.toFixed(2)} x {booking.guestCount} guests
                     </span>
-                    <span>${booking.totalPrice}</span>
+                    <span>${booking.totalPrice.toFixed(2)}</span>
                   </div>
                   <Separator />
                   <div className="flex justify-between font-semibold text-base">
                     <span>Total Paid</span>
-                    <span className="text-primary">${booking.totalPrice}</span>
+                    <span className="text-primary">${booking.totalPrice.toFixed(2)}</span>
                   </div>
                 </div>
                 <Badge className="mt-4 bg-green-100 text-green-800 hover:bg-green-100">
@@ -392,12 +494,14 @@ Please arrive 15 minutes early. All guests must sign waivers before the tour.
               <ChevronRight className="h-4 w-4" />
             </Button>
           </Link>
-          <Link href={`/waiver/${booking.reference}`}>
-            <Button className="w-full sm:w-auto gap-2 gradient-primary border-0">
-              <FileText className="h-4 w-4" />
-              Sign Waiver Now
-            </Button>
-          </Link>
+          {!allWaiversSigned && (
+            <Link href={`/waiver/${booking.reference}`}>
+              <Button className="w-full sm:w-auto gap-2 gradient-primary border-0">
+                <FileText className="h-4 w-4" />
+                Sign Waiver Now
+              </Button>
+            </Link>
+          )}
         </div>
       </div>
     </div>

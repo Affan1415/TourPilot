@@ -22,7 +22,6 @@ import {
   Loader2,
 } from "lucide-react";
 import { format } from "date-fns";
-import { createClient } from "@/lib/supabase/client";
 
 interface WaiverData {
   id: string;
@@ -66,6 +65,7 @@ export default function WaiverSigningPage() {
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [noWaiverRequired, setNoWaiverRequired] = useState(false);
   const [waiverData, setWaiverData] = useState<WaiverData | null>(null);
   const [allGuestWaivers, setAllGuestWaivers] = useState<GuestWaiver[]>([]);
   const [selectedWaiverId, setSelectedWaiverId] = useState<string | null>(null);
@@ -76,77 +76,67 @@ export default function WaiverSigningPage() {
   useEffect(() => {
     const fetchWaiverData = async () => {
       try {
-        const supabase = createClient();
+        // Use API route to bypass RLS
+        const response = await fetch(`/api/waivers/${token}`);
+        const result = await response.json();
 
-        // Fetch the waiver by ID (token)
-        const { data: waiver, error: waiverError } = await supabase
-          .from('waivers')
-          .select(`
-            id,
-            status,
-            signed_at,
-            guest:booking_guests(id, first_name, last_name),
-            booking:bookings(
-              booking_reference,
-              guest_count,
-              availability:availabilities(
-                date,
-                start_time,
-                tour:tours(name)
-              )
-            ),
-            waiver_template:waiver_templates(name, content)
-          `)
-          .eq('id', token)
-          .single();
-
-        if (waiverError) {
-          console.error('Error fetching waiver:', waiverError);
-          setError('Waiver not found or has expired.');
+        if (!response.ok) {
+          console.error('Error fetching waiver:', result.error);
+          setError(result.error || 'Waiver not found or has expired.');
           setLoading(false);
           return;
         }
 
-        setWaiverData(waiver as unknown as WaiverData);
+        const { booking, waivers, currentWaiver, noWaiversRequired } = result;
 
-        // Also fetch all waivers for this booking to show status
-        const bookingId = (waiver as any).booking?.id;
-        if (bookingId) {
-          const { data: allWaivers } = await supabase
-            .from('waivers')
-            .select(`
-              id,
-              status,
-              signed_at,
-              guest:booking_guests(id, first_name, last_name)
-            `)
-            .eq('booking_id', bookingId);
-
-          if (allWaivers) {
-            setAllGuestWaivers(allWaivers.map((w: any) => ({
-              id: w.id,
-              guestId: w.guest?.id,
-              firstName: w.guest?.first_name,
-              lastName: w.guest?.last_name,
-              status: w.status,
-              signedAt: w.signed_at,
-            })));
-          }
-        } else {
-          // If we can't get all waivers, just use the current one
-          setAllGuestWaivers([{
-            id: waiver.id,
-            guestId: (waiver as any).guest?.id,
-            firstName: (waiver as any).guest?.first_name,
-            lastName: (waiver as any).guest?.last_name,
-            status: waiver.status,
-            signedAt: waiver.signed_at,
-          }]);
+        if (noWaiversRequired || !waivers || waivers.length === 0) {
+          // Tour doesn't require waivers - show a success-like message
+          setNoWaiverRequired(true);
+          setLoading(false);
+          return;
         }
 
-        // Set the current waiver as selected if not already signed
-        if (waiver.status !== 'signed') {
-          setSelectedWaiverId(waiver.id);
+        // Get waiver template from the first waiver
+        const waiverTemplate = waivers[0]?.waiver_template;
+
+        // Build waiverData object for display
+        const waiverDataObj: WaiverData = {
+          id: currentWaiver?.id || waivers[0].id,
+          status: currentWaiver?.status || waivers[0].status,
+          signed_at: currentWaiver?.signed_at || waivers[0].signed_at,
+          guest: currentWaiver?.guest || waivers[0].guest,
+          booking: {
+            booking_reference: booking.booking_reference,
+            guest_count: booking.guest_count,
+            availability: {
+              date: booking.availability?.date,
+              start_time: booking.availability?.start_time,
+              tour: {
+                name: booking.availability?.tours?.name,
+              },
+            },
+          },
+          waiver_template: waiverTemplate,
+        };
+
+        setWaiverData(waiverDataObj);
+
+        // Map all waivers to GuestWaiver format
+        const guestWaivers: GuestWaiver[] = waivers.map((w: any) => ({
+          id: w.id,
+          guestId: w.guest?.id,
+          firstName: w.guest?.first_name,
+          lastName: w.guest?.last_name,
+          status: w.status,
+          signedAt: w.signed_at,
+        }));
+
+        setAllGuestWaivers(guestWaivers);
+
+        // Find the first unsigned waiver and select it
+        const firstUnsigned = guestWaivers.find((w) => w.status !== 'signed');
+        if (firstUnsigned) {
+          setSelectedWaiverId(firstUnsigned.id);
         }
 
       } catch (err: any) {
@@ -239,6 +229,22 @@ export default function WaiverSigningPage() {
           <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-primary" />
           <p className="text-muted-foreground">Loading waiver...</p>
         </div>
+      </div>
+    );
+  }
+
+  if (noWaiverRequired) {
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-muted/30 to-background flex items-center justify-center">
+        <Card className="max-w-md mx-4 border-green-200 bg-green-50">
+          <CardContent className="py-8 text-center">
+            <CheckCircle2 className="h-12 w-12 text-green-600 mx-auto mb-4" />
+            <h2 className="text-xl font-semibold text-green-900 mb-2">No Waiver Required</h2>
+            <p className="text-green-800">
+              This tour does not require a waiver. You&apos;re all set for your adventure!
+            </p>
+          </CardContent>
+        </Card>
       </div>
     );
   }

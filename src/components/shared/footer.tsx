@@ -12,7 +12,7 @@ export function Footer() {
               <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary text-primary-foreground">
                 <Ship className="h-5 w-5" />
               </div>
-              <span className="text-xl font-bold">TourBooking</span>
+              <span className="text-xl font-bold">TourPilot</span>
             </Link>
             <p className="text-sm text-muted-foreground">
               Book unforgettable tours and activities. Digital waivers, instant confirmations, and seamless experiences.
@@ -109,7 +109,7 @@ export function Footer() {
         </div>
 
         <div className="border-t mt-8 pt-8 text-center text-sm text-muted-foreground">
-          <p>&copy; {new Date().getFullYear()} TourBooking. All rights reserved.</p>
+          <p>&copy; {new Date().getFullYear()} TourPilot. All rights reserved.</p>
         </div>
       </div>
     </footer>

@@ -1,23 +1,40 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, Suspense } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
-import { Ship, Mail, Lock, Eye, EyeOff, AlertCircle } from "lucide-react";
+import { Ship, Mail, Lock, Eye, EyeOff, AlertCircle, Shield, Anchor, User } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+import { cn } from "@/lib/utils";
 
-export default function LoginPage() {
+type LoginType = "admin" | "captain" | "customer" | null;
+
+function LoginPageContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const [loginType, setLoginType] = useState<LoginType>(null);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Handle error query params from OAuth callback
+  useEffect(() => {
+    const errorParam = searchParams.get("error");
+    if (errorParam === "auth") {
+      setError("Authentication failed. Please try again.");
+    } else if (errorParam === "no_admin_access") {
+      setError("You don't have admin access. Please contact your administrator.");
+    } else if (errorParam === "no_captain_access") {
+      setError("You don't have captain access. Please contact your administrator.");
+    }
+  }, [searchParams]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -26,7 +43,7 @@ export default function LoginPage() {
 
     try {
       const supabase = createClient();
-      const { error } = await supabase.auth.signInWithPassword({
+      const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
@@ -36,7 +53,52 @@ export default function LoginPage() {
         return;
       }
 
-      router.push("/dashboard");
+      if (data.user) {
+        // Redirect based on selected login type
+        if (loginType === "admin") {
+          // Verify user is staff
+          const { data: staffData } = await supabase
+            .from('staff')
+            .select('role, is_active')
+            .eq('user_id', data.user.id)
+            .single();
+
+          if (staffData && staffData.is_active && ['admin', 'manager', 'guide', 'front_desk'].includes(staffData.role)) {
+            router.push("/dashboard");
+          } else {
+            setError("You don't have admin access. Please contact your administrator.");
+            await supabase.auth.signOut();
+            return;
+          }
+        } else if (loginType === "captain") {
+          // Verify user is captain
+          const { data: staffData } = await supabase
+            .from('staff')
+            .select('role, is_active')
+            .eq('user_id', data.user.id)
+            .single();
+
+          if (staffData && staffData.is_active && staffData.role === 'captain') {
+            router.push("/captain");
+          } else {
+            setError("You don't have captain access. Please contact your administrator.");
+            await supabase.auth.signOut();
+            return;
+          }
+        } else if (loginType === "customer") {
+          // Link or create customer account via API (bypasses RLS)
+          const linkResponse = await fetch('/api/customers/link', {
+            method: 'POST',
+          });
+
+          if (!linkResponse.ok) {
+            console.error('Failed to link customer account');
+          }
+
+          router.push("/account");
+        }
+      }
+
       router.refresh();
     } catch (err) {
       setError("An unexpected error occurred");
@@ -46,14 +108,133 @@ export default function LoginPage() {
   };
 
   const handleGoogleLogin = async () => {
+    if (!loginType) {
+      setError("Please select an account type first");
+      return;
+    }
+
     const supabase = createClient();
     await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
-        redirectTo: `${window.location.origin}/auth/callback`,
+        redirectTo: `${window.location.origin}/auth/callback?type=${loginType}`,
       },
     });
   };
+
+  // Account type selection screen
+  if (!loginType) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary/5 via-background to-secondary/5 p-4">
+        <div className="w-full max-w-lg">
+          {/* Logo */}
+          <div className="text-center mb-8">
+            <Link href="/" className="inline-flex items-center gap-2">
+              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary text-primary-foreground">
+                <Ship className="h-6 w-6" />
+              </div>
+              <span className="text-2xl font-bold">TourPilot</span>
+            </Link>
+          </div>
+
+          <Card className="p-8">
+            <div className="text-center mb-8">
+              <h1 className="text-2xl font-bold">Welcome to TourPilot</h1>
+              <p className="text-muted-foreground mt-1">
+                Select how you'd like to sign in
+              </p>
+            </div>
+
+            <div className="grid gap-4">
+              {/* Admin/Staff Option */}
+              <button
+                onClick={() => setLoginType("admin")}
+                className="flex items-center gap-4 p-4 rounded-xl border-2 border-transparent bg-muted/50 hover:border-primary hover:bg-primary/5 transition-all text-left"
+              >
+                <div className="h-12 w-12 rounded-xl bg-blue-100 flex items-center justify-center">
+                  <Shield className="h-6 w-6 text-blue-600" />
+                </div>
+                <div>
+                  <p className="font-semibold">Admin / Staff</p>
+                  <p className="text-sm text-muted-foreground">
+                    Manage tours, bookings, and customers
+                  </p>
+                </div>
+              </button>
+
+              {/* Captain Option */}
+              <button
+                onClick={() => setLoginType("captain")}
+                className="flex items-center gap-4 p-4 rounded-xl border-2 border-transparent bg-muted/50 hover:border-indigo-500 hover:bg-indigo-50 transition-all text-left"
+              >
+                <div className="h-12 w-12 rounded-xl bg-indigo-100 flex items-center justify-center">
+                  <Anchor className="h-6 w-6 text-indigo-600" />
+                </div>
+                <div>
+                  <p className="font-semibold">Captain</p>
+                  <p className="text-sm text-muted-foreground">
+                    View assigned tours and check-in guests
+                  </p>
+                </div>
+              </button>
+
+              {/* Customer Option */}
+              <button
+                onClick={() => setLoginType("customer")}
+                className="flex items-center gap-4 p-4 rounded-xl border-2 border-transparent bg-muted/50 hover:border-green-500 hover:bg-green-50 transition-all text-left"
+              >
+                <div className="h-12 w-12 rounded-xl bg-green-100 flex items-center justify-center">
+                  <User className="h-6 w-6 text-green-600" />
+                </div>
+                <div>
+                  <p className="font-semibold">Customer</p>
+                  <p className="text-sm text-muted-foreground">
+                    View your bookings and sign waivers
+                  </p>
+                </div>
+              </button>
+            </div>
+          </Card>
+
+          <p className="text-center text-xs text-muted-foreground mt-6">
+            By signing in, you agree to our{" "}
+            <Link href="/terms" className="hover:underline">
+              Terms of Service
+            </Link>{" "}
+            and{" "}
+            <Link href="/privacy" className="hover:underline">
+              Privacy Policy
+            </Link>
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  // Login form
+  const loginConfig = {
+    admin: {
+      title: "Admin / Staff Login",
+      subtitle: "Sign in to manage your tours",
+      color: "blue",
+      icon: Shield,
+    },
+    captain: {
+      title: "Captain Login",
+      subtitle: "Sign in to view your assignments",
+      color: "indigo",
+      icon: Anchor,
+    },
+    customer: {
+      title: "Customer Login",
+      subtitle: "Sign in to view your bookings",
+      color: "green",
+      icon: User,
+    },
+  };
+
+  const config = loginConfig[loginType];
+  const IconComponent = config.icon;
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary/5 via-background to-secondary/5 p-4">
@@ -64,15 +245,39 @@ export default function LoginPage() {
             <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary text-primary-foreground">
               <Ship className="h-6 w-6" />
             </div>
-            <span className="text-2xl font-bold">TourBooking</span>
+            <span className="text-2xl font-bold">TourPilot</span>
           </Link>
         </div>
 
         <Card className="p-8">
+          {/* Back button */}
+          <button
+            onClick={() => {
+              setLoginType(null);
+              setError(null);
+            }}
+            className="text-sm text-muted-foreground hover:text-foreground mb-4 flex items-center gap-1"
+          >
+            ← Back to account selection
+          </button>
+
           <div className="text-center mb-6">
-            <h1 className="text-2xl font-bold">Welcome back</h1>
+            <div className={cn(
+              "h-14 w-14 rounded-xl mx-auto mb-3 flex items-center justify-center",
+              config.color === "blue" && "bg-blue-100",
+              config.color === "indigo" && "bg-indigo-100",
+              config.color === "green" && "bg-green-100"
+            )}>
+              <IconComponent className={cn(
+                "h-7 w-7",
+                config.color === "blue" && "text-blue-600",
+                config.color === "indigo" && "text-indigo-600",
+                config.color === "green" && "text-green-600"
+              )} />
+            </div>
+            <h1 className="text-2xl font-bold">{config.title}</h1>
             <p className="text-muted-foreground mt-1">
-              Sign in to access your dashboard
+              {config.subtitle}
             </p>
           </div>
 
@@ -137,7 +342,12 @@ export default function LoginPage() {
 
             <Button
               type="submit"
-              className="w-full gradient-primary border-0"
+              className={cn(
+                "w-full border-0",
+                config.color === "blue" && "bg-blue-600 hover:bg-blue-700",
+                config.color === "indigo" && "bg-indigo-600 hover:bg-indigo-700",
+                config.color === "green" && "bg-green-600 hover:bg-green-700"
+              )}
               disabled={loading}
             >
               {loading ? "Signing in..." : "Sign in"}
@@ -178,12 +388,14 @@ export default function LoginPage() {
             Continue with Google
           </Button>
 
-          <p className="text-center text-sm text-muted-foreground mt-6">
-            Don't have an account?{" "}
-            <Link href="/signup" className="text-primary hover:underline font-medium">
-              Sign up
-            </Link>
-          </p>
+          {loginType === "customer" && (
+            <p className="text-center text-sm text-muted-foreground mt-6">
+              Don't have an account?{" "}
+              <Link href="/signup" className="text-primary hover:underline font-medium">
+                Sign up
+              </Link>
+            </p>
+          )}
         </Card>
 
         <p className="text-center text-xs text-muted-foreground mt-6">
@@ -198,5 +410,17 @@ export default function LoginPage() {
         </p>
       </div>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary/5 via-background to-secondary/5">
+        <div className="animate-pulse">Loading...</div>
+      </div>
+    }>
+      <LoginPageContent />
+    </Suspense>
   );
 }

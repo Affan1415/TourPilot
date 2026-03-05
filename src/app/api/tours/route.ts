@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { requireAdmin, requireStaff, forbiddenResponse, errorResponse } from "@/lib/auth/api-auth";
 
+// GET: Public can view active tours, staff can view all
 export async function GET(request: NextRequest) {
   try {
     const supabase = await createClient();
@@ -11,6 +13,16 @@ export async function GET(request: NextRequest) {
       .from("tours")
       .select("*")
       .order("created_at", { ascending: false });
+
+    // Only staff can view non-active tours
+    if (status !== "active") {
+      try {
+        await requireStaff();
+      } catch {
+        // Non-staff can only see active tours
+        query = query.eq("status", "active");
+      }
+    }
 
     if (status !== "all") {
       query = query.eq("status", status);
@@ -31,8 +43,16 @@ export async function GET(request: NextRequest) {
   }
 }
 
+// POST: Only admin/manager can create tours
 export async function POST(request: NextRequest) {
   try {
+    // Check admin permission
+    try {
+      await requireAdmin();
+    } catch (e: any) {
+      return forbiddenResponse(e.message);
+    }
+
     const supabase = await createClient();
     const body = await request.json();
 

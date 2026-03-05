@@ -115,7 +115,7 @@ export default function SignupPage() {
             <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary text-primary-foreground">
               <Ship className="h-6 w-6" />
             </div>
-            <span className="text-2xl font-bold">TourBooking</span>
+            <span className="text-2xl font-bold">TourPilot</span>
           </Link>
         </div>
 

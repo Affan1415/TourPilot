@@ -96,6 +96,8 @@ export default function StaffPage() {
     role: "guide",
     assignedTours: [] as string[],
   });
+  const [editingStaff, setEditingStaff] = useState<StaffMember | null>(null);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -208,7 +210,43 @@ export default function StaffPage() {
   };
 
   const handleEditStaff = (member: StaffMember) => {
-    toast.info("Edit Staff", { description: `Editing ${member.name} - Feature coming soon.` });
+    setEditingStaff(member);
+    setIsEditDialogOpen(true);
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editingStaff) return;
+
+    setIsSubmitting(true);
+    try {
+      const supabase = createClient();
+
+      const { error } = await supabase
+        .from('staff')
+        .update({
+          name: editingStaff.name,
+          email: editingStaff.email,
+          phone: editingStaff.phone || null,
+          role: editingStaff.role,
+          is_active: editingStaff.status === 'active',
+        })
+        .eq('id', editingStaff.id);
+
+      if (error) throw error;
+
+      setStaffMembers(prev => prev.map(s =>
+        s.id === editingStaff.id ? editingStaff : s
+      ));
+
+      setIsEditDialogOpen(false);
+      setEditingStaff(null);
+      toast.success("Staff updated", { description: `${editingStaff.name}'s details have been updated.` });
+    } catch (error: any) {
+      console.error('Error updating staff:', error);
+      toast.error("Failed to update staff", { description: error.message || 'An error occurred' });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleViewSchedule = (member: StaffMember) => {
@@ -365,6 +403,99 @@ export default function StaffPage() {
                   </>
                 ) : (
                   "Add Staff Member"
+                )}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Edit Staff Dialog */}
+        <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+          <DialogContent className="sm:max-w-[500px]">
+            <DialogHeader>
+              <DialogTitle>Edit Staff Member</DialogTitle>
+              <DialogDescription>
+                Update staff details and role assignments.
+              </DialogDescription>
+            </DialogHeader>
+            {editingStaff && (
+              <div className="grid gap-4 py-4">
+                <div className="grid gap-2">
+                  <Label htmlFor="edit-name">Full Name</Label>
+                  <Input
+                    id="edit-name"
+                    value={editingStaff.name}
+                    onChange={(e) => setEditingStaff({ ...editingStaff, name: e.target.value })}
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="grid gap-2">
+                    <Label htmlFor="edit-email">Email</Label>
+                    <Input
+                      id="edit-email"
+                      type="email"
+                      value={editingStaff.email}
+                      onChange={(e) => setEditingStaff({ ...editingStaff, email: e.target.value })}
+                    />
+                  </div>
+                  <div className="grid gap-2">
+                    <Label htmlFor="edit-phone">Phone</Label>
+                    <Input
+                      id="edit-phone"
+                      value={editingStaff.phone}
+                      onChange={(e) => setEditingStaff({ ...editingStaff, phone: e.target.value })}
+                    />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="grid gap-2">
+                    <Label htmlFor="edit-role">Role</Label>
+                    <Select
+                      value={editingStaff.role}
+                      onValueChange={(value) => setEditingStaff({ ...editingStaff, role: value })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select role" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="admin">Admin</SelectItem>
+                        <SelectItem value="manager">Manager</SelectItem>
+                        <SelectItem value="captain">Captain</SelectItem>
+                        <SelectItem value="guide">Guide</SelectItem>
+                        <SelectItem value="front_desk">Front Desk</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="grid gap-2">
+                    <Label htmlFor="edit-status">Status</Label>
+                    <Select
+                      value={editingStaff.status}
+                      onValueChange={(value) => setEditingStaff({ ...editingStaff, status: value })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select status" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="active">Active</SelectItem>
+                        <SelectItem value="inactive">Inactive</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              </div>
+            )}
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setIsEditDialogOpen(false)} disabled={isSubmitting}>
+                Cancel
+              </Button>
+              <Button className="gradient-primary border-0" onClick={handleSaveEdit} disabled={isSubmitting}>
+                {isSubmitting ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Saving...
+                  </>
+                ) : (
+                  "Save Changes"
                 )}
               </Button>
             </DialogFooter>
