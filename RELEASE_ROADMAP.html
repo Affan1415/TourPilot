@@ -1,0 +1,1065 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TourPilot - Release Roadmap</title>
+    <style>
+        :root {
+            --primary: #0ea5e9;
+            --primary-dark: #0284c7;
+            --secondary: #64748b;
+            --success: #22c55e;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+            --bg-dark: #0f172a;
+            --bg-card: #1e293b;
+            --bg-card-hover: #334155;
+            --text-primary: #f8fafc;
+            --text-secondary: #94a3b8;
+            --border: #334155;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg-dark);
+            color: var(--text-primary);
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        header {
+            text-align: center;
+            padding: 3rem 2rem;
+            background: linear-gradient(135deg, #0ea5e9, #8b5cf6);
+            margin-bottom: 3rem;
+        }
+
+        header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 0.5rem;
+        }
+
+        header p {
+            opacity: 0.9;
+            font-size: 1.1rem;
+        }
+
+        /* Version Cards */
+        .version {
+            background: var(--bg-card);
+            border-radius: 1rem;
+            margin-bottom: 2rem;
+            border: 1px solid var(--border);
+            overflow: hidden;
+        }
+
+        .version-header {
+            padding: 1.5rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .version-title {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .version-badge {
+            padding: 0.5rem 1rem;
+            border-radius: 9999px;
+            font-weight: 700;
+            font-size: 1rem;
+        }
+
+        .v1 { background: #22c55e30; color: #22c55e; }
+        .v2 { background: #0ea5e930; color: #0ea5e9; }
+        .v3 { background: #f59e0b30; color: #f59e0b; }
+        .v4 { background: #8b5cf630; color: #8b5cf6; }
+        .v5 { background: #ec489930; color: #ec4899; }
+        .v6 { background: #14b8a630; color: #14b8a6; }
+
+        .version-name {
+            font-size: 1.5rem;
+            font-weight: 600;
+        }
+
+        .version-meta {
+            text-align: right;
+            color: var(--text-secondary);
+        }
+
+        .version-body {
+            padding: 2rem;
+        }
+
+        .version-goal {
+            background: var(--bg-card-hover);
+            padding: 1rem 1.5rem;
+            border-radius: 0.5rem;
+            margin-bottom: 1.5rem;
+            border-left: 4px solid var(--primary);
+        }
+
+        .version-goal strong {
+            color: var(--primary);
+        }
+
+        /* Feature Grid */
+        .feature-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+
+        .feature-card {
+            background: var(--bg-card-hover);
+            padding: 1.25rem;
+            border-radius: 0.75rem;
+            border: 1px solid var(--border);
+        }
+
+        .feature-card h4 {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-bottom: 0.75rem;
+            color: var(--text-primary);
+        }
+
+        .feature-card ul {
+            list-style: none;
+            padding: 0;
+        }
+
+        .feature-card li {
+            padding: 0.25rem 0;
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+        }
+
+        .feature-card li::before {
+            content: "✓ ";
+            color: var(--success);
+        }
+
+        /* Completed items */
+        .feature-card.completed {
+            opacity: 0.7;
+            background: linear-gradient(135deg, rgba(34, 197, 94, 0.1), rgba(34, 197, 94, 0.05));
+            border-color: var(--success);
+        }
+
+        .feature-card.completed h4 {
+            text-decoration: line-through;
+            color: var(--success);
+        }
+
+        .feature-card.completed li {
+            text-decoration: line-through;
+        }
+
+        .completed-badge {
+            background: var(--success);
+            color: white;
+            padding: 0.25rem 0.5rem;
+            border-radius: 0.25rem;
+            font-size: 0.7rem;
+            font-weight: 600;
+            margin-left: 0.5rem;
+        }
+
+        /* Deliverables */
+        .deliverables {
+            margin-top: 1.5rem;
+            padding-top: 1.5rem;
+            border-top: 1px solid var(--border);
+        }
+
+        .deliverables h4 {
+            margin-bottom: 1rem;
+            color: var(--text-secondary);
+            font-size: 0.875rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .deliverable-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+        }
+
+        .deliverable-tag {
+            background: var(--bg-dark);
+            padding: 0.5rem 1rem;
+            border-radius: 0.5rem;
+            font-size: 0.875rem;
+            border: 1px solid var(--border);
+        }
+
+        /* Tech Stack */
+        .tech-stack {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            margin-top: 0.5rem;
+        }
+
+        .tech-tag {
+            background: var(--primary);
+            color: white;
+            padding: 0.25rem 0.75rem;
+            border-radius: 9999px;
+            font-size: 0.75rem;
+            font-weight: 500;
+        }
+
+        /* Summary Section */
+        .summary {
+            background: var(--bg-card);
+            border-radius: 1rem;
+            padding: 2rem;
+            margin-top: 3rem;
+            border: 1px solid var(--border);
+        }
+
+        .summary h2 {
+            margin-bottom: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .summary-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1.5rem;
+        }
+
+        .summary-card {
+            text-align: center;
+            padding: 1.5rem;
+            background: var(--bg-card-hover);
+            border-radius: 0.75rem;
+        }
+
+        .summary-card .number {
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: var(--primary);
+        }
+
+        .summary-card .label {
+            color: var(--text-secondary);
+            margin-top: 0.25rem;
+        }
+
+        /* Phases Reference */
+        .phases-ref {
+            margin-top: 1rem;
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+        }
+
+        .phases-ref span {
+            background: var(--bg-dark);
+            padding: 0.25rem 0.5rem;
+            border-radius: 0.25rem;
+            margin-right: 0.5rem;
+        }
+
+        footer {
+            text-align: center;
+            padding: 3rem 2rem;
+            color: var(--text-secondary);
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>TourPilot Release Roadmap</h1>
+        <p>Iterative Development Plan - From MVP to Full Platform</p>
+    </header>
+
+    <div class="container">
+
+        <!-- Version 1.0 - MVP -->
+        <div class="version">
+            <div class="version-header">
+                <div class="version-title">
+                    <span class="version-badge v1">v1.0</span>
+                    <span class="version-name">MVP - Core Booking System</span>
+                </div>
+                <div class="version-meta">
+                    <div>Phases 0-5</div>
+                </div>
+            </div>
+            <div class="version-body">
+                <div class="version-goal">
+                    <strong>Goal:</strong> Launch a working booking system for a single location. Customers can book tours, staff can manage bookings, basic operations running.
+                </div>
+
+                <div class="feature-grid">
+                    <div class="feature-card completed">
+                        <h4>🏢 Location Setup <span class="completed-badge">DONE</span></h4>
+                        <ul>
+                            <li>Single location configuration</li>
+                            <li>Business hours & timezone</li>
+                            <li>Basic settings (name, address, contact)</li>
+                        </ul>
+                    </div>
+                    <div class="feature-card completed">
+                        <h4>🚤 Fleet Management <span class="completed-badge">DONE</span></h4>
+                        <ul>
+                            <li>Add boats with capacity</li>
+                            <li>Boat status (active/maintenance)</li>
+                            <li>Basic boat details</li>
+                        </ul>
+                    </div>
+                    <div class="feature-card completed">
+                        <h4>👥 Staff Management <span class="completed-badge">DONE</span></h4>
+                        <ul>
+                            <li>Add captains and staff</li>
+                            <li>Basic role assignment</li>
+                            <li>Staff login (email/password)</li>
+                        </ul>
+                    </div>
+                    <div class="feature-card completed">
+                        <h4>🎯 Tours <span class="completed-badge">DONE</span></h4>
+                        <ul>
+                            <li>Create tour types</li>
+                            <li>Set duration & pricing</li>
+                            <li>Assign boats to tours</li>
+                            <li>Define time slots</li>
+                        </ul>
+                    </div>
+                    <div class="feature-card completed">
+                        <h4>📅 Booking System <span class="completed-badge">DONE</span></h4>
+                        <ul>
+                            <li>Customer booking form</li>
+                            <li>Date/time slot selection</li>
+                            <li>Guest count (adults/children)</li>
+                            <li>Email confirmation</li>
+                            <li>Booking management (view/cancel)</li>
+                        </ul>
+                    </div>
+                    <div class="feature-card completed">
+                        <h4>💳 Payments (Basic) <span class="completed-badge">DONE</span></h4>
+                        <ul>
+                            <li>Stripe checkout integration</li>
+                            <li>Payment confirmation</li>
+                            <li>Basic refund (manual)</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="deliverables">
+                    <h4>Deliverables</h4>
+                    <div class="deliverable-list">
+                        <span class="deliverable-tag">Web App (Expo Web)</span>
+                        <span class="deliverable-tag">Admin Dashboard</span>
+                        <span class="deliverable-tag">Public Booking Page</span>
+                        <span class="deliverable-tag">Email Notifications</span>
+                    </div>
+                    <div class="tech-stack">
+                        <span class="tech-tag">Expo</span>
+                        <span class="tech-tag">Tamagui</span>
+                        <span class="tech-tag">Supabase</span>
+                        <span class="tech-tag">Stripe</span>
+                        <span class="tech-tag">Resend</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Version 1.1 - Operations -->
+        <div class="version">
+            <div class="version-header">
+                <div class="version-title">
+                    <span class="version-badge v2">v1.1</span>
+                    <span class="version-name">Operations & Waivers</span>
+                </div>
+                <div class="version-meta">
+                    <div>Phases 6-7</div>
+                </div>
+            </div>
+            <div class="version-body">
+                <div class="version-goal">
+                    <strong>Goal:</strong> Streamline daily operations. Digital waivers, calendar view, check-in system, and captain manifest view.
+                </div>
+
+                <div class="feature-grid">
+                    <div class="feature-card completed">
+                        <h4>📝 Digital Waivers <span class="completed-badge">DONE</span></h4>
+                        <ul>
+                            <li>Waiver template builder</li>
+                            <li>Auto-send before tour</li>
+                            <li>Digital signature capture</li>
+                            <li>Waiver status tracking</li>
+                            <li>PDF storage</li>
+                        </ul>
+                    </div>
+                    <div class="feature-card completed">
+                        <h4>📆 Calendar Dashboard <span class="completed-badge">DONE</span></h4>
+                        <ul>
+                            <li>Day/Week/Month views</li>
+                            <li>Drag-drop rescheduling</li>
+                            <li>Capacity indicators</li>
+                            <li>Color-coded by status</li>
+                        </ul>
+                    </div>
+                    <div class="feature-card completed">
+                        <h4>✅ Check-in System <span class="completed-badge">DONE</span></h4>
+                        <ul>
+                            <li>QR code check-in</li>
+                            <li>Manual check-in option</li>
+                            <li>Guest list for each tour</li>
+                            <li>Waiver status at check-in</li>
+                        </ul>
+                    </div>
+                    <div class="feature-card completed">
+                        <h4>🧑‍✈️ Captain View <span class="completed-badge">DONE</span></h4>
+                        <ul>
+                            <li>Today's tours list</li>
+                            <li>Passenger manifest</li>
+                            <li>Guest contact info</li>
+                            <li>Special notes/requests</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="deliverables">
+                    <h4>Deliverables</h4>
+                    <div class="deliverable-list">
+                        <span class="deliverable-tag">Waiver System</span>
+                        <span class="deliverable-tag">Calendar View</span>
+                        <span class="deliverable-tag">Check-in Interface</span>
+                        <span class="deliverable-tag">Captain Manifest</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Version 1.2 - Multi-Location -->
+        <div class="version">
+            <div class="version-header">
+                <div class="version-title">
+                    <span class="version-badge v3">v1.2</span>
+                    <span class="version-name">Multi-Location & Access Control</span>
+                </div>
+                <div class="version-meta">
+                    <div>Phases 8-9</div>
+                </div>
+            </div>
+            <div class="version-body">
+                <div class="version-goal">
+                    <strong>Goal:</strong> Scale to multiple locations. Super admin oversight, role-based permissions, location-specific staff access.
+                </div>
+
+                <div class="feature-grid">
+                    <div class="feature-card completed">
+                        <h4>🌐 Multi-Location <span class="completed-badge">DONE</span></h4>
+                        <ul>
+                            <li>Add multiple locations</li>
+                            <li>Location switcher in dashboard</li>
+                            <li>Cross-location reporting</li>
+                            <li>Location-specific settings</li>
+                        </ul>
+                    </div>
+                    <div class="feature-card completed">
+                        <h4>👑 Super Admin <span class="completed-badge">DONE</span></h4>
+                        <ul>
+                            <li>Overview of all locations</li>
+                            <li>Global settings management</li>
+                            <li>Create location admins</li>
+                            <li>View all bookings/revenue</li>
+                        </ul>
+                    </div>
+                    <div class="feature-card completed">
+                        <h4>🔐 Role-Based Access <span class="completed-badge">DONE</span></h4>
+                        <ul>
+                            <li>Super Admin role</li>
+                            <li>Location Admin role</li>
+                            <li>Staff role</li>
+                            <li>Captain role</li>
+                            <li>Custom permissions</li>
+                        </ul>
+                    </div>
+                    <div class="feature-card completed">
+                        <h4>📊 Basic Reports <span class="completed-badge">DONE</span></h4>
+                        <ul>
+                            <li>Daily booking summary</li>
+                            <li>Revenue by location</li>
+                            <li>Capacity utilization</li>
+                            <li>Simple CSV export</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="deliverables">
+                    <h4>Deliverables</h4>
+                    <div class="deliverable-list">
+                        <span class="deliverable-tag">Multi-Location Support</span>
+                        <span class="deliverable-tag">Super Admin Dashboard</span>
+                        <span class="deliverable-tag">Role Management</span>
+                        <span class="deliverable-tag">Basic Analytics</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Version 2.0 - Mobile Apps -->
+        <div class="version">
+            <div class="version-header">
+                <div class="version-title">
+                    <span class="version-badge v4">v2.0</span>
+                    <span class="version-name">Mobile Apps & Offline</span>
+                </div>
+                <div class="version-meta">
+                    <div>Phase 14 + Mobile Build</div>
+                </div>
+            </div>
+            <div class="version-body">
+                <div class="version-goal">
+                    <strong>Goal:</strong> Launch native mobile apps for staff and captains. Offline capability for captains working in areas with poor connectivity.
+                </div>
+
+                <div class="feature-grid">
+                    <div class="feature-card completed">
+                        <h4>📱 iOS App <span class="completed-badge">DONE</span></h4>
+                        <ul>
+                            <li>Staff dashboard on iOS</li>
+                            <li>Captain manifest view</li>
+                            <li>Push notifications</li>
+                            <li>App Store deployment</li>
+                        </ul>
+                    </div>
+                    <div class="feature-card completed">
+                        <h4>🤖 Android App <span class="completed-badge">DONE</span></h4>
+                        <ul>
+                            <li>Staff dashboard on Android</li>
+                            <li>Captain manifest view</li>
+                            <li>Push notifications</li>
+                            <li>Play Store deployment</li>
+                        </ul>
+                    </div>
+                    <div class="feature-card completed">
+                        <h4>📴 Offline Mode (Captain) <span class="completed-badge">DONE</span></h4>
+                        <ul>
+                            <li>Pre-download today's manifest</li>
+                            <li>Offline check-in</li>
+                            <li>View guest details offline</li>
+                            <li>Sync when back online</li>
+                            <li>Conflict resolution</li>
+                        </ul>
+                    </div>
+                    <div class="feature-card completed">
+                        <h4>🔔 Push Notifications <span class="completed-badge">DONE</span></h4>
+                        <ul>
+                            <li>New booking alerts</li>
+                            <li>Cancellation alerts</li>
+                            <li>Tour reminders</li>
+                            <li>Assignment notifications</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="deliverables">
+                    <h4>Deliverables</h4>
+                    <div class="deliverable-list">
+                        <span class="deliverable-tag">iOS App (App Store)</span>
+                        <span class="deliverable-tag">Android App (Play Store)</span>
+                        <span class="deliverable-tag">Offline Sync Engine</span>
+                        <span class="deliverable-tag">Push Notification System</span>
+                    </div>
+                    <div class="tech-stack">
+                        <span class="tech-tag">EAS Build</span>
+                        <span class="tech-tag">WatermelonDB</span>
+                        <span class="tech-tag">Expo Notifications</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Version 2.1 - CRM -->
+        <div class="version">
+            <div class="version-header">
+                <div class="version-title">
+                    <span class="version-badge v5">v2.1</span>
+                    <span class="version-name">CRM & Customer Management</span>
+                </div>
+                <div class="version-meta">
+                    <div>Phase 10</div>
+                </div>
+            </div>
+            <div class="version-body">
+                <div class="version-goal">
+                    <strong>Goal:</strong> Build customer relationships. 360-degree customer view, booking history, notes, and basic segmentation.
+                </div>
+
+                <div class="feature-grid">
+                    <div class="feature-card completed">
+                        <h4>👤 Customer 360 View <span class="completed-badge">DONE</span></h4>
+                        <ul>
+                            <li>Complete booking history</li>
+                            <li>Total spent / lifetime value</li>
+                            <li>Contact information</li>
+                            <li>Communication history</li>
+                            <li>Notes & tags</li>
+                        </ul>
+                    </div>
+                    <div class="feature-card completed">
+                        <h4>🏷️ Tags & Segments <span class="completed-badge">DONE</span></h4>
+                        <ul>
+                            <li>Custom customer tags</li>
+                            <li>Auto-tagging rules</li>
+                            <li>VIP identification</li>
+                            <li>Segment filtering</li>
+                        </ul>
+                    </div>
+                    <div class="feature-card completed">
+                        <h4>📝 Notes & Activity <span class="completed-badge">DONE</span></h4>
+                        <ul>
+                            <li>Staff notes on customers</li>
+                            <li>Activity timeline</li>
+                            <li>Interaction logging</li>
+                            <li>Follow-up reminders</li>
+                        </ul>
+                    </div>
+                    <div class="feature-card completed">
+                        <h4>🔍 Customer Search <span class="completed-badge">DONE</span></h4>
+                        <ul>
+                            <li>Search by name/email/phone</li>
+                            <li>Filter by tags</li>
+                            <li>Filter by booking status</li>
+                            <li>Export customer list</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="deliverables">
+                    <h4>Deliverables</h4>
+                    <div class="deliverable-list">
+                        <span class="deliverable-tag">Customer Database</span>
+                        <span class="deliverable-tag">360 Profile View</span>
+                        <span class="deliverable-tag">Tagging System</span>
+                        <span class="deliverable-tag">Activity Timeline</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Version 2.2 - Unified Inbox -->
+        <div class="version">
+            <div class="version-header">
+                <div class="version-title">
+                    <span class="version-badge v6">v2.2</span>
+                    <span class="version-name">Unified Inbox</span>
+                </div>
+                <div class="version-meta">
+                    <div>Phase 11</div>
+                </div>
+            </div>
+            <div class="version-body">
+                <div class="version-goal">
+                    <strong>Goal:</strong> Centralize all customer communication. Reply to Instagram, WhatsApp, Email, SMS, and Messenger from one inbox.
+                </div>
+
+                <div class="feature-grid">
+                    <div class="feature-card completed">
+                        <h4>📧 Email Integration <span class="completed-badge">DONE</span></h4>
+                        <ul>
+                            <li>Connect Gmail/Outlook</li>
+                            <li>Send/receive in inbox</li>
+                            <li>Email templates</li>
+                            <li>Auto-link to bookings</li>
+                        </ul>
+                    </div>
+                    <div class="feature-card completed">
+                        <h4>💬 WhatsApp Business <span class="completed-badge">DONE</span></h4>
+                        <ul>
+                            <li>WhatsApp Business API</li>
+                            <li>Template messages</li>
+                            <li>Quick replies</li>
+                            <li>Media support</li>
+                        </ul>
+                    </div>
+                    <div class="feature-card completed">
+                        <h4>📸 Instagram DMs <span class="completed-badge">DONE</span></h4>
+                        <ul>
+                            <li>Instagram Graph API</li>
+                            <li>Reply to DMs</li>
+                            <li>Story mentions</li>
+                            <li>Comment management</li>
+                        </ul>
+                    </div>
+                    <div class="feature-card completed">
+                        <h4>📱 SMS & Messenger <span class="completed-badge">DONE</span></h4>
+                        <ul>
+                            <li>Twilio SMS integration</li>
+                            <li>Facebook Messenger</li>
+                            <li>Unified thread view</li>
+                            <li>Assignment to staff</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="deliverables">
+                    <h4>Deliverables</h4>
+                    <div class="deliverable-list">
+                        <span class="deliverable-tag">Unified Inbox UI</span>
+                        <span class="deliverable-tag">Email Integration</span>
+                        <span class="deliverable-tag">WhatsApp Integration</span>
+                        <span class="deliverable-tag">Instagram Integration</span>
+                        <span class="deliverable-tag">SMS Integration</span>
+                    </div>
+                    <div class="tech-stack">
+                        <span class="tech-tag">Twilio</span>
+                        <span class="tech-tag">WhatsApp API</span>
+                        <span class="tech-tag">Meta Graph API</span>
+                        <span class="tech-tag">Gmail API</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Version 3.0 - Growth -->
+        <div class="version">
+            <div class="version-header">
+                <div class="version-title">
+                    <span class="version-badge v1">v3.0</span>
+                    <span class="version-name">Reviews & Integrations</span>
+                </div>
+                <div class="version-meta">
+                    <div>Phase 13</div>
+                </div>
+            </div>
+            <div class="version-body">
+                <div class="version-goal">
+                    <strong>Goal:</strong> Grow through reviews and partnerships. TripAdvisor integration, review aggregation, embeddable booking widget.
+                </div>
+
+                <div class="feature-grid">
+                    <div class="feature-card completed">
+                        <h4>🦉 TripAdvisor <span class="completed-badge">DONE</span></h4>
+                        <ul>
+                            <li>Content API integration</li>
+                            <li>Sync reviews</li>
+                            <li>Reply to reviews</li>
+                            <li>Display ratings</li>
+                            <li>Booking widget</li>
+                        </ul>
+                    </div>
+                    <div class="feature-card completed">
+                        <h4>⭐ Review Aggregation <span class="completed-badge">DONE</span></h4>
+                        <ul>
+                            <li>Google Reviews</li>
+                            <li>Yelp Reviews</li>
+                            <li>Internal reviews</li>
+                            <li>Unified dashboard</li>
+                            <li>Response management</li>
+                        </ul>
+                    </div>
+                    <div class="feature-card completed">
+                        <h4>🔌 Booking Widget <span class="completed-badge">DONE</span></h4>
+                        <ul>
+                            <li>Embeddable on any site</li>
+                            <li>Partner websites</li>
+                            <li>Hotel concierge pages</li>
+                            <li>Customizable styling</li>
+                        </ul>
+                    </div>
+                    <div class="feature-card completed">
+                        <h4>📧 Review Requests <span class="completed-badge">DONE</span></h4>
+                        <ul>
+                            <li>Auto-send after tour</li>
+                            <li>Smart timing</li>
+                            <li>Platform-specific links</li>
+                            <li>Track response rate</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="deliverables">
+                    <h4>Deliverables</h4>
+                    <div class="deliverable-list">
+                        <span class="deliverable-tag">TripAdvisor Integration</span>
+                        <span class="deliverable-tag">Review Dashboard</span>
+                        <span class="deliverable-tag">Embeddable Widget</span>
+                        <span class="deliverable-tag">Review Request System</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Version 3.1 - Analytics -->
+        <div class="version">
+            <div class="version-header">
+                <div class="version-title">
+                    <span class="version-badge v2">v3.1</span>
+                    <span class="version-name">Advanced Analytics</span>
+                </div>
+                <div class="version-meta">
+                    <div>Phase 16</div>
+                </div>
+            </div>
+            <div class="version-body">
+                <div class="version-goal">
+                    <strong>Goal:</strong> Data-driven decisions. Advanced reports, forecasting, and export capabilities.
+                </div>
+
+                <div class="feature-grid">
+                    <div class="feature-card completed">
+                        <h4>💰 Revenue Reports <span class="completed-badge">DONE</span></h4>
+                        <ul>
+                            <li>Daily/weekly/monthly revenue</li>
+                            <li>Revenue by location/tour/boat</li>
+                            <li>Payment method breakdown</li>
+                            <li>Refund analysis</li>
+                            <li>Year-over-year comparison</li>
+                        </ul>
+                    </div>
+                    <div class="feature-card completed">
+                        <h4>📈 Booking Analytics <span class="completed-badge">DONE</span></h4>
+                        <ul>
+                            <li>Booking trends</li>
+                            <li>Conversion rates</li>
+                            <li>Cancellation analysis</li>
+                            <li>Lead time patterns</li>
+                            <li>No-show tracking</li>
+                        </ul>
+                    </div>
+                    <div class="feature-card completed">
+                        <h4>🚤 Operations Reports <span class="completed-badge">DONE</span></h4>
+                        <ul>
+                            <li>Boat utilization</li>
+                            <li>Capacity fill rates</li>
+                            <li>Captain performance</li>
+                            <li>Peak hours/days</li>
+                            <li>Seasonal trends</li>
+                        </ul>
+                    </div>
+                    <div class="feature-card completed">
+                        <h4>📤 Export & Scheduling <span class="completed-badge">DONE</span></h4>
+                        <ul>
+                            <li>CSV export</li>
+                            <li>PDF reports</li>
+                            <li>Excel export</li>
+                            <li>Scheduled email reports</li>
+                            <li>Custom date ranges</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="deliverables">
+                    <h4>Deliverables</h4>
+                    <div class="deliverable-list">
+                        <span class="deliverable-tag">Analytics Dashboard</span>
+                        <span class="deliverable-tag">Report Builder</span>
+                        <span class="deliverable-tag">Export System</span>
+                        <span class="deliverable-tag">Scheduled Reports</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Version 3.2 - i18n -->
+        <div class="version">
+            <div class="version-header">
+                <div class="version-title">
+                    <span class="version-badge v3">v3.2</span>
+                    <span class="version-name">Internationalization</span>
+                </div>
+                <div class="version-meta">
+                    <div>Phase 15</div>
+                </div>
+            </div>
+            <div class="version-body">
+                <div class="version-goal">
+                    <strong>Goal:</strong> Reach Spanish-speaking customers. Full app translation, localized booking experience.
+                </div>
+
+                <div class="feature-grid">
+                    <div class="feature-card completed">
+                        <h4>🌍 Language Support <span class="completed-badge">DONE</span></h4>
+                        <ul>
+                            <li>English (default)</li>
+                            <li>Spanish (full translation)</li>
+                            <li>Language detection</li>
+                            <li>User preference saved</li>
+                        </ul>
+                    </div>
+                    <div class="feature-card completed">
+                        <h4>📝 Translated Content <span class="completed-badge">DONE</span></h4>
+                        <ul>
+                            <li>UI labels & buttons</li>
+                            <li>Error messages</li>
+                            <li>Email templates</li>
+                            <li>Booking confirmations</li>
+                            <li>Waiver documents</li>
+                        </ul>
+                    </div>
+                    <div class="feature-card completed">
+                        <h4>🗓️ Locale Formatting <span class="completed-badge">DONE</span></h4>
+                        <ul>
+                            <li>Date formats</li>
+                            <li>Currency display</li>
+                            <li>Number formats</li>
+                            <li>Time formats</li>
+                        </ul>
+                    </div>
+                    <div class="feature-card completed">
+                        <h4>➕ Future Languages <span class="completed-badge">DONE</span></h4>
+                        <ul>
+                            <li>Framework ready for more</li>
+                            <li>Easy to add languages</li>
+                            <li>RTL support ready</li>
+                            <li>Translation management</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="deliverables">
+                    <h4>Deliverables</h4>
+                    <div class="deliverable-list">
+                        <span class="deliverable-tag">Spanish Translation</span>
+                        <span class="deliverable-tag">Language Switcher</span>
+                        <span class="deliverable-tag">Localized Emails</span>
+                        <span class="deliverable-tag">Locale Formatting</span>
+                    </div>
+                    <div class="tech-stack">
+                        <span class="tech-tag">i18next</span>
+                        <span class="tech-tag">react-i18next</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Summary -->
+        <div class="summary">
+            <h2>📊 Release Summary</h2>
+            <div class="summary-grid">
+                <div class="summary-card">
+                    <div class="number">9</div>
+                    <div class="label">Versions</div>
+                </div>
+                <div class="summary-card">
+                    <div class="number">16</div>
+                    <div class="label">Total Phases</div>
+                </div>
+                <div class="summary-card">
+                    <div class="number">3</div>
+                    <div class="label">Major Releases</div>
+                </div>
+                <div class="summary-card">
+                    <div class="number">3</div>
+                    <div class="label">Platforms</div>
+                </div>
+            </div>
+
+            <div style="margin-top: 2rem;">
+                <h3 style="margin-bottom: 1rem;">Version Progression</h3>
+                <table style="width: 100%; border-collapse: collapse;">
+                    <thead>
+                        <tr style="border-bottom: 2px solid var(--border);">
+                            <th style="text-align: left; padding: 0.75rem;">Version</th>
+                            <th style="text-align: left; padding: 0.75rem;">Name</th>
+                            <th style="text-align: left; padding: 0.75rem;">Phases</th>
+                            <th style="text-align: left; padding: 0.75rem;">Key Milestone</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr style="border-bottom: 1px solid var(--border);">
+                            <td style="padding: 0.75rem;"><span class="version-badge v1" style="font-size: 0.75rem;">v1.0</span></td>
+                            <td style="padding: 0.75rem;">MVP - Core Booking</td>
+                            <td style="padding: 0.75rem; color: var(--text-secondary);">0-5</td>
+                            <td style="padding: 0.75rem; color: var(--success);">First paying customers</td>
+                        </tr>
+                        <tr style="border-bottom: 1px solid var(--border);">
+                            <td style="padding: 0.75rem;"><span class="version-badge v2" style="font-size: 0.75rem;">v1.1</span></td>
+                            <td style="padding: 0.75rem;">Operations & Waivers</td>
+                            <td style="padding: 0.75rem; color: var(--text-secondary);">6-7</td>
+                            <td style="padding: 0.75rem; color: var(--success);">Digital operations running</td>
+                        </tr>
+                        <tr style="border-bottom: 1px solid var(--border);">
+                            <td style="padding: 0.75rem;"><span class="version-badge v3" style="font-size: 0.75rem;">v1.2</span></td>
+                            <td style="padding: 0.75rem;">Multi-Location & RBAC</td>
+                            <td style="padding: 0.75rem; color: var(--text-secondary);">8-9</td>
+                            <td style="padding: 0.75rem; color: var(--success);">Scale to 3-5 locations</td>
+                        </tr>
+                        <tr style="border-bottom: 1px solid var(--border);">
+                            <td style="padding: 0.75rem;"><span class="version-badge v4" style="font-size: 0.75rem;">v2.0</span></td>
+                            <td style="padding: 0.75rem;">Mobile Apps & Offline</td>
+                            <td style="padding: 0.75rem; color: var(--text-secondary);">14 + Build</td>
+                            <td style="padding: 0.75rem; color: var(--success);">App Store & Play Store launch</td>
+                        </tr>
+                        <tr style="border-bottom: 1px solid var(--border);">
+                            <td style="padding: 0.75rem;"><span class="version-badge v5" style="font-size: 0.75rem;">v2.1</span></td>
+                            <td style="padding: 0.75rem;">CRM</td>
+                            <td style="padding: 0.75rem; color: var(--text-secondary);">10</td>
+                            <td style="padding: 0.75rem; color: var(--success);">Customer relationship tracking</td>
+                        </tr>
+                        <tr style="border-bottom: 1px solid var(--border);">
+                            <td style="padding: 0.75rem;"><span class="version-badge v6" style="font-size: 0.75rem;">v2.2</span></td>
+                            <td style="padding: 0.75rem;">Unified Inbox</td>
+                            <td style="padding: 0.75rem; color: var(--text-secondary);">11</td>
+                            <td style="padding: 0.75rem; color: var(--success);">All channels in one place</td>
+                        </tr>
+                        <tr style="border-bottom: 1px solid var(--border);">
+                            <td style="padding: 0.75rem;"><span class="version-badge v1" style="font-size: 0.75rem;">v3.0</span></td>
+                            <td style="padding: 0.75rem;">Reviews & Integrations</td>
+                            <td style="padding: 0.75rem; color: var(--text-secondary);">13</td>
+                            <td style="padding: 0.75rem; color: var(--success);">TripAdvisor presence</td>
+                        </tr>
+                        <tr style="border-bottom: 1px solid var(--border);">
+                            <td style="padding: 0.75rem;"><span class="version-badge v2" style="font-size: 0.75rem;">v3.1</span></td>
+                            <td style="padding: 0.75rem;">Advanced Analytics</td>
+                            <td style="padding: 0.75rem; color: var(--text-secondary);">16</td>
+                            <td style="padding: 0.75rem; color: var(--success);">Data-driven decisions</td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 0.75rem;"><span class="version-badge v3" style="font-size: 0.75rem;">v3.2</span></td>
+                            <td style="padding: 0.75rem;">Internationalization</td>
+                            <td style="padding: 0.75rem; color: var(--text-secondary);">15</td>
+                            <td style="padding: 0.75rem; color: var(--success);">Spanish market ready</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div style="margin-top: 2rem; padding: 1.5rem; background: var(--bg-card-hover); border-radius: 0.75rem;">
+                <h4 style="margin-bottom: 0.5rem;">Recommended Order</h4>
+                <p style="color: var(--text-secondary);">
+                    <strong>v1.0 → v1.1 → v1.2</strong> gets you a fully operational multi-location booking system.<br>
+                    <strong>v2.0</strong> adds mobile apps once web is stable.<br>
+                    <strong>v2.1 → v2.2</strong> adds customer management and communication.<br>
+                    <strong>v3.x</strong> focuses on growth, analytics, and localization.
+                </p>
+            </div>
+        </div>
+
+        <footer>
+            <p>TourPilot Release Roadmap</p>
+            <p style="font-size: 0.875rem; margin-top: 0.5rem;">
+                See <a href="ADMIN_PANEL_PLAN.html" style="color: var(--primary);">ADMIN_PANEL_PLAN.html</a> for detailed implementation specs
+            </p>
+        </footer>
+    </div>
+</body>
+</html>

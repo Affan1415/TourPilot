@@ -5,6 +5,10 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { StatCard } from "@/components/ui/stat-card";
+import { CapacityBar } from "@/components/ui/capacity-bar";
+import { DateBadge } from "@/components/ui/date-badge";
+import { IconBox } from "@/components/ui/icon-box";
 import {
   Calendar,
   Users,
@@ -15,8 +19,12 @@ import {
   FileText,
   ChevronRight,
   Plus,
+  Star,
+  MapPin,
+  UserPlus,
+  BarChart3,
 } from "lucide-react";
-import { format } from "date-fns";
+import { format, addDays } from "date-fns";
 import { createClient } from "@/lib/supabase/client";
 
 export default function DashboardPage() {
@@ -26,6 +34,7 @@ export default function DashboardPage() {
     todayRevenue: 0,
     todayGuests: 0,
     pendingWaivers: 0,
+    avgRating: 4.8,
   });
   const [todayTours, setTodayTours] = useState<any[]>([]);
   const [recentBookings, setRecentBookings] = useState<any[]>([]);
@@ -34,13 +43,11 @@ export default function DashboardPage() {
     const fetchData = async () => {
       try {
         const supabase = createClient();
-
-        // Fetch today's bookings
         const today = new Date().toISOString().split('T')[0];
 
         const { data: bookings } = await supabase
           .from('bookings')
-          .select('*, customers(first_name, last_name), availabilities(tours(name))')
+          .select('*, customers(first_name, last_name), availabilities(tours(name), start_time, date)')
           .gte('created_at', today)
           .order('created_at', { ascending: false })
           .limit(5);
@@ -50,6 +57,8 @@ export default function DashboardPage() {
             id: b.booking_reference,
             customer: `${b.customers?.first_name || ''} ${b.customers?.last_name || ''}`.trim() || 'Unknown',
             tour: b.availabilities?.tours?.name || 'Unknown Tour',
+            time: b.availabilities?.start_time?.substring(0, 5) || '',
+            date: b.availabilities?.date,
             guests: b.guest_count,
             total: b.total_price,
             status: b.status,
@@ -59,14 +68,14 @@ export default function DashboardPage() {
             todayBookings: bookings.length,
             todayRevenue: bookings.reduce((sum, b) => sum + (b.total_price || 0), 0),
             todayGuests: bookings.reduce((sum, b) => sum + (b.guest_count || 0), 0),
-            pendingWaivers: 0, // Would need to calculate from booking_guests
+            pendingWaivers: 0,
+            avgRating: 4.8,
           });
         }
 
-        // Fetch today's tours/availabilities
         const { data: availabilities } = await supabase
           .from('availabilities')
-          .select('*, tours(name, max_capacity)')
+          .select('*, tours(name, location, max_capacity)')
           .eq('date', today)
           .order('start_time', { ascending: true });
 
@@ -75,8 +84,10 @@ export default function DashboardPage() {
             id: a.id,
             name: a.tours?.name || 'Unknown Tour',
             time: a.start_time?.substring(0, 5) || '',
+            date: new Date(a.date),
             guests: a.booked_count || 0,
             capacity: a.capacity_override || a.tours?.max_capacity || 10,
+            location: a.tours?.location || 'Unknown',
           })));
         }
 
@@ -95,14 +106,14 @@ export default function DashboardPage() {
       <div className="p-6 space-y-6">
         <div className="animate-pulse space-y-6">
           <div className="h-8 bg-muted rounded w-48" />
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
             {[1, 2, 3, 4].map((i) => (
-              <div key={i} className="h-32 bg-muted rounded-lg" />
+              <div key={i} className="h-32 bg-muted rounded-2xl" />
             ))}
           </div>
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <div className="h-64 bg-muted rounded-lg" />
-            <div className="h-64 bg-muted rounded-lg" />
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="lg:col-span-2 h-80 bg-muted rounded-2xl" />
+            <div className="h-80 bg-muted rounded-2xl" />
           </div>
         </div>
       </div>
@@ -114,20 +125,20 @@ export default function DashboardPage() {
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold">Dashboard</h1>
+          <h1 className="text-2xl font-bold">Overview</h1>
           <p className="text-muted-foreground">
-            {format(new Date(), "EEEE, MMMM d, yyyy")}
+            Welcome back! Here&apos;s what&apos;s happening today.
           </p>
         </div>
         <div className="flex gap-3">
           <Link href="/dashboard/manifest">
-            <Button variant="outline" className="gap-2">
+            <Button variant="outline" className="gap-2 rounded-xl">
               <FileText className="h-4 w-4" />
               Today&apos;s Manifest
             </Button>
           </Link>
           <Link href="/dashboard/bookings/new">
-            <Button className="gap-2 gradient-primary border-0">
+            <Button className="gap-2 gradient-primary border-0 rounded-xl shadow-lg shadow-primary/30">
               <Plus className="h-4 w-4" />
               New Booking
             </Button>
@@ -135,139 +146,57 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* Stats Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card className="hover:shadow-lg transition-shadow">
-          <CardContent className="p-6">
-            <div className="flex items-start justify-between">
-              <div className="space-y-2">
-                <p className="text-sm text-muted-foreground">Today's Bookings</p>
-                <p className="text-3xl font-bold">{stats.todayBookings}</p>
-              </div>
-              <div className="h-12 w-12 rounded-xl bg-primary/10 flex items-center justify-center">
-                <Calendar className="h-6 w-6 text-primary" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="hover:shadow-lg transition-shadow">
-          <CardContent className="p-6">
-            <div className="flex items-start justify-between">
-              <div className="space-y-2">
-                <p className="text-sm text-muted-foreground">Today's Revenue</p>
-                <p className="text-3xl font-bold">${stats.todayRevenue.toLocaleString()}</p>
-              </div>
-              <div className="h-12 w-12 rounded-xl bg-green-100 flex items-center justify-center">
-                <DollarSign className="h-6 w-6 text-green-600" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="hover:shadow-lg transition-shadow">
-          <CardContent className="p-6">
-            <div className="flex items-start justify-between">
-              <div className="space-y-2">
-                <p className="text-sm text-muted-foreground">Guests Today</p>
-                <p className="text-3xl font-bold">{stats.todayGuests}</p>
-              </div>
-              <div className="h-12 w-12 rounded-xl bg-purple-100 flex items-center justify-center">
-                <Users className="h-6 w-6 text-purple-600" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="hover:shadow-lg transition-shadow">
-          <CardContent className="p-6">
-            <div className="flex items-start justify-between">
-              <div className="space-y-2">
-                <p className="text-sm text-muted-foreground">Pending Waivers</p>
-                <p className="text-3xl font-bold">{stats.pendingWaivers}</p>
-              </div>
-              <div className="h-12 w-12 rounded-xl bg-orange-100 flex items-center justify-center">
-                <FileText className="h-6 w-6 text-orange-600" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+      {/* Stats Grid - V6 Pastel Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+        <StatCard
+          title="Total Bookings"
+          value={stats.todayBookings}
+          icon={<Calendar className="h-5 w-5" />}
+          color="mint"
+          trend={{ value: 12, isPositive: true }}
+          className="animate-fade-in-up stagger-1"
+        />
+        <StatCard
+          title="Monthly Revenue"
+          value={`$${stats.todayRevenue.toLocaleString()}`}
+          icon={<DollarSign className="h-5 w-5" />}
+          color="lavender"
+          trend={{ value: 8, isPositive: true }}
+          className="animate-fade-in-up stagger-2"
+        />
+        <StatCard
+          title="Active Customers"
+          value={stats.todayGuests}
+          icon={<Users className="h-5 w-5" />}
+          color="peach"
+          trend={{ value: 23, isPositive: true }}
+          className="animate-fade-in-up stagger-3"
+        />
+        <StatCard
+          title="Average Rating"
+          value={stats.avgRating}
+          icon={<Star className="h-5 w-5" />}
+          color="sky"
+          trend={{ value: 2, isPositive: false }}
+          className="animate-fade-in-up stagger-4"
+        />
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Today's Tours */}
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between">
-            <CardTitle className="flex items-center gap-2">
-              <Clock className="h-5 w-5 text-primary" />
-              Today&apos;s Tours
-            </CardTitle>
-            <Link href="/dashboard/manifest">
-              <Button variant="ghost" size="sm" className="gap-1">
-                View All
-                <ChevronRight className="h-4 w-4" />
-              </Button>
-            </Link>
-          </CardHeader>
-          <CardContent>
-            {todayTours.length === 0 ? (
-              <div className="text-center py-8">
-                <Ship className="h-12 w-12 text-muted-foreground/30 mx-auto mb-3" />
-                <p className="text-muted-foreground">No tours scheduled for today</p>
-                <Link href="/dashboard/tours">
-                  <Button variant="link" size="sm" className="mt-2">
-                    Manage Tours
-                  </Button>
-                </Link>
-              </div>
-            ) : (
-              <div className="space-y-4">
-                {todayTours.map((tour) => (
-                  <div
-                    key={tour.id}
-                    className="flex items-center justify-between p-4 rounded-xl bg-muted/50 hover:bg-muted transition-colors"
-                  >
-                    <div className="flex items-center gap-4">
-                      <div className="h-12 w-12 rounded-xl bg-primary/10 flex items-center justify-center">
-                        <Ship className="h-6 w-6 text-primary" />
-                      </div>
-                      <div>
-                        <p className="font-medium">{tour.name}</p>
-                        <p className="text-sm text-muted-foreground">{tour.time}</p>
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <div className="flex items-center gap-2">
-                        <Users className="h-4 w-4 text-muted-foreground" />
-                        <span className="font-medium">
-                          {tour.guests}/{tour.capacity}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Recent Bookings */}
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between">
-            <CardTitle className="flex items-center gap-2">
-              <Calendar className="h-5 w-5 text-primary" />
-              Recent Bookings
-            </CardTitle>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Recent Bookings Table */}
+        <Card className="lg:col-span-2 rounded-2xl border shadow-sm animate-fade-in-up stagger-5">
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-base font-semibold">Recent Bookings</CardTitle>
             <Link href="/dashboard/bookings">
-              <Button variant="ghost" size="sm" className="gap-1">
+              <Button variant="ghost" size="sm" className="gap-1 text-primary hover:text-primary">
                 View All
                 <ChevronRight className="h-4 w-4" />
               </Button>
             </Link>
           </CardHeader>
-          <CardContent>
+          <CardContent className="p-0">
             {recentBookings.length === 0 ? (
-              <div className="text-center py-8">
+              <div className="text-center py-12">
                 <Calendar className="h-12 w-12 text-muted-foreground/30 mx-auto mb-3" />
                 <p className="text-muted-foreground">No bookings yet</p>
                 <Link href="/dashboard/bookings/new">
@@ -277,79 +206,173 @@ export default function DashboardPage() {
                 </Link>
               </div>
             ) : (
-              <div className="space-y-4">
-                {recentBookings.map((booking) => (
-                  <Link
-                    key={booking.id}
-                    href={`/dashboard/bookings/${booking.id}`}
-                    className="flex items-center justify-between p-4 rounded-xl bg-muted/50 hover:bg-muted transition-colors"
-                  >
-                    <div>
-                      <div className="flex items-center gap-2 mb-1">
-                        <p className="font-medium">{booking.customer}</p>
-                        <Badge variant="outline" className="font-mono text-xs">
-                          {booking.id}
-                        </Badge>
-                      </div>
-                      <p className="text-sm text-muted-foreground">
-                        {booking.tour} • {booking.guests} guests
-                      </p>
-                    </div>
-                    <div className="text-right">
-                      <p className="font-semibold text-primary">${booking.total}</p>
-                      <Badge
-                        variant="secondary"
-                        className={
-                          booking.status === "confirmed"
-                            ? "bg-green-100 text-green-800"
-                            : booking.status === "pending"
-                            ? "bg-yellow-100 text-yellow-800"
-                            : ""
-                        }
-                      >
-                        {booking.status}
-                      </Badge>
-                    </div>
-                  </Link>
-                ))}
+              <div className="overflow-x-auto">
+                <table className="table-v6 w-full">
+                  <thead>
+                    <tr>
+                      <th>Tour</th>
+                      <th>Customer</th>
+                      <th>Date</th>
+                      <th>Amount</th>
+                      <th>Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {recentBookings.map((booking) => (
+                      <tr key={booking.id} className="cursor-pointer">
+                        <td>
+                          <div className="flex items-center gap-3">
+                            <IconBox
+                              icon={<Ship className="h-4 w-4" />}
+                              color="mint"
+                              size="sm"
+                            />
+                            <div>
+                              <div className="font-medium text-sm">{booking.tour}</div>
+                              <div className="text-xs text-muted-foreground">{booking.time}</div>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="text-sm">{booking.customer}</td>
+                        <td className="text-sm text-muted-foreground">
+                          {booking.date ? format(new Date(booking.date), "MMM d, yyyy") : "N/A"}
+                        </td>
+                        <td className="font-semibold text-sm">${booking.total}</td>
+                        <td>
+                          <Badge
+                            variant={
+                              booking.status === "confirmed"
+                                ? "success"
+                                : booking.status === "pending"
+                                ? "warning"
+                                : booking.status === "cancelled"
+                                ? "error"
+                                : "secondary"
+                            }
+                          >
+                            {booking.status}
+                          </Badge>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
             )}
           </CardContent>
         </Card>
+
+        {/* Right Sidebar */}
+        <div className="space-y-6">
+          {/* Upcoming Tours */}
+          <Card className="rounded-2xl border shadow-sm animate-fade-in-up stagger-5">
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-base font-semibold">Upcoming Tours</CardTitle>
+              <Link href="/dashboard/calendar">
+                <span className="text-sm text-primary font-medium cursor-pointer hover:underline">
+                  Schedule
+                </span>
+              </Link>
+            </CardHeader>
+            <CardContent className="space-y-1 p-2">
+              {todayTours.length === 0 ? (
+                <div className="text-center py-8">
+                  <Ship className="h-10 w-10 text-muted-foreground/30 mx-auto mb-2" />
+                  <p className="text-sm text-muted-foreground">No tours scheduled</p>
+                </div>
+              ) : (
+                todayTours.slice(0, 3).map((tour) => (
+                  <div
+                    key={tour.id}
+                    className="flex gap-3.5 p-3 rounded-xl hover:bg-muted/50 transition-colors cursor-pointer"
+                  >
+                    <DateBadge date={tour.date || new Date()} />
+                    <div className="flex-1 min-w-0">
+                      <div className="font-semibold text-sm mb-1">{tour.name}</div>
+                      <div className="flex gap-3 text-xs text-muted-foreground mb-2">
+                        <span className="flex items-center gap-1">
+                          <Clock className="h-3 w-3" />
+                          {tour.time}
+                        </span>
+                        <span className="flex items-center gap-1">
+                          <MapPin className="h-3 w-3" />
+                          {tour.location}
+                        </span>
+                      </div>
+                      <CapacityBar current={tour.guests} max={tour.capacity} />
+                    </div>
+                  </div>
+                ))
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Quick Actions */}
+          <Card className="rounded-2xl border shadow-sm animate-fade-in-up stagger-5">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base font-semibold">Quick Actions</CardTitle>
+            </CardHeader>
+            <CardContent className="p-4 pt-2">
+              <div className="grid grid-cols-2 gap-3">
+                <Link href="/dashboard/bookings/new">
+                  <div className="flex flex-col items-center gap-2 p-4 rounded-xl border bg-muted/30 hover:bg-card hover:border-primary hover:shadow-md transition-all cursor-pointer group">
+                    <IconBox
+                      icon={<Plus className="h-5 w-5" />}
+                      color="sky"
+                      className="group-hover:scale-110 transition-transform"
+                    />
+                    <span className="text-xs font-medium text-muted-foreground">New Booking</span>
+                  </div>
+                </Link>
+                <Link href="/dashboard/customers/new">
+                  <div className="flex flex-col items-center gap-2 p-4 rounded-xl border bg-muted/30 hover:bg-card hover:border-primary hover:shadow-md transition-all cursor-pointer group">
+                    <IconBox
+                      icon={<UserPlus className="h-5 w-5" />}
+                      color="mint"
+                      className="group-hover:scale-110 transition-transform"
+                    />
+                    <span className="text-xs font-medium text-muted-foreground">Add Customer</span>
+                  </div>
+                </Link>
+                <Link href="/dashboard/calendar">
+                  <div className="flex flex-col items-center gap-2 p-4 rounded-xl border bg-muted/30 hover:bg-card hover:border-primary hover:shadow-md transition-all cursor-pointer group">
+                    <IconBox
+                      icon={<Calendar className="h-5 w-5" />}
+                      color="lavender"
+                      className="group-hover:scale-110 transition-transform"
+                    />
+                    <span className="text-xs font-medium text-muted-foreground">Schedule Tour</span>
+                  </div>
+                </Link>
+                <Link href="/dashboard/analytics">
+                  <div className="flex flex-col items-center gap-2 p-4 rounded-xl border bg-muted/30 hover:bg-card hover:border-primary hover:shadow-md transition-all cursor-pointer group">
+                    <IconBox
+                      icon={<BarChart3 className="h-5 w-5" />}
+                      color="peach"
+                      className="group-hover:scale-110 transition-transform"
+                    />
+                    <span className="text-xs font-medium text-muted-foreground">View Reports</span>
+                  </div>
+                </Link>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
       </div>
 
-      {/* Quick Actions */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Quick Actions</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <Link href="/dashboard/bookings/new">
-              <Button variant="outline" className="w-full h-auto py-4 flex-col gap-2">
-                <Plus className="h-5 w-5" />
-                <span>New Booking</span>
-              </Button>
-            </Link>
-            <Link href="/dashboard/manifest">
-              <Button variant="outline" className="w-full h-auto py-4 flex-col gap-2">
-                <FileText className="h-5 w-5" />
-                <span>View Manifest</span>
-              </Button>
-            </Link>
-            <Link href="/dashboard/customers">
-              <Button variant="outline" className="w-full h-auto py-4 flex-col gap-2">
-                <Users className="h-5 w-5" />
-                <span>Customers</span>
-              </Button>
-            </Link>
-            <Link href="/dashboard/reports">
-              <Button variant="outline" className="w-full h-auto py-4 flex-col gap-2">
-                <TrendingUp className="h-5 w-5" />
-                <span>Reports</span>
-              </Button>
-            </Link>
-          </div>
+      {/* Promo Card */}
+      <Card className="rounded-2xl bg-sidebar text-white overflow-hidden relative animate-fade-in-up">
+        <div className="absolute top-0 right-0 w-48 h-48 bg-gradient-to-br from-white/10 to-transparent rounded-full -translate-y-1/2 translate-x-1/4" />
+        <CardContent className="p-6 relative">
+          <Badge className="bg-mint-dark/20 text-mint-dark border-0 mb-3">New Feature</Badge>
+          <h3 className="text-xl font-bold mb-2">Earn more with TourPilot Pro!</h3>
+          <p className="text-sm text-sidebar-foreground mb-4 max-w-md">
+            Unlock advanced analytics, automated reminders, and priority support to grow your business.
+          </p>
+          <Button className="gradient-primary border-0 rounded-xl shadow-lg gap-2">
+            Learn More
+            <ChevronRight className="h-4 w-4" />
+          </Button>
         </CardContent>
       </Card>
     </div>

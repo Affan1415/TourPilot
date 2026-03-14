@@ -1,0 +1,868 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TourPilot - shadcn Inspired</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'system-ui', 'sans-serif'],
+          },
+          colors: {
+            border: "hsl(214.3 31.8% 91.4%)",
+            input: "hsl(214.3 31.8% 91.4%)",
+            ring: "hsl(222.2 84% 4.9%)",
+            background: "hsl(0 0% 100%)",
+            foreground: "hsl(222.2 84% 4.9%)",
+            primary: {
+              DEFAULT: "hsl(222.2 47.4% 11.2%)",
+              foreground: "hsl(210 40% 98%)",
+            },
+            muted: {
+              DEFAULT: "hsl(210 40% 96.1%)",
+              foreground: "hsl(215.4 16.3% 46.9%)",
+            },
+            accent: {
+              DEFAULT: "hsl(210 40% 96.1%)",
+              foreground: "hsl(222.2 47.4% 11.2%)",
+            },
+          },
+          keyframes: {
+            "fade-in": {
+              "0%": { opacity: "0", transform: "translateY(10px)" },
+              "100%": { opacity: "1", transform: "translateY(0)" }
+            },
+            "fade-in-left": {
+              "0%": { opacity: "0", transform: "translateX(-10px)" },
+              "100%": { opacity: "1", transform: "translateX(0)" }
+            },
+            "scale-in": {
+              "0%": { opacity: "0", transform: "scale(0.95)" },
+              "100%": { opacity: "1", transform: "scale(1)" }
+            },
+            "slide-up": {
+              "0%": { opacity: "0", transform: "translateY(20px)" },
+              "100%": { opacity: "1", transform: "translateY(0)" }
+            },
+            "bounce-subtle": {
+              "0%, 100%": { transform: "translateY(0)" },
+              "50%": { transform: "translateY(-3px)" }
+            },
+            "pulse-soft": {
+              "0%, 100%": { opacity: "1" },
+              "50%": { opacity: "0.7" }
+            },
+            "wiggle": {
+              "0%, 100%": { transform: "rotate(-1deg)" },
+              "50%": { transform: "rotate(1deg)" }
+            },
+            "shimmer": {
+              "0%": { backgroundPosition: "-200% 0" },
+              "100%": { backgroundPosition: "200% 0" }
+            }
+          },
+          animation: {
+            "fade-in": "fade-in 0.4s ease-out",
+            "fade-in-left": "fade-in-left 0.3s ease-out",
+            "scale-in": "scale-in 0.2s ease-out",
+            "slide-up": "slide-up 0.5s ease-out",
+            "bounce-subtle": "bounce-subtle 0.5s ease-in-out",
+            "pulse-soft": "pulse-soft 2s ease-in-out infinite",
+            "wiggle": "wiggle 0.3s ease-in-out",
+            "shimmer": "shimmer 2s infinite"
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    * { -webkit-font-smoothing: antialiased; }
+    body { font-family: 'Inter', system-ui, sans-serif; }
+
+    /* Smooth transitions for everything */
+    *, *::before, *::after {
+      transition-property: color, background-color, border-color, box-shadow, transform, opacity;
+      transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+      transition-duration: 150ms;
+    }
+
+    /* Card hover effect */
+    .card-interactive {
+      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .card-interactive:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 10px 40px -15px rgba(0, 0, 0, 0.1);
+    }
+    .card-interactive:active {
+      transform: translateY(0);
+    }
+
+    /* Button press effect */
+    .btn-press:active {
+      transform: scale(0.97);
+    }
+
+    /* Nav item hover */
+    .nav-item {
+      position: relative;
+    }
+    .nav-item::before {
+      content: '';
+      position: absolute;
+      left: 0;
+      top: 50%;
+      transform: translateY(-50%) scaleY(0);
+      width: 3px;
+      height: 20px;
+      background: hsl(222.2 47.4% 11.2%);
+      border-radius: 0 2px 2px 0;
+      transition: transform 0.2s ease;
+    }
+    .nav-item:hover::before,
+    .nav-item.active::before {
+      transform: translateY(-50%) scaleY(1);
+    }
+
+    /* Staggered animations */
+    .stagger-1 { animation-delay: 0.05s; }
+    .stagger-2 { animation-delay: 0.1s; }
+    .stagger-3 { animation-delay: 0.15s; }
+    .stagger-4 { animation-delay: 0.2s; }
+    .stagger-5 { animation-delay: 0.25s; }
+
+    /* Status dot pulse */
+    .status-pulse {
+      position: relative;
+    }
+    .status-pulse::after {
+      content: '';
+      position: absolute;
+      inset: -2px;
+      border-radius: 50%;
+      background: inherit;
+      opacity: 0;
+      animation: ping 1.5s cubic-bezier(0, 0, 0.2, 1) infinite;
+    }
+    @keyframes ping {
+      75%, 100% {
+        transform: scale(2);
+        opacity: 0;
+      }
+    }
+
+    /* Skeleton loading */
+    .skeleton {
+      background: linear-gradient(90deg, hsl(210 40% 96.1%) 25%, hsl(210 40% 93%) 50%, hsl(210 40% 96.1%) 75%);
+      background-size: 200% 100%;
+      animation: shimmer 1.5s infinite;
+    }
+
+    /* Focus ring */
+    .focus-ring:focus-visible {
+      outline: none;
+      ring: 2px;
+      ring-offset: 2px;
+      ring-color: hsl(222.2 47.4% 11.2%);
+    }
+
+    /* Number counter animation */
+    @property --num {
+      syntax: '<integer>';
+      initial-value: 0;
+      inherits: false;
+    }
+    .counter {
+      transition: --num 0.5s ease-out;
+      counter-reset: num var(--num);
+    }
+    .counter::after {
+      content: counter(num);
+    }
+
+    /* Tooltip */
+    .tooltip {
+      position: relative;
+    }
+    .tooltip::after {
+      content: attr(data-tooltip);
+      position: absolute;
+      bottom: 100%;
+      left: 50%;
+      transform: translateX(-50%) translateY(5px);
+      padding: 6px 10px;
+      background: hsl(222.2 47.4% 11.2%);
+      color: white;
+      font-size: 12px;
+      border-radius: 6px;
+      white-space: nowrap;
+      opacity: 0;
+      pointer-events: none;
+      transition: all 0.15s ease;
+    }
+    .tooltip:hover::after {
+      opacity: 1;
+      transform: translateX(-50%) translateY(-5px);
+    }
+
+    /* Progress bar animation */
+    .progress-bar {
+      transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    /* Checkbox animation */
+    .checkbox-animated:checked {
+      animation: bounce-subtle 0.3s ease;
+    }
+
+    /* Row hover slide */
+    .row-slide {
+      position: relative;
+    }
+    .row-slide::before {
+      content: '';
+      position: absolute;
+      left: 0;
+      top: 0;
+      bottom: 0;
+      width: 0;
+      background: hsl(210 40% 96.1%);
+      transition: width 0.2s ease;
+      z-index: -1;
+    }
+    .row-slide:hover::before {
+      width: 100%;
+    }
+  </style>
+</head>
+<body class="bg-white min-h-screen text-foreground">
+
+  <div class="flex h-screen">
+
+    <!-- Sidebar - Clean & Minimal -->
+    <aside class="w-56 border-r border-border flex flex-col bg-white">
+
+      <!-- Logo -->
+      <div class="h-14 px-4 flex items-center border-b border-border">
+        <div class="flex items-center gap-2.5">
+          <div class="w-8 h-8 rounded-lg bg-primary flex items-center justify-center animate-fade-in">
+            <svg class="w-4 h-4 text-primary-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+            </svg>
+          </div>
+          <span class="text-base font-semibold tracking-tight">TourPilot</span>
+        </div>
+      </div>
+
+      <!-- Search -->
+      <div class="px-3 py-3 border-b border-border">
+        <div class="relative group">
+          <input
+            type="text"
+            placeholder="Search..."
+            class="w-full h-9 pl-8 pr-3 text-sm bg-muted rounded-md border-0 placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-1"
+          >
+          <svg class="w-4 h-4 text-muted-foreground absolute left-2.5 top-1/2 -translate-y-1/2 group-focus-within:text-foreground transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+          </svg>
+          <kbd class="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-muted-foreground bg-background px-1.5 py-0.5 rounded border border-border font-mono">⌘K</kbd>
+        </div>
+      </div>
+
+      <!-- Navigation -->
+      <nav class="flex-1 px-2 py-3 space-y-0.5 overflow-y-auto">
+
+        <a href="#" class="nav-item active flex items-center gap-2.5 px-3 py-2 rounded-md text-sm font-medium bg-muted animate-fade-in-left stagger-1">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"/></svg>
+          Dashboard
+        </a>
+
+        <a href="#" class="nav-item flex items-center gap-2.5 px-3 py-2 rounded-md text-sm text-muted-foreground hover:text-foreground hover:bg-muted animate-fade-in-left stagger-2">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+          Calendar
+          <span class="ml-auto text-xs bg-primary text-primary-foreground px-1.5 py-0.5 rounded-md font-medium">8</span>
+        </a>
+
+        <a href="#" class="nav-item flex items-center gap-2.5 px-3 py-2 rounded-md text-sm text-muted-foreground hover:text-foreground hover:bg-muted animate-fade-in-left stagger-3">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
+          Bookings
+        </a>
+
+        <a href="#" class="nav-item flex items-center gap-2.5 px-3 py-2 rounded-md text-sm text-muted-foreground hover:text-foreground hover:bg-muted animate-fade-in-left stagger-4">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+          Customers
+        </a>
+
+        <div class="pt-4 pb-2 px-3">
+          <p class="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">Manage</p>
+        </div>
+
+        <a href="#" class="nav-item flex items-center gap-2.5 px-3 py-2 rounded-md text-sm text-muted-foreground hover:text-foreground hover:bg-muted">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+          Tours
+        </a>
+
+        <a href="#" class="nav-item flex items-center gap-2.5 px-3 py-2 rounded-md text-sm text-muted-foreground hover:text-foreground hover:bg-muted">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+          Availability
+        </a>
+
+        <a href="#" class="nav-item flex items-center gap-2.5 px-3 py-2 rounded-md text-sm text-muted-foreground hover:text-foreground hover:bg-muted">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01"/></svg>
+          Fleet
+        </a>
+
+        <a href="#" class="nav-item flex items-center gap-2.5 px-3 py-2 rounded-md text-sm text-muted-foreground hover:text-foreground hover:bg-muted">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/></svg>
+          Staff
+        </a>
+
+        <div class="pt-4 pb-2 px-3">
+          <p class="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">Settings</p>
+        </div>
+
+        <a href="#" class="nav-item flex items-center gap-2.5 px-3 py-2 rounded-md text-sm text-muted-foreground hover:text-foreground hover:bg-muted">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+          Settings
+        </a>
+      </nav>
+
+      <!-- User -->
+      <div class="p-3 border-t border-border">
+        <button class="w-full flex items-center gap-2.5 px-2 py-2 rounded-md hover:bg-muted transition-colors btn-press">
+          <div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-primary-foreground text-xs font-medium">
+            AZ
+          </div>
+          <div class="flex-1 text-left min-w-0">
+            <p class="text-sm font-medium truncate">Affan Zahir</p>
+            <p class="text-xs text-muted-foreground truncate">Admin</p>
+          </div>
+          <svg class="w-4 h-4 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 9l4-4 4 4m0 6l-4 4-4-4"/></svg>
+        </button>
+      </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="flex-1 overflow-y-auto bg-muted/30">
+
+      <!-- Top Bar -->
+      <header class="h-14 bg-white border-b border-border sticky top-0 z-10">
+        <div class="h-full px-6 flex items-center justify-between">
+          <div class="flex items-center gap-3">
+            <h1 class="text-lg font-semibold">Dashboard</h1>
+            <span class="text-muted-foreground">/</span>
+            <span class="text-sm text-muted-foreground">Overview</span>
+          </div>
+
+          <div class="flex items-center gap-2">
+            <!-- Notification -->
+            <button class="relative p-2 rounded-md hover:bg-muted transition-colors btn-press tooltip" data-tooltip="Notifications">
+              <svg class="w-5 h-5 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/></svg>
+              <span class="absolute top-1.5 right-1.5 w-2 h-2 bg-primary rounded-full status-pulse"></span>
+            </button>
+
+            <!-- Divider -->
+            <div class="w-px h-6 bg-border"></div>
+
+            <!-- New Booking Button -->
+            <button class="h-9 px-4 bg-primary text-primary-foreground text-sm font-medium rounded-md hover:bg-primary/90 transition-all btn-press flex items-center gap-2 group">
+              <svg class="w-4 h-4 group-hover:rotate-90 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+              New Booking
+            </button>
+          </div>
+        </div>
+      </header>
+
+      <!-- Dashboard Content -->
+      <div class="p-6 space-y-6">
+
+        <!-- Stats Grid -->
+        <div class="grid grid-cols-4 gap-4">
+
+          <!-- Stat Card 1 -->
+          <div class="bg-white rounded-lg border border-border p-5 card-interactive animate-slide-up stagger-1">
+            <div class="flex items-center justify-between mb-3">
+              <span class="text-sm font-medium text-muted-foreground">Today's Guests</span>
+              <div class="w-8 h-8 rounded-md bg-muted flex items-center justify-center">
+                <svg class="w-4 h-4 text-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+              </div>
+            </div>
+            <p class="text-3xl font-semibold tracking-tight">248</p>
+            <div class="flex items-center gap-1.5 mt-2">
+              <span class="inline-flex items-center text-xs font-medium text-green-600 bg-green-50 px-1.5 py-0.5 rounded">
+                <svg class="w-3 h-3 mr-0.5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M5.293 9.707a1 1 0 010-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 01-1.414 1.414L11 7.414V15a1 1 0 11-2 0V7.414L6.707 9.707a1 1 0 01-1.414 0z" clip-rule="evenodd"/></svg>
+                12%
+              </span>
+              <span class="text-xs text-muted-foreground">vs yesterday</span>
+            </div>
+          </div>
+
+          <!-- Stat Card 2 -->
+          <div class="bg-white rounded-lg border border-border p-5 card-interactive animate-slide-up stagger-2">
+            <div class="flex items-center justify-between mb-3">
+              <span class="text-sm font-medium text-muted-foreground">Revenue</span>
+              <div class="w-8 h-8 rounded-md bg-muted flex items-center justify-center">
+                <svg class="w-4 h-4 text-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+              </div>
+            </div>
+            <p class="text-3xl font-semibold tracking-tight">$12,450</p>
+            <div class="flex items-center gap-1.5 mt-2">
+              <span class="inline-flex items-center text-xs font-medium text-green-600 bg-green-50 px-1.5 py-0.5 rounded">
+                <svg class="w-3 h-3 mr-0.5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M5.293 9.707a1 1 0 010-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 01-1.414 1.414L11 7.414V15a1 1 0 11-2 0V7.414L6.707 9.707a1 1 0 01-1.414 0z" clip-rule="evenodd"/></svg>
+                8%
+              </span>
+              <span class="text-xs text-muted-foreground">vs yesterday</span>
+            </div>
+          </div>
+
+          <!-- Stat Card 3 -->
+          <div class="bg-white rounded-lg border border-border p-5 card-interactive animate-slide-up stagger-3">
+            <div class="flex items-center justify-between mb-3">
+              <span class="text-sm font-medium text-muted-foreground">Tours Today</span>
+              <div class="w-8 h-8 rounded-md bg-muted flex items-center justify-center">
+                <svg class="w-4 h-4 text-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+              </div>
+            </div>
+            <p class="text-3xl font-semibold tracking-tight">18</p>
+            <div class="mt-2">
+              <div class="flex items-center justify-between text-xs mb-1">
+                <span class="text-muted-foreground">Completed</span>
+                <span class="font-medium">6/18</span>
+              </div>
+              <div class="h-1.5 bg-muted rounded-full overflow-hidden">
+                <div class="h-full bg-primary rounded-full progress-bar" style="width: 33%"></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Stat Card 4 -->
+          <div class="bg-white rounded-lg border border-border p-5 card-interactive animate-slide-up stagger-4">
+            <div class="flex items-center justify-between mb-3">
+              <span class="text-sm font-medium text-muted-foreground">Pending</span>
+              <div class="w-8 h-8 rounded-md bg-muted flex items-center justify-center">
+                <svg class="w-4 h-4 text-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+              </div>
+            </div>
+            <p class="text-3xl font-semibold tracking-tight">4</p>
+            <div class="mt-2">
+              <span class="text-xs text-muted-foreground">2 waivers • 2 payments</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Main Grid -->
+        <div class="grid grid-cols-3 gap-6">
+
+          <!-- Today's Schedule -->
+          <div class="col-span-2 bg-white rounded-lg border border-border overflow-hidden animate-fade-in">
+            <div class="px-5 py-4 border-b border-border flex items-center justify-between">
+              <div>
+                <h2 class="font-semibold">Today's Schedule</h2>
+                <p class="text-sm text-muted-foreground mt-0.5">8 tours scheduled</p>
+              </div>
+              <button class="text-sm text-muted-foreground hover:text-foreground transition-colors">
+                View all →
+              </button>
+            </div>
+
+            <div class="divide-y divide-border">
+              <!-- Tour Item - In Progress -->
+              <div class="px-5 py-4 row-slide cursor-pointer group">
+                <div class="flex items-center gap-4">
+                  <div class="text-center min-w-[50px]">
+                    <p class="text-xl font-semibold">9:00</p>
+                    <p class="text-[10px] text-muted-foreground uppercase tracking-wide">AM</p>
+                  </div>
+                  <div class="w-1 h-10 rounded-full bg-green-500"></div>
+                  <div class="flex-1 min-w-0">
+                    <div class="flex items-center gap-2">
+                      <h3 class="font-medium truncate">Sunrise Dolphin Cruise</h3>
+                      <span class="flex-shrink-0 inline-flex items-center gap-1 px-2 py-0.5 bg-green-50 text-green-700 text-xs font-medium rounded-full">
+                        <span class="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"></span>
+                        Live
+                      </span>
+                    </div>
+                    <p class="text-sm text-muted-foreground mt-0.5">Sea Breeze • 10/12 guests</p>
+                  </div>
+                  <div class="flex items-center gap-3">
+                    <div class="flex -space-x-2">
+                      <div class="w-7 h-7 rounded-full bg-primary border-2 border-white flex items-center justify-center text-[10px] font-medium text-primary-foreground">JS</div>
+                      <div class="w-7 h-7 rounded-full bg-muted border-2 border-white flex items-center justify-center text-[10px] font-medium">+9</div>
+                    </div>
+                    <svg class="w-4 h-4 text-muted-foreground group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Tour Item - Boarding -->
+              <div class="px-5 py-4 row-slide cursor-pointer group">
+                <div class="flex items-center gap-4">
+                  <div class="text-center min-w-[50px]">
+                    <p class="text-xl font-semibold">11:30</p>
+                    <p class="text-[10px] text-muted-foreground uppercase tracking-wide">AM</p>
+                  </div>
+                  <div class="w-1 h-10 rounded-full bg-primary"></div>
+                  <div class="flex-1 min-w-0">
+                    <div class="flex items-center gap-2">
+                      <h3 class="font-medium truncate">Snorkeling Adventure</h3>
+                      <span class="flex-shrink-0 px-2 py-0.5 bg-primary/10 text-primary text-xs font-medium rounded-full">
+                        Boarding
+                      </span>
+                    </div>
+                    <p class="text-sm text-muted-foreground mt-0.5">Ocean Spirit • 15/20 guests</p>
+                  </div>
+                  <div class="flex items-center gap-3">
+                    <div class="flex -space-x-2">
+                      <div class="w-7 h-7 rounded-full bg-primary border-2 border-white flex items-center justify-center text-[10px] font-medium text-primary-foreground">AK</div>
+                      <div class="w-7 h-7 rounded-full bg-muted border-2 border-white flex items-center justify-center text-[10px] font-medium">+14</div>
+                    </div>
+                    <svg class="w-4 h-4 text-muted-foreground group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Tour Item - Scheduled -->
+              <div class="px-5 py-4 row-slide cursor-pointer group">
+                <div class="flex items-center gap-4">
+                  <div class="text-center min-w-[50px]">
+                    <p class="text-xl font-semibold">2:00</p>
+                    <p class="text-[10px] text-muted-foreground uppercase tracking-wide">PM</p>
+                  </div>
+                  <div class="w-1 h-10 rounded-full bg-muted-foreground/30"></div>
+                  <div class="flex-1 min-w-0">
+                    <div class="flex items-center gap-2">
+                      <h3 class="font-medium truncate">Island Hopping Tour</h3>
+                    </div>
+                    <p class="text-sm text-muted-foreground mt-0.5">Wave Runner • 6/8 guests</p>
+                  </div>
+                  <div class="flex items-center gap-3">
+                    <div class="flex -space-x-2">
+                      <div class="w-7 h-7 rounded-full bg-primary border-2 border-white flex items-center justify-center text-[10px] font-medium text-primary-foreground">KL</div>
+                      <div class="w-7 h-7 rounded-full bg-muted border-2 border-white flex items-center justify-center text-[10px] font-medium">+5</div>
+                    </div>
+                    <svg class="w-4 h-4 text-muted-foreground group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Tour Item - Almost Full -->
+              <div class="px-5 py-4 row-slide cursor-pointer group">
+                <div class="flex items-center gap-4">
+                  <div class="text-center min-w-[50px]">
+                    <p class="text-xl font-semibold">5:30</p>
+                    <p class="text-[10px] text-muted-foreground uppercase tracking-wide">PM</p>
+                  </div>
+                  <div class="w-1 h-10 rounded-full bg-amber-500"></div>
+                  <div class="flex-1 min-w-0">
+                    <div class="flex items-center gap-2">
+                      <h3 class="font-medium truncate">Sunset Cruise</h3>
+                      <span class="flex-shrink-0 px-2 py-0.5 bg-amber-50 text-amber-700 text-xs font-medium rounded-full">
+                        2 spots
+                      </span>
+                    </div>
+                    <p class="text-sm text-muted-foreground mt-0.5">Sea Breeze • 10/12 guests</p>
+                  </div>
+                  <div class="flex items-center gap-3">
+                    <div class="flex -space-x-2">
+                      <div class="w-7 h-7 rounded-full bg-primary border-2 border-white flex items-center justify-center text-[10px] font-medium text-primary-foreground">RJ</div>
+                      <div class="w-7 h-7 rounded-full bg-muted border-2 border-white flex items-center justify-center text-[10px] font-medium">+9</div>
+                    </div>
+                    <svg class="w-4 h-4 text-muted-foreground group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Right Column -->
+          <div class="space-y-6">
+
+            <!-- Quick Actions -->
+            <div class="bg-white rounded-lg border border-border p-5 animate-fade-in">
+              <h2 class="font-semibold mb-4">Quick Actions</h2>
+              <div class="grid grid-cols-2 gap-2">
+                <button class="p-3 rounded-lg border border-border hover:bg-muted hover:border-muted-foreground/20 transition-all text-left group btn-press">
+                  <div class="w-9 h-9 rounded-md bg-primary flex items-center justify-center mb-2.5 group-hover:scale-105 transition-transform">
+                    <svg class="w-4 h-4 text-primary-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+                  </div>
+                  <p class="text-sm font-medium">New Booking</p>
+                </button>
+                <button class="p-3 rounded-lg border border-border hover:bg-muted hover:border-muted-foreground/20 transition-all text-left group btn-press">
+                  <div class="w-9 h-9 rounded-md bg-muted flex items-center justify-center mb-2.5 group-hover:scale-105 transition-transform">
+                    <svg class="w-4 h-4 text-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                  </div>
+                  <p class="text-sm font-medium">Check In</p>
+                </button>
+                <button class="p-3 rounded-lg border border-border hover:bg-muted hover:border-muted-foreground/20 transition-all text-left group btn-press">
+                  <div class="w-9 h-9 rounded-md bg-muted flex items-center justify-center mb-2.5 group-hover:scale-105 transition-transform">
+                    <svg class="w-4 h-4 text-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                  </div>
+                  <p class="text-sm font-medium">Add Slot</p>
+                </button>
+                <button class="p-3 rounded-lg border border-border hover:bg-muted hover:border-muted-foreground/20 transition-all text-left group btn-press">
+                  <div class="w-9 h-9 rounded-md bg-muted flex items-center justify-center mb-2.5 group-hover:scale-105 transition-transform">
+                    <svg class="w-4 h-4 text-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                  </div>
+                  <p class="text-sm font-medium">Reports</p>
+                </button>
+              </div>
+            </div>
+
+            <!-- Recent Activity -->
+            <div class="bg-white rounded-lg border border-border p-5 animate-fade-in">
+              <h2 class="font-semibold mb-4">Recent Activity</h2>
+              <div class="space-y-4">
+                <div class="flex items-start gap-3 animate-fade-in stagger-1">
+                  <div class="w-2 h-2 rounded-full bg-green-500 mt-2 status-pulse"></div>
+                  <div class="flex-1 min-w-0">
+                    <p class="text-sm"><span class="font-medium">John Smith</span> checked in</p>
+                    <p class="text-xs text-muted-foreground mt-0.5">Sunset Cruise • 2 min ago</p>
+                  </div>
+                </div>
+                <div class="flex items-start gap-3 animate-fade-in stagger-2">
+                  <div class="w-2 h-2 rounded-full bg-primary mt-2"></div>
+                  <div class="flex-1 min-w-0">
+                    <p class="text-sm">New booking <span class="font-mono text-xs bg-muted px-1 py-0.5 rounded">#BK24089</span></p>
+                    <p class="text-xs text-muted-foreground mt-0.5">$450 • 5 min ago</p>
+                  </div>
+                </div>
+                <div class="flex items-start gap-3 animate-fade-in stagger-3">
+                  <div class="w-2 h-2 rounded-full bg-primary mt-2"></div>
+                  <div class="flex-1 min-w-0">
+                    <p class="text-sm"><span class="font-medium">Sarah Wilson</span> signed waiver</p>
+                    <p class="text-xs text-muted-foreground mt-0.5">Dolphin Tour • 8 min ago</p>
+                  </div>
+                </div>
+                <div class="flex items-start gap-3 animate-fade-in stagger-4">
+                  <div class="w-2 h-2 rounded-full bg-amber-500 mt-2"></div>
+                  <div class="flex-1 min-w-0">
+                    <p class="text-sm">Waiver pending <span class="font-medium">Mike Johnson</span></p>
+                    <p class="text-xs text-muted-foreground mt-0.5">Island Hop • 15 min ago</p>
+                  </div>
+                </div>
+              </div>
+              <button class="w-full mt-4 py-2 text-sm text-muted-foreground hover:text-foreground hover:bg-muted rounded-md transition-colors btn-press">
+                View all activity
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Recent Bookings Table -->
+        <div class="bg-white rounded-lg border border-border overflow-hidden animate-fade-in">
+          <div class="px-5 py-4 border-b border-border flex items-center justify-between">
+            <div>
+              <h2 class="font-semibold">Recent Bookings</h2>
+              <p class="text-sm text-muted-foreground mt-0.5">Latest booking activity</p>
+            </div>
+            <div class="flex items-center gap-2">
+              <div class="flex items-center bg-muted rounded-md p-0.5">
+                <button class="px-3 py-1.5 bg-white rounded text-sm font-medium shadow-sm">All</button>
+                <button class="px-3 py-1.5 text-sm text-muted-foreground hover:text-foreground">Confirmed</button>
+                <button class="px-3 py-1.5 text-sm text-muted-foreground hover:text-foreground">Pending</button>
+              </div>
+            </div>
+          </div>
+
+          <table class="w-full">
+            <thead>
+              <tr class="text-left text-xs font-medium text-muted-foreground border-b border-border">
+                <th class="px-5 py-3">
+                  <input type="checkbox" class="w-4 h-4 rounded border-border checkbox-animated">
+                </th>
+                <th class="px-5 py-3">Booking</th>
+                <th class="px-5 py-3">Customer</th>
+                <th class="px-5 py-3">Tour</th>
+                <th class="px-5 py-3">Date</th>
+                <th class="px-5 py-3">Amount</th>
+                <th class="px-5 py-3">Status</th>
+                <th class="px-5 py-3"></th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-border">
+              <tr class="hover:bg-muted/50 transition-colors group">
+                <td class="px-5 py-4">
+                  <input type="checkbox" class="w-4 h-4 rounded border-border checkbox-animated">
+                </td>
+                <td class="px-5 py-4">
+                  <span class="font-mono text-sm">#BK24089</span>
+                </td>
+                <td class="px-5 py-4">
+                  <div class="flex items-center gap-3">
+                    <div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-primary-foreground text-xs font-medium">JS</div>
+                    <div>
+                      <p class="text-sm font-medium">John Smith</p>
+                      <p class="text-xs text-muted-foreground">john@email.com</p>
+                    </div>
+                  </div>
+                </td>
+                <td class="px-5 py-4">
+                  <p class="text-sm">Sunset Cruise</p>
+                </td>
+                <td class="px-5 py-4">
+                  <p class="text-sm">Mar 13</p>
+                  <p class="text-xs text-muted-foreground">5:30 PM</p>
+                </td>
+                <td class="px-5 py-4">
+                  <span class="text-sm font-medium">$450</span>
+                </td>
+                <td class="px-5 py-4">
+                  <span class="inline-flex items-center gap-1.5 px-2 py-1 bg-green-50 text-green-700 text-xs font-medium rounded-full">
+                    <span class="w-1.5 h-1.5 bg-green-500 rounded-full"></span>
+                    Confirmed
+                  </span>
+                </td>
+                <td class="px-5 py-4">
+                  <button class="opacity-0 group-hover:opacity-100 p-1.5 rounded-md hover:bg-muted transition-all">
+                    <svg class="w-4 h-4 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z"/></svg>
+                  </button>
+                </td>
+              </tr>
+
+              <tr class="hover:bg-muted/50 transition-colors group">
+                <td class="px-5 py-4">
+                  <input type="checkbox" class="w-4 h-4 rounded border-border checkbox-animated">
+                </td>
+                <td class="px-5 py-4">
+                  <span class="font-mono text-sm">#BK24088</span>
+                </td>
+                <td class="px-5 py-4">
+                  <div class="flex items-center gap-3">
+                    <div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-primary-foreground text-xs font-medium">SW</div>
+                    <div>
+                      <p class="text-sm font-medium">Sarah Wilson</p>
+                      <p class="text-xs text-muted-foreground">sarah@email.com</p>
+                    </div>
+                  </div>
+                </td>
+                <td class="px-5 py-4">
+                  <p class="text-sm">Dolphin Watch</p>
+                </td>
+                <td class="px-5 py-4">
+                  <p class="text-sm">Mar 14</p>
+                  <p class="text-xs text-muted-foreground">9:00 AM</p>
+                </td>
+                <td class="px-5 py-4">
+                  <span class="text-sm font-medium">$180</span>
+                </td>
+                <td class="px-5 py-4">
+                  <span class="inline-flex items-center gap-1.5 px-2 py-1 bg-amber-50 text-amber-700 text-xs font-medium rounded-full">
+                    <span class="w-1.5 h-1.5 bg-amber-500 rounded-full"></span>
+                    Pending
+                  </span>
+                </td>
+                <td class="px-5 py-4">
+                  <button class="opacity-0 group-hover:opacity-100 p-1.5 rounded-md hover:bg-muted transition-all">
+                    <svg class="w-4 h-4 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z"/></svg>
+                  </button>
+                </td>
+              </tr>
+
+              <tr class="hover:bg-muted/50 transition-colors group">
+                <td class="px-5 py-4">
+                  <input type="checkbox" class="w-4 h-4 rounded border-border checkbox-animated">
+                </td>
+                <td class="px-5 py-4">
+                  <span class="font-mono text-sm">#BK24087</span>
+                </td>
+                <td class="px-5 py-4">
+                  <div class="flex items-center gap-3">
+                    <div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-primary-foreground text-xs font-medium">MJ</div>
+                    <div>
+                      <p class="text-sm font-medium">Mike Johnson</p>
+                      <p class="text-xs text-muted-foreground">mike@email.com</p>
+                    </div>
+                  </div>
+                </td>
+                <td class="px-5 py-4">
+                  <p class="text-sm">Island Hopping</p>
+                </td>
+                <td class="px-5 py-4">
+                  <p class="text-sm">Mar 13</p>
+                  <p class="text-xs text-muted-foreground">2:00 PM</p>
+                </td>
+                <td class="px-5 py-4">
+                  <span class="text-sm font-medium">$720</span>
+                </td>
+                <td class="px-5 py-4">
+                  <span class="inline-flex items-center gap-1.5 px-2 py-1 bg-muted text-foreground text-xs font-medium rounded-full">
+                    <span class="w-1.5 h-1.5 bg-primary rounded-full"></span>
+                    Checked In
+                  </span>
+                </td>
+                <td class="px-5 py-4">
+                  <button class="opacity-0 group-hover:opacity-100 p-1.5 rounded-md hover:bg-muted transition-all">
+                    <svg class="w-4 h-4 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z"/></svg>
+                  </button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+
+          <!-- Pagination -->
+          <div class="px-5 py-4 border-t border-border flex items-center justify-between">
+            <p class="text-sm text-muted-foreground">Showing 1-3 of 156 bookings</p>
+            <div class="flex items-center gap-1">
+              <button class="p-2 rounded-md hover:bg-muted text-muted-foreground disabled:opacity-50" disabled>
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+              </button>
+              <button class="w-8 h-8 rounded-md bg-primary text-primary-foreground text-sm font-medium">1</button>
+              <button class="w-8 h-8 rounded-md hover:bg-muted text-sm">2</button>
+              <button class="w-8 h-8 rounded-md hover:bg-muted text-sm">3</button>
+              <span class="px-2 text-muted-foreground">...</span>
+              <button class="w-8 h-8 rounded-md hover:bg-muted text-sm">52</button>
+              <button class="p-2 rounded-md hover:bg-muted text-muted-foreground">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+              </button>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </main>
+  </div>
+
+  <!-- Toast Notification Demo -->
+  <div class="fixed bottom-6 right-6 z-50 animate-slide-up">
+    <div class="bg-foreground text-background rounded-lg shadow-lg p-4 flex items-center gap-3 max-w-sm">
+      <div class="w-5 h-5 rounded-full bg-green-500 flex items-center justify-center flex-shrink-0">
+        <svg class="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+      </div>
+      <div class="flex-1 min-w-0">
+        <p class="text-sm font-medium">New booking received!</p>
+        <p class="text-xs text-muted-foreground mt-0.5">#BK24090 • Sunset Cruise</p>
+      </div>
+      <button class="p-1 hover:bg-white/10 rounded transition-colors">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+      </button>
+    </div>
+  </div>
+
+  <!-- Floating Design Notes -->
+  <div class="fixed bottom-6 left-6 z-50">
+    <details class="bg-white rounded-lg border border-border shadow-lg">
+      <summary class="px-4 py-3 cursor-pointer text-sm font-medium flex items-center gap-2">
+        <span class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
+        Design Features
+      </summary>
+      <div class="px-4 pb-4 pt-2 border-t border-border space-y-2 text-sm text-muted-foreground max-w-xs">
+        <p>✓ shadcn/ui color system (primary/muted/accent)</p>
+        <p>✓ Monochrome with minimal accents</p>
+        <p>✓ Playful micro-animations</p>
+        <p>✓ Staggered fade-in effects</p>
+        <p>✓ Hover state transitions</p>
+        <p>✓ Active/press button feedback</p>
+        <p>✓ Animated status indicators</p>
+        <p>✓ Progress bar animations</p>
+        <p>✓ Toast notification</p>
+      </div>
+    </details>
+  </div>
+
+</body>
+</html>

@@ -1,0 +1,725 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TourPilot - Apple-Inspired Design</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=SF+Pro+Display:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['-apple-system', 'BlinkMacSystemFont', 'SF Pro Display', 'Inter', 'sans-serif'],
+          },
+          colors: {
+            apple: {
+              blue: '#007AFF',
+              green: '#34C759',
+              orange: '#FF9500',
+              red: '#FF3B30',
+              purple: '#AF52DE',
+              pink: '#FF2D55',
+              gray: {
+                50: '#F5F5F7',
+                100: '#E8E8ED',
+                200: '#D2D2D7',
+                300: '#AEAEB2',
+                400: '#8E8E93',
+                500: '#636366',
+                600: '#48484A',
+                700: '#3A3A3C',
+                800: '#2C2C2E',
+                900: '#1C1C1E',
+              }
+            }
+          },
+          boxShadow: {
+            'apple': '0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03)',
+            'apple-lg': '0 10px 25px -5px rgba(0, 0, 0, 0.08), 0 8px 10px -6px rgba(0, 0, 0, 0.04)',
+            'apple-xl': '0 20px 50px -12px rgba(0, 0, 0, 0.15)',
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    * { -webkit-font-smoothing: antialiased; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Inter', sans-serif; background: #F5F5F7; }
+
+    .glass { background: rgba(255, 255, 255, 0.72); backdrop-filter: blur(20px) saturate(180%); -webkit-backdrop-filter: blur(20px) saturate(180%); }
+    .glass-dark { background: rgba(29, 29, 31, 0.72); backdrop-filter: blur(20px) saturate(180%); }
+
+    .card-hover { transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+    .card-hover:hover { transform: translateY(-2px); box-shadow: 0 20px 50px -12px rgba(0, 0, 0, 0.15); }
+
+    .btn-apple {
+      background: linear-gradient(180deg, #3B82F6 0%, #2563EB 100%);
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+    }
+    .btn-apple:hover { filter: brightness(1.05); }
+
+    .input-apple {
+      transition: all 0.2s ease;
+      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+    }
+    .input-apple:focus {
+      box-shadow: 0 0 0 4px rgba(0, 122, 255, 0.15), 0 1px 2px rgba(0, 0, 0, 0.04);
+    }
+
+    .sidebar-item {
+      transition: all 0.15s ease;
+    }
+    .sidebar-item:hover {
+      background: rgba(0, 0, 0, 0.04);
+    }
+    .sidebar-item.active {
+      background: rgba(0, 122, 255, 0.1);
+      color: #007AFF;
+    }
+
+    .stat-ring {
+      background: conic-gradient(#007AFF var(--progress), #E8E8ED 0deg);
+    }
+
+    @keyframes shimmer {
+      0% { background-position: -200% 0; }
+      100% { background-position: 200% 0; }
+    }
+    .shimmer {
+      background: linear-gradient(90deg, #f5f5f7 25%, #e8e8ed 50%, #f5f5f7 75%);
+      background-size: 200% 100%;
+      animation: shimmer 1.5s infinite;
+    }
+  </style>
+</head>
+<body class="min-h-screen">
+
+  <!-- ============================================ -->
+  <!-- FULL DASHBOARD PREVIEW -->
+  <!-- ============================================ -->
+
+  <div class="flex h-screen">
+
+    <!-- Sidebar -->
+    <aside class="w-64 bg-white/80 backdrop-blur-xl border-r border-gray-200/50 flex flex-col">
+
+      <!-- Logo -->
+      <div class="h-16 px-5 flex items-center border-b border-gray-100">
+        <div class="flex items-center gap-3">
+          <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center shadow-lg shadow-blue-500/25">
+            <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+            </svg>
+          </div>
+          <span class="text-lg font-semibold text-gray-900 tracking-tight">TourPilot</span>
+        </div>
+      </div>
+
+      <!-- Navigation -->
+      <nav class="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
+        <a href="#" class="sidebar-item active flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"/></svg>
+          Dashboard
+        </a>
+
+        <div class="pt-4 pb-2">
+          <p class="px-3 text-xs font-medium text-gray-400 uppercase tracking-wider">Operations</p>
+        </div>
+
+        <a href="#" class="sidebar-item flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-gray-600">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+          Calendar
+          <span class="ml-auto bg-blue-100 text-blue-600 text-xs font-medium px-2 py-0.5 rounded-full">12</span>
+        </a>
+
+        <a href="#" class="sidebar-item flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-gray-600">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
+          Bookings
+        </a>
+
+        <a href="#" class="sidebar-item flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-gray-600">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+          Customers
+        </a>
+
+        <a href="#" class="sidebar-item flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-gray-600">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2"/></svg>
+          Manifest
+        </a>
+
+        <div class="pt-4 pb-2">
+          <p class="px-3 text-xs font-medium text-gray-400 uppercase tracking-wider">Catalog</p>
+        </div>
+
+        <a href="#" class="sidebar-item flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-gray-600">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+          Tours
+        </a>
+
+        <a href="#" class="sidebar-item flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-gray-600">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+          Availability
+        </a>
+
+        <a href="#" class="sidebar-item flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-gray-600">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+          Pricing
+        </a>
+
+        <a href="#" class="sidebar-item flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-gray-600">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01"/></svg>
+          Fleet
+        </a>
+
+        <div class="pt-4 pb-2">
+          <p class="px-3 text-xs font-medium text-gray-400 uppercase tracking-wider">System</p>
+        </div>
+
+        <a href="#" class="sidebar-item flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-gray-600">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/></svg>
+          Staff
+        </a>
+
+        <a href="#" class="sidebar-item flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-gray-600">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+          Settings
+        </a>
+      </nav>
+
+      <!-- User -->
+      <div class="p-4 border-t border-gray-100">
+        <div class="flex items-center gap-3 px-2">
+          <div class="w-9 h-9 rounded-full bg-gradient-to-br from-purple-400 to-purple-600 flex items-center justify-center text-white font-medium text-sm shadow-lg shadow-purple-500/20">
+            AZ
+          </div>
+          <div class="flex-1 min-w-0">
+            <p class="text-sm font-medium text-gray-900 truncate">Affan Zahir</p>
+            <p class="text-xs text-gray-500 truncate">Admin</p>
+          </div>
+          <button class="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>
+          </button>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="flex-1 overflow-y-auto">
+
+      <!-- Top Bar -->
+      <header class="h-16 bg-white/60 backdrop-blur-xl border-b border-gray-200/50 sticky top-0 z-10">
+        <div class="h-full px-8 flex items-center justify-between">
+          <div class="flex items-center gap-4">
+            <h1 class="text-xl font-semibold text-gray-900">Dashboard</h1>
+            <span class="text-gray-300">|</span>
+            <p class="text-sm text-gray-500">Thursday, March 13, 2025</p>
+          </div>
+
+          <div class="flex items-center gap-3">
+            <!-- Search -->
+            <div class="relative">
+              <input type="text" placeholder="Search..." class="input-apple w-64 pl-10 pr-4 py-2 rounded-xl bg-gray-100/80 border-0 text-sm placeholder-gray-400 focus:outline-none focus:bg-white focus:ring-2 focus:ring-blue-500/20">
+              <svg class="w-4 h-4 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+              <kbd class="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-400 bg-white px-1.5 py-0.5 rounded border border-gray-200">⌘K</kbd>
+            </div>
+
+            <!-- Notifications -->
+            <button class="relative p-2.5 rounded-xl bg-gray-100/80 hover:bg-gray-200/80 transition-colors">
+              <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/></svg>
+              <span class="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full ring-2 ring-white"></span>
+            </button>
+
+            <!-- New Booking -->
+            <button class="btn-apple px-5 py-2.5 rounded-xl text-white text-sm font-medium flex items-center gap-2 hover:shadow-lg hover:shadow-blue-500/25 transition-all">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+              New Booking
+            </button>
+          </div>
+        </div>
+      </header>
+
+      <!-- Dashboard Content -->
+      <div class="p-8 space-y-8">
+
+        <!-- Stats Grid -->
+        <div class="grid grid-cols-4 gap-6">
+
+          <!-- Stat Card 1 - Today's Guests -->
+          <div class="bg-white rounded-2xl p-6 shadow-apple card-hover">
+            <div class="flex items-start justify-between">
+              <div>
+                <p class="text-sm font-medium text-gray-500">Today's Guests</p>
+                <p class="text-3xl font-semibold text-gray-900 mt-2 tracking-tight">248</p>
+                <p class="text-sm text-gray-500 mt-2 flex items-center gap-1">
+                  <span class="inline-flex items-center text-green-600">
+                    <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M5.293 9.707a1 1 0 010-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 01-1.414 1.414L11 7.414V15a1 1 0 11-2 0V7.414L6.707 9.707a1 1 0 01-1.414 0z" clip-rule="evenodd"/></svg>
+                    12%
+                  </span>
+                  vs yesterday
+                </p>
+              </div>
+              <div class="w-12 h-12 rounded-2xl bg-blue-50 flex items-center justify-center">
+                <svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+              </div>
+            </div>
+          </div>
+
+          <!-- Stat Card 2 - Revenue -->
+          <div class="bg-white rounded-2xl p-6 shadow-apple card-hover">
+            <div class="flex items-start justify-between">
+              <div>
+                <p class="text-sm font-medium text-gray-500">Today's Revenue</p>
+                <p class="text-3xl font-semibold text-gray-900 mt-2 tracking-tight">$12,450</p>
+                <p class="text-sm text-gray-500 mt-2 flex items-center gap-1">
+                  <span class="inline-flex items-center text-green-600">
+                    <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M5.293 9.707a1 1 0 010-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 01-1.414 1.414L11 7.414V15a1 1 0 11-2 0V7.414L6.707 9.707a1 1 0 01-1.414 0z" clip-rule="evenodd"/></svg>
+                    8%
+                  </span>
+                  vs yesterday
+                </p>
+              </div>
+              <div class="w-12 h-12 rounded-2xl bg-green-50 flex items-center justify-center">
+                <svg class="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+              </div>
+            </div>
+          </div>
+
+          <!-- Stat Card 3 - Tours -->
+          <div class="bg-white rounded-2xl p-6 shadow-apple card-hover">
+            <div class="flex items-start justify-between">
+              <div>
+                <p class="text-sm font-medium text-gray-500">Tours Today</p>
+                <p class="text-3xl font-semibold text-gray-900 mt-2 tracking-tight">18</p>
+                <p class="text-sm text-gray-500 mt-2">
+                  <span class="text-blue-600 font-medium">3 in progress</span>
+                </p>
+              </div>
+              <div class="w-12 h-12 rounded-2xl bg-purple-50 flex items-center justify-center">
+                <svg class="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+              </div>
+            </div>
+          </div>
+
+          <!-- Stat Card 4 - Pending -->
+          <div class="bg-white rounded-2xl p-6 shadow-apple card-hover">
+            <div class="flex items-start justify-between">
+              <div>
+                <p class="text-sm font-medium text-gray-500">Needs Attention</p>
+                <p class="text-3xl font-semibold text-gray-900 mt-2 tracking-tight">4</p>
+                <p class="text-sm text-orange-600 mt-2 font-medium">
+                  Pending waivers
+                </p>
+              </div>
+              <div class="w-12 h-12 rounded-2xl bg-orange-50 flex items-center justify-center">
+                <svg class="w-6 h-6 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Main Grid -->
+        <div class="grid grid-cols-3 gap-6">
+
+          <!-- Today's Schedule -->
+          <div class="col-span-2 bg-white rounded-2xl shadow-apple overflow-hidden">
+            <div class="px-6 py-5 border-b border-gray-100 flex items-center justify-between">
+              <div>
+                <h2 class="text-lg font-semibold text-gray-900">Today's Schedule</h2>
+                <p class="text-sm text-gray-500 mt-0.5">8 tours scheduled</p>
+              </div>
+              <button class="text-sm text-blue-600 font-medium hover:text-blue-700">View Calendar →</button>
+            </div>
+
+            <div class="divide-y divide-gray-50">
+              <!-- Tour Item -->
+              <div class="px-6 py-4 hover:bg-gray-50/50 transition-colors">
+                <div class="flex items-center gap-4">
+                  <div class="text-center min-w-[60px]">
+                    <p class="text-2xl font-semibold text-gray-900">9:00</p>
+                    <p class="text-xs text-gray-500 uppercase">AM</p>
+                  </div>
+                  <div class="w-1 h-12 rounded-full bg-green-500"></div>
+                  <div class="flex-1">
+                    <div class="flex items-center gap-2">
+                      <h3 class="font-medium text-gray-900">Sunrise Dolphin Cruise</h3>
+                      <span class="px-2 py-0.5 bg-green-100 text-green-700 text-xs font-medium rounded-full">In Progress</span>
+                    </div>
+                    <p class="text-sm text-gray-500 mt-1">Sea Breeze • Captain Mike • 10/12 guests</p>
+                  </div>
+                  <div class="flex items-center gap-2">
+                    <div class="flex -space-x-2">
+                      <div class="w-8 h-8 rounded-full bg-blue-100 border-2 border-white flex items-center justify-center text-xs font-medium text-blue-600">JS</div>
+                      <div class="w-8 h-8 rounded-full bg-purple-100 border-2 border-white flex items-center justify-center text-xs font-medium text-purple-600">MW</div>
+                      <div class="w-8 h-8 rounded-full bg-gray-100 border-2 border-white flex items-center justify-center text-xs font-medium text-gray-600">+8</div>
+                    </div>
+                    <button class="p-2 rounded-lg hover:bg-gray-100 text-gray-400">
+                      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Tour Item -->
+              <div class="px-6 py-4 hover:bg-gray-50/50 transition-colors">
+                <div class="flex items-center gap-4">
+                  <div class="text-center min-w-[60px]">
+                    <p class="text-2xl font-semibold text-gray-900">11:30</p>
+                    <p class="text-xs text-gray-500 uppercase">AM</p>
+                  </div>
+                  <div class="w-1 h-12 rounded-full bg-blue-500"></div>
+                  <div class="flex-1">
+                    <div class="flex items-center gap-2">
+                      <h3 class="font-medium text-gray-900">Snorkeling Adventure</h3>
+                      <span class="px-2 py-0.5 bg-blue-100 text-blue-700 text-xs font-medium rounded-full">Boarding</span>
+                    </div>
+                    <p class="text-sm text-gray-500 mt-1">Ocean Spirit • Captain Sarah • 15/20 guests</p>
+                  </div>
+                  <div class="flex items-center gap-2">
+                    <div class="flex -space-x-2">
+                      <div class="w-8 h-8 rounded-full bg-green-100 border-2 border-white flex items-center justify-center text-xs font-medium text-green-600">AK</div>
+                      <div class="w-8 h-8 rounded-full bg-orange-100 border-2 border-white flex items-center justify-center text-xs font-medium text-orange-600">TB</div>
+                      <div class="w-8 h-8 rounded-full bg-gray-100 border-2 border-white flex items-center justify-center text-xs font-medium text-gray-600">+13</div>
+                    </div>
+                    <button class="p-2 rounded-lg hover:bg-gray-100 text-gray-400">
+                      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Tour Item -->
+              <div class="px-6 py-4 hover:bg-gray-50/50 transition-colors">
+                <div class="flex items-center gap-4">
+                  <div class="text-center min-w-[60px]">
+                    <p class="text-2xl font-semibold text-gray-900">2:00</p>
+                    <p class="text-xs text-gray-500 uppercase">PM</p>
+                  </div>
+                  <div class="w-1 h-12 rounded-full bg-gray-300"></div>
+                  <div class="flex-1">
+                    <div class="flex items-center gap-2">
+                      <h3 class="font-medium text-gray-900">Island Hopping Tour</h3>
+                      <span class="px-2 py-0.5 bg-gray-100 text-gray-600 text-xs font-medium rounded-full">Scheduled</span>
+                    </div>
+                    <p class="text-sm text-gray-500 mt-1">Wave Runner • Captain Dan • 6/8 guests</p>
+                  </div>
+                  <div class="flex items-center gap-2">
+                    <div class="flex -space-x-2">
+                      <div class="w-8 h-8 rounded-full bg-pink-100 border-2 border-white flex items-center justify-center text-xs font-medium text-pink-600">KL</div>
+                      <div class="w-8 h-8 rounded-full bg-gray-100 border-2 border-white flex items-center justify-center text-xs font-medium text-gray-600">+5</div>
+                    </div>
+                    <button class="p-2 rounded-lg hover:bg-gray-100 text-gray-400">
+                      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Tour Item -->
+              <div class="px-6 py-4 hover:bg-gray-50/50 transition-colors">
+                <div class="flex items-center gap-4">
+                  <div class="text-center min-w-[60px]">
+                    <p class="text-2xl font-semibold text-gray-900">5:30</p>
+                    <p class="text-xs text-gray-500 uppercase">PM</p>
+                  </div>
+                  <div class="w-1 h-12 rounded-full bg-orange-400"></div>
+                  <div class="flex-1">
+                    <div class="flex items-center gap-2">
+                      <h3 class="font-medium text-gray-900">Sunset Cruise</h3>
+                      <span class="px-2 py-0.5 bg-orange-100 text-orange-700 text-xs font-medium rounded-full">2 spots left</span>
+                    </div>
+                    <p class="text-sm text-gray-500 mt-1">Sea Breeze • Captain Mike • 10/12 guests</p>
+                  </div>
+                  <div class="flex items-center gap-2">
+                    <div class="flex -space-x-2">
+                      <div class="w-8 h-8 rounded-full bg-cyan-100 border-2 border-white flex items-center justify-center text-xs font-medium text-cyan-600">RJ</div>
+                      <div class="w-8 h-8 rounded-full bg-gray-100 border-2 border-white flex items-center justify-center text-xs font-medium text-gray-600">+9</div>
+                    </div>
+                    <button class="p-2 rounded-lg hover:bg-gray-100 text-gray-400">
+                      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Right Column -->
+          <div class="space-y-6">
+
+            <!-- Quick Actions -->
+            <div class="bg-white rounded-2xl shadow-apple p-6">
+              <h2 class="text-lg font-semibold text-gray-900 mb-4">Quick Actions</h2>
+              <div class="grid grid-cols-2 gap-3">
+                <button class="p-4 rounded-xl bg-blue-50 hover:bg-blue-100 transition-colors text-left group">
+                  <div class="w-10 h-10 rounded-xl bg-blue-500 flex items-center justify-center mb-3 group-hover:scale-105 transition-transform">
+                    <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+                  </div>
+                  <p class="font-medium text-gray-900 text-sm">New Booking</p>
+                </button>
+                <button class="p-4 rounded-xl bg-green-50 hover:bg-green-100 transition-colors text-left group">
+                  <div class="w-10 h-10 rounded-xl bg-green-500 flex items-center justify-center mb-3 group-hover:scale-105 transition-transform">
+                    <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                  </div>
+                  <p class="font-medium text-gray-900 text-sm">Check In</p>
+                </button>
+                <button class="p-4 rounded-xl bg-purple-50 hover:bg-purple-100 transition-colors text-left group">
+                  <div class="w-10 h-10 rounded-xl bg-purple-500 flex items-center justify-center mb-3 group-hover:scale-105 transition-transform">
+                    <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                  </div>
+                  <p class="font-medium text-gray-900 text-sm">Add Time Slot</p>
+                </button>
+                <button class="p-4 rounded-xl bg-orange-50 hover:bg-orange-100 transition-colors text-left group">
+                  <div class="w-10 h-10 rounded-xl bg-orange-500 flex items-center justify-center mb-3 group-hover:scale-105 transition-transform">
+                    <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                  </div>
+                  <p class="font-medium text-gray-900 text-sm">Export Report</p>
+                </button>
+              </div>
+            </div>
+
+            <!-- Recent Activity -->
+            <div class="bg-white rounded-2xl shadow-apple p-6">
+              <h2 class="text-lg font-semibold text-gray-900 mb-4">Recent Activity</h2>
+              <div class="space-y-4">
+                <div class="flex items-start gap-3">
+                  <div class="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0 mt-0.5">
+                    <svg class="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                  </div>
+                  <div>
+                    <p class="text-sm text-gray-900"><span class="font-medium">John Smith</span> completed check-in</p>
+                    <p class="text-xs text-gray-500 mt-0.5">Sunset Cruise • 2 min ago</p>
+                  </div>
+                </div>
+                <div class="flex items-start gap-3">
+                  <div class="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0 mt-0.5">
+                    <svg class="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                  </div>
+                  <div>
+                    <p class="text-sm text-gray-900">New booking <span class="font-medium">#BK24089</span></p>
+                    <p class="text-xs text-gray-500 mt-0.5">$450 • 5 min ago</p>
+                  </div>
+                </div>
+                <div class="flex items-start gap-3">
+                  <div class="w-8 h-8 rounded-full bg-purple-100 flex items-center justify-center flex-shrink-0 mt-0.5">
+                    <svg class="w-4 h-4 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg>
+                  </div>
+                  <div>
+                    <p class="text-sm text-gray-900"><span class="font-medium">Sarah Wilson</span> signed waiver</p>
+                    <p class="text-xs text-gray-500 mt-0.5">Dolphin Tour • 8 min ago</p>
+                  </div>
+                </div>
+                <div class="flex items-start gap-3">
+                  <div class="w-8 h-8 rounded-full bg-orange-100 flex items-center justify-center flex-shrink-0 mt-0.5">
+                    <svg class="w-4 h-4 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                  </div>
+                  <div>
+                    <p class="text-sm text-gray-900">Waiver pending for <span class="font-medium">Mike Johnson</span></p>
+                    <p class="text-xs text-gray-500 mt-0.5">Island Hop • 15 min ago</p>
+                  </div>
+                </div>
+              </div>
+              <button class="w-full mt-4 py-2 text-sm text-blue-600 font-medium hover:bg-blue-50 rounded-lg transition-colors">
+                View All Activity →
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Recent Bookings Table -->
+        <div class="bg-white rounded-2xl shadow-apple overflow-hidden">
+          <div class="px-6 py-5 border-b border-gray-100 flex items-center justify-between">
+            <div>
+              <h2 class="text-lg font-semibold text-gray-900">Recent Bookings</h2>
+              <p class="text-sm text-gray-500 mt-0.5">Latest booking activity</p>
+            </div>
+            <div class="flex items-center gap-3">
+              <div class="flex items-center gap-2 px-3 py-1.5 bg-gray-100 rounded-lg">
+                <button class="px-3 py-1 bg-white rounded-md text-sm font-medium text-gray-900 shadow-sm">All</button>
+                <button class="px-3 py-1 text-sm font-medium text-gray-500 hover:text-gray-900">Confirmed</button>
+                <button class="px-3 py-1 text-sm font-medium text-gray-500 hover:text-gray-900">Pending</button>
+              </div>
+              <button class="text-sm text-blue-600 font-medium hover:text-blue-700">View All →</button>
+            </div>
+          </div>
+
+          <table class="w-full">
+            <thead>
+              <tr class="text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th class="px-6 py-4">Booking</th>
+                <th class="px-6 py-4">Customer</th>
+                <th class="px-6 py-4">Tour</th>
+                <th class="px-6 py-4">Date & Time</th>
+                <th class="px-6 py-4">Guests</th>
+                <th class="px-6 py-4">Amount</th>
+                <th class="px-6 py-4">Status</th>
+                <th class="px-6 py-4"></th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-100">
+              <tr class="hover:bg-gray-50/50 transition-colors">
+                <td class="px-6 py-4">
+                  <span class="font-mono text-sm font-medium text-gray-900">#BK24089</span>
+                </td>
+                <td class="px-6 py-4">
+                  <div class="flex items-center gap-3">
+                    <div class="w-9 h-9 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center text-white text-sm font-medium">JS</div>
+                    <div>
+                      <p class="text-sm font-medium text-gray-900">John Smith</p>
+                      <p class="text-xs text-gray-500">john@email.com</p>
+                    </div>
+                  </div>
+                </td>
+                <td class="px-6 py-4">
+                  <p class="text-sm text-gray-900">Sunset Cruise</p>
+                  <p class="text-xs text-gray-500">Sea Breeze</p>
+                </td>
+                <td class="px-6 py-4">
+                  <p class="text-sm text-gray-900">Mar 13, 2025</p>
+                  <p class="text-xs text-gray-500">5:30 PM</p>
+                </td>
+                <td class="px-6 py-4">
+                  <span class="text-sm text-gray-900">4</span>
+                </td>
+                <td class="px-6 py-4">
+                  <span class="text-sm font-medium text-gray-900">$450</span>
+                </td>
+                <td class="px-6 py-4">
+                  <span class="inline-flex items-center gap-1.5 px-2.5 py-1 bg-green-50 text-green-700 text-xs font-medium rounded-full">
+                    <span class="w-1.5 h-1.5 bg-green-500 rounded-full"></span>
+                    Confirmed
+                  </span>
+                </td>
+                <td class="px-6 py-4">
+                  <button class="p-2 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-600">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z"/></svg>
+                  </button>
+                </td>
+              </tr>
+
+              <tr class="hover:bg-gray-50/50 transition-colors">
+                <td class="px-6 py-4">
+                  <span class="font-mono text-sm font-medium text-gray-900">#BK24088</span>
+                </td>
+                <td class="px-6 py-4">
+                  <div class="flex items-center gap-3">
+                    <div class="w-9 h-9 rounded-full bg-gradient-to-br from-purple-400 to-purple-600 flex items-center justify-center text-white text-sm font-medium">SW</div>
+                    <div>
+                      <p class="text-sm font-medium text-gray-900">Sarah Wilson</p>
+                      <p class="text-xs text-gray-500">sarah@email.com</p>
+                    </div>
+                  </div>
+                </td>
+                <td class="px-6 py-4">
+                  <p class="text-sm text-gray-900">Dolphin Watch</p>
+                  <p class="text-xs text-gray-500">Ocean Spirit</p>
+                </td>
+                <td class="px-6 py-4">
+                  <p class="text-sm text-gray-900">Mar 14, 2025</p>
+                  <p class="text-xs text-gray-500">9:00 AM</p>
+                </td>
+                <td class="px-6 py-4">
+                  <span class="text-sm text-gray-900">2</span>
+                </td>
+                <td class="px-6 py-4">
+                  <span class="text-sm font-medium text-gray-900">$180</span>
+                </td>
+                <td class="px-6 py-4">
+                  <span class="inline-flex items-center gap-1.5 px-2.5 py-1 bg-yellow-50 text-yellow-700 text-xs font-medium rounded-full">
+                    <span class="w-1.5 h-1.5 bg-yellow-500 rounded-full"></span>
+                    Pending
+                  </span>
+                </td>
+                <td class="px-6 py-4">
+                  <button class="p-2 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-600">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z"/></svg>
+                  </button>
+                </td>
+              </tr>
+
+              <tr class="hover:bg-gray-50/50 transition-colors">
+                <td class="px-6 py-4">
+                  <span class="font-mono text-sm font-medium text-gray-900">#BK24087</span>
+                </td>
+                <td class="px-6 py-4">
+                  <div class="flex items-center gap-3">
+                    <div class="w-9 h-9 rounded-full bg-gradient-to-br from-green-400 to-green-600 flex items-center justify-center text-white text-sm font-medium">MJ</div>
+                    <div>
+                      <p class="text-sm font-medium text-gray-900">Mike Johnson</p>
+                      <p class="text-xs text-gray-500">mike@email.com</p>
+                    </div>
+                  </div>
+                </td>
+                <td class="px-6 py-4">
+                  <p class="text-sm text-gray-900">Island Hopping</p>
+                  <p class="text-xs text-gray-500">Wave Runner</p>
+                </td>
+                <td class="px-6 py-4">
+                  <p class="text-sm text-gray-900">Mar 13, 2025</p>
+                  <p class="text-xs text-gray-500">2:00 PM</p>
+                </td>
+                <td class="px-6 py-4">
+                  <span class="text-sm text-gray-900">6</span>
+                </td>
+                <td class="px-6 py-4">
+                  <span class="text-sm font-medium text-gray-900">$720</span>
+                </td>
+                <td class="px-6 py-4">
+                  <span class="inline-flex items-center gap-1.5 px-2.5 py-1 bg-blue-50 text-blue-700 text-xs font-medium rounded-full">
+                    <span class="w-1.5 h-1.5 bg-blue-500 rounded-full"></span>
+                    Checked In
+                  </span>
+                </td>
+                <td class="px-6 py-4">
+                  <button class="p-2 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-600">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z"/></svg>
+                  </button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+      </div>
+    </main>
+  </div>
+
+  <!-- ============================================ -->
+  <!-- DESIGN NOTES -->
+  <!-- ============================================ -->
+  <div class="fixed bottom-6 right-6 z-50">
+    <div class="bg-gray-900 text-white rounded-2xl shadow-2xl p-6 max-w-sm">
+      <h3 class="font-semibold text-lg mb-3">Apple-Inspired Design</h3>
+      <ul class="space-y-2 text-sm text-gray-300">
+        <li class="flex items-start gap-2">
+          <span class="text-green-400 mt-0.5">✓</span>
+          <span>Generous whitespace & breathing room</span>
+        </li>
+        <li class="flex items-start gap-2">
+          <span class="text-green-400 mt-0.5">✓</span>
+          <span>Subtle shadows with depth</span>
+        </li>
+        <li class="flex items-start gap-2">
+          <span class="text-green-400 mt-0.5">✓</span>
+          <span>Clean typography hierarchy</span>
+        </li>
+        <li class="flex items-start gap-2">
+          <span class="text-green-400 mt-0.5">✓</span>
+          <span>Glassmorphism effects</span>
+        </li>
+        <li class="flex items-start gap-2">
+          <span class="text-green-400 mt-0.5">✓</span>
+          <span>Smooth micro-interactions</span>
+        </li>
+        <li class="flex items-start gap-2">
+          <span class="text-green-400 mt-0.5">✓</span>
+          <span>Muted, sophisticated colors</span>
+        </li>
+      </ul>
+      <p class="text-xs text-gray-500 mt-4">Tell me if you like this direction!</p>
+    </div>
+  </div>
+
+</body>
+</html>

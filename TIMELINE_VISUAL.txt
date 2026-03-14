@@ -1,0 +1,252 @@
+╔════════════════════════════════════════════════════════════════════════════╗
+║                                                                            ║
+║                    TOURPILOT 3.5 WEEK DEVELOPMENT TIMELINE                 ║
+║                            24.5 Days Total Sprint                           ║
+║                                                                            ║
+╚════════════════════════════════════════════════════════════════════════════╝
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│  WEEK 1: PHASE 1 - Core Location & Captain Management (Days 1-7)           │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│  Days 1-3: Location Management System                                      │
+│  ├─ Create locations table (name, address, coordinates)                   │
+│  ├─ Create location_boats table (boat per location)                       │
+│  ├─ Create captain_location_assignments table                             │
+│  ├─ Build 5 location API endpoints                                        │
+│  ├─ Set up RLS policies for location access                              │
+│  └─ Create location listing page in admin dashboard                       │
+│                                                                             │
+│  Days 2-4: Admin Location UI                                               │
+│  ├─ Location CRUD admin interface                                         │
+│  ├─ Boat management page                                                  │
+│  ├─ Google Maps address lookup integration                                │
+│  └─ Form validation with Zod                                             │
+│                                                                             │
+│  Days 4-5: Captain Assignment & Location Switching                         │
+│  ├─ Assign captains to locations/boats                                    │
+│  ├─ Captain location switcher component                                   │
+│  ├─ Update captain dashboard with location context                        │
+│  └─ Test assignment workflow                                             │
+│                                                                             │
+│  Days 5-7: Database & Data Relationships                                   │
+│  ├─ Update tours table with location_id                                   │
+│  ├─ Create tour_locations junction table                                  │
+│  ├─ Update availability_staff for boat references                         │
+│  ├─ Create database triggers                                             │
+│  └─ Run data migrations                                                   │
+│                                                                             │
+│  ✅ Phase 1 Complete: Locations & Captains manageable                      │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│  WEEK 2: PHASE 2 - Multi-Location Tours & Booking Rescheduling (Days 8-12) │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│  Days 8-9: Location-Based Tour Availability                               │
+│  ├─ Show locations in tour listing                                        │
+│  ├─ Add location selector to tour details                                 │
+│  ├─ Update checkout with location selection step                          │
+│  └─ Filter availability by location                                       │
+│                                                                             │
+│  Days 9-11: Booking Reschedule System                                      │
+│  ├─ Create booking_reschedules table                                      │
+│  ├─ Build API for reschedule requests                                     │
+│  ├─ Admin reschedule approval interface                                   │
+│  ├─ Customer reschedule request form                                      │
+│  ├─ Email templates (request/approve/reject)                              │
+│  └─ Test complete reschedule workflow                                     │
+│                                                                             │
+│  Days 11-12: Multiple Boats & Capacity Management                          │
+│  ├─ Boat-specific availabilities                                          │
+│  ├─ Per-boat capacity tracking                                            │
+│  ├─ Boat selection for captains                                           │
+│  └─ Update availability creation form                                     │
+│                                                                             │
+│  ✅ Phase 2 Complete: Rescheduling works, multi-boat capacity tracked      │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│  WEEKS 2-3: PHASE 3 - Customer Analytics & POS System (Days 13-21)         │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│  Days 13-15: Customer Behavior & Scoring System                            │
+│  ├─ Create customer_scores table                                          │
+│  ├─ Create customer_actions table (tracking)                              │
+│  ├─ Implement scoring algorithm in PostgreSQL                             │
+│  ├─ Loyalty tier system (Bronze/Silver/Gold/Platinum)                     │
+│  ├─ Customer analytics dashboard (/dashboard/customers/[id]/analytics)    │
+│  ├─ Add loyalty tier column to customers list                             │
+│  └─ Test scoring and filtering                                           │
+│                                                                             │
+│  Days 15-18: POS System - Backend & Core                                   │
+│  ├─ Create pos_transactions table                                         │
+│  ├─ Create pos_items table                                                │
+│  ├─ Create offline_queue table for offline mode                           │
+│  ├─ Build 8 POS API endpoints                                             │
+│  ├─ Set up IndexedDB for offline queueing                                 │
+│  ├─ Implement Service Worker for offline detection                        │
+│  └─ Test offline transaction creation & queueing                          │
+│                                                                             │
+│  Days 17-19: POS System - Frontend & UI                                    │
+│  ├─ Main POS dashboard (/dashboard/pos)                                   │
+│  ├─ New transaction form (/dashboard/pos/new)                             │
+│  ├─ Transaction history page (/dashboard/pos/transactions)                │
+│  ├─ POS items management (/dashboard/pos/items)                           │
+│  ├─ Revenue reports (/dashboard/pos/reports)                              │
+│  ├─ Receipt template and printing                                         │
+│  ├─ Offline status indicator                                              │
+│  └─ Test all POS workflows with offline mode                              │
+│                                                                             │
+│  Days 19-21: Birthday Campaign System                                      │
+│  ├─ Add date_of_birth to customers table                                  │
+│  ├─ Create campaigns table                                                │
+│  ├─ Automatic birthday detection                                          │
+│  ├─ Birthday email campaign system (/dashboard/campaigns/birthday)        │
+│  ├─ Create personalized birthday discount email                           │
+│  ├─ Campaign analytics and tracking                                       │
+│  └─ Test automation and email sending                                     │
+│                                                                             │
+│  ✅ Phase 3 Complete: POS working, customer scoring active, campaigns ready│
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│  WEEK 3.5: PHASE 4 - Payments, Polish & Testing (Days 22-24.5)            │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│  Days 22-23: Stripe Payment Integration                                    │
+│  ├─ Update bookings table with Stripe fields                              │
+│  ├─ Create payment_logs table                                             │
+│  ├─ Build 4 payment API endpoints                                         │
+│  ├─ Implement Stripe webhook handler                                      │
+│  ├─ Add StripePaymentForm to checkout                                     │
+│  ├─ Payment confirmation/failure flows                                    │
+│  ├─ Payment success and error email templates                             │
+│  └─ Test complete payment workflow                                        │
+│                                                                             │
+│  Days 22-24: UI Polish & UX Improvements                                   │
+│  ├─ Responsive design audit (320px to 4K)                                 │
+│  ├─ Dark mode support (toggle in settings)                                │
+│  ├─ Loading skeletons for all pages                                       │
+│  ├─ Empty state designs                                                   │
+│  ├─ Standardize buttons, inputs, forms                                    │
+│  ├─ Add animations and transitions                                        │
+│  ├─ WCAG AA accessibility (ARIA labels, keyboard nav, colors)             │
+│  └─ Cross-browser testing (Chrome, Firefox, Safari, Edge)                 │
+│                                                                             │
+│  Days 22-24.5: Testing & Deployment                                        │
+│  ├─ Unit tests (scoring, calculations, email)                             │
+│  ├─ Integration tests (booking→payment, reschedule, POS sync)             │
+│  ├─ E2E tests (signup→book→pay, location switching, offline POS)          │
+│  ├─ Performance tests (page load <3s, API <500ms)                         │
+│  ├─ Security tests (SQL injection, XSS, CSRF, rate limiting)              │
+│  ├─ Compatibility tests (browsers, mobile, tablet)                        │
+│  ├─ Set up error tracking (Sentry)                                        │
+│  ├─ Configure monitoring and alerts                                       │
+│  ├─ Write API documentation                                               │
+│  ├─ Create deployment guide                                               │
+│  ├─ Train support team                                                    │
+│  └─ Go-live checklist                                                     │
+│                                                                             │
+│  ✅ Phase 4 Complete: Production-ready! All systems tested and polished     │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+╔════════════════════════════════════════════════════════════════════════════╗
+║                                DELIVERABLES                                 ║
+╠════════════════════════════════════════════════════════════════════════════╣
+║                                                                            ║
+║  📊 Phase 1 Deliverables:                                                  ║
+║     • Location CRUD admin page                                             ║
+║     • Boat management interface                                            ║
+║     • Captain assignment system                                            ║
+║     • 5 new API endpoints                                                  ║
+║     • Database migrations                                                  ║
+║                                                                            ║
+║  📅 Phase 2 Deliverables:                                                  ║
+║     • Booking reschedule system                                            ║
+║     • Updated tour booking flow                                            ║
+║     • Reschedule management dashboard                                      ║
+║     • 6 new API endpoints                                                  ║
+║     • 3 email templates                                                    ║
+║                                                                            ║
+║  💰 Phase 3 Deliverables:                                                  ║
+║     • Customer analytics dashboard                                         ║
+║     • Loyalty scoring system                                               ║
+║     • Complete POS system (online & offline)                               ║
+║     • Birthday campaign automation                                         ║
+║     • 12 new API endpoints                                                 ║
+║     • IndexedDB offline functionality                                      ║
+║                                                                            ║
+║  ✨ Phase 4 Deliverables:                                                  ║
+║     • Stripe payment integration                                           ║
+║     • Polished UI across all pages                                         ║
+║     • 90%+ test coverage                                                   ║
+║     • Complete API documentation                                           ║
+║     • Deployment guide                                                     ║
+║     • Production monitoring setup                                          ║
+║                                                                            ║
+╠════════════════════════════════════════════════════════════════════════════╣
+║                           SUCCESS METRICS                                   ║
+╠════════════════════════════════════════════════════════════════════════════╣
+║                                                                            ║
+║  ✅ 90%+ test coverage                                                      ║
+║  ✅ <3 second page load time                                                ║
+║  ✅ Zero critical security vulnerabilities                                  ║
+║  ✅ 25+ new API endpoints                                                   ║
+║  ✅ 20+ database tables with proper relationships                           ║
+║  ✅ WCAG AA accessibility compliance                                        ║
+║  ✅ Full Stripe payment integration                                         ║
+║  ✅ Offline-capable POS system                                              ║
+║                                                                            ║
+╠════════════════════════════════════════════════════════════════════════════╣
+║                        AVAILABLE DOCUMENTATION                              ║
+╠════════════════════════════════════════════════════════════════════════════╣
+║                                                                            ║
+║  📄 README_TIMELINE.md                                                      ║
+║     → Master guide to all resources                                        ║
+║                                                                            ║
+║  📋 DEVELOPMENT_ROADMAP.md                                                 ║
+║     → Detailed specs for every feature                                     ║
+║                                                                            ║
+║  ✅ PHASE_CHECKLIST.md                                                      ║
+║     → Day-by-day checklist for tracking                                    ║
+║                                                                            ║
+║  🎯 TIMELINE_IMPLEMENTATION_GUIDE.md                                        ║
+║     → Quick start and reference guide                                      ║
+║                                                                            ║
+║  🌐 /timeline                                                               ║
+║     → Interactive timeline page (no login required)                        ║
+║                                                                            ║
+╚════════════════════════════════════════════════════════════════════════════╝
+
+TECHNOLOGY STACK:
+  • Database:     Supabase (PostgreSQL) with RLS policies
+  • Backend:      Next.js 14 App Router + API Routes
+  • Frontend:     React 19 + shadcn/ui components
+  • Styling:      Tailwind CSS 4.0 (with dark mode)
+  • Payments:     Stripe (webhooks, 3D Secure)
+  • Emails:       Resend API (campaigns, notifications)
+  • Offline:      IndexedDB + Service Workers
+  • Testing:      Jest, React Testing Library, E2E tests
+
+QUICK START:
+  1. Visit http://localhost:3000/timeline
+  2. Read DEVELOPMENT_ROADMAP.md
+  3. Open PHASE_CHECKLIST.md
+  4. Start Phase 1 (Days 1-3)
+  5. Check off items as you complete them
+
+SUPPORT RESOURCES:
+  Q: What features are left?       → /timeline page
+  Q: How do I build X?             → DEVELOPMENT_ROADMAP.md
+  Q: What's my status?             → PHASE_CHECKLIST.md
+  Q: How do I get started?         → README_TIMELINE.md
+  Q: Quick reference?              → TIMELINE_IMPLEMENTATION_GUIDE.md
+
+Created: March 11, 2026
+Duration: 3.5 Weeks (24.5 Days)
+Status: Ready for Development ✅

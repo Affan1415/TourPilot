@@ -35,6 +35,8 @@ import {
 } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import { createClient } from "@/lib/supabase/client";
+import { StripeProvider } from "@/components/payments/StripeProvider";
+import { PaymentForm } from "@/components/payments/PaymentForm";
 import type { Tour, Availability } from "@/types";
 
 interface TourWithAvailability {
@@ -98,6 +100,9 @@ export default function BookingPage() {
   const [notes, setNotes] = useState("");
   const [agreeTerms, setAgreeTerms] = useState(false);
   const [agreeWaiver, setAgreeWaiver] = useState(false);
+  const [clientSecret, setClientSecret] = useState<string | null>(null);
+  const [bookingId, setBookingId] = useState<string | null>(null);
+  const [bookingReference, setBookingReference] = useState<string | null>(null);
 
   const totalPrice = pricePerPerson * guestCount;
 
@@ -165,7 +170,8 @@ export default function BookingPage() {
     setAdditionalGuests(newGuests);
   };
 
-  const handleSubmit = async () => {
+  // Create booking and payment intent when moving to step 2
+  const handleProceedToPayment = async () => {
     if (!tourData.availability) return;
 
     setIsProcessing(true);
@@ -188,7 +194,8 @@ export default function BookingPage() {
         })),
       ];
 
-      const response = await fetch("/api/bookings", {
+      // Create booking first
+      const bookingResponse = await fetch("/api/bookings", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -209,19 +216,57 @@ export default function BookingPage() {
         }),
       });
 
-      const result = await response.json();
+      const bookingResult = await bookingResponse.json();
 
-      if (!response.ok) {
-        throw new Error(result.error || "Failed to create booking");
+      if (!bookingResponse.ok) {
+        throw new Error(bookingResult.error || "Failed to create booking");
       }
 
-      // Redirect to confirmation page with the real booking reference
-      router.push(`/booking/${result.booking_reference}`);
+      setBookingId(bookingResult.booking_id);
+      setBookingReference(bookingResult.booking_reference);
+
+      // Create payment intent
+      const paymentResponse = await fetch("/api/payments/create-intent", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          booking_id: bookingResult.booking_id,
+          amount: totalPrice,
+          customer_email: primaryGuest.email,
+          customer_name: `${primaryGuest.firstName} ${primaryGuest.lastName}`,
+          metadata: {
+            tour_name: tourData.tour?.name,
+            tour_date: tourData.availability.date,
+          },
+        }),
+      });
+
+      const paymentResult = await paymentResponse.json();
+
+      if (!paymentResponse.ok) {
+        throw new Error(paymentResult.error || "Failed to create payment");
+      }
+
+      setClientSecret(paymentResult.clientSecret);
+      setStep(2);
     } catch (err) {
-      console.error("Booking error:", err);
-      setError(err instanceof Error ? err.message : "Failed to complete booking");
+      console.error("Booking/Payment error:", err);
+      setError(err instanceof Error ? err.message : "Failed to proceed");
+    } finally {
       setIsProcessing(false);
     }
+  };
+
+  const handlePaymentSuccess = () => {
+    if (bookingReference) {
+      router.push(`/booking/${bookingReference}`);
+    }
+  };
+
+  const handlePaymentError = (errorMessage: string) => {
+    setError(errorMessage);
   };
 
   const isStep1Valid =
@@ -483,10 +528,17 @@ export default function BookingPage() {
 
                 <Button
                   className="w-full h-12 gradient-primary border-0 shadow-lg shadow-primary/25"
-                  onClick={() => setStep(2)}
-                  disabled={!isStep1Valid}
+                  onClick={handleProceedToPayment}
+                  disabled={!isStep1Valid || isProcessing}
                 >
-                  Continue to Payment
+                  {isProcessing ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Creating booking...
+                    </>
+                  ) : (
+                    "Continue to Payment"
+                  )}
                 </Button>
               </>
             )}
@@ -562,92 +614,69 @@ export default function BookingPage() {
                       Payment Details
                     </CardTitle>
                   </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="space-y-2">
-                      <Label>Card Number</Label>
-                      <Input placeholder="4242 4242 4242 4242" />
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label>Expiry Date</Label>
-                        <Input placeholder="MM/YY" />
+                  <CardContent>
+                    {clientSecret ? (
+                      <StripeProvider clientSecret={clientSecret}>
+                        <PaymentForm
+                          amount={totalPrice}
+                          onSuccess={handlePaymentSuccess}
+                          onError={handlePaymentError}
+                          returnUrl={`${typeof window !== 'undefined' ? window.location.origin : ''}/booking/${bookingReference}`}
+                        />
+                      </StripeProvider>
+                    ) : (
+                      <div className="flex items-center justify-center py-8">
+                        <Loader2 className="h-8 w-8 animate-spin text-primary" />
                       </div>
-                      <div className="space-y-2">
-                        <Label>CVC</Label>
-                        <Input placeholder="123" />
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                      <Lock className="h-4 w-4" />
-                      <span>Your payment info is secure and encrypted</span>
-                    </div>
+                    )}
                   </CardContent>
                 </Card>
 
-                {/* Terms */}
+                {/* Terms & Info */}
                 <Card>
                   <CardContent className="pt-6 space-y-4">
-                    <div className="flex items-start gap-3">
-                      <Checkbox
-                        id="terms"
-                        checked={agreeTerms}
-                        onCheckedChange={(checked) => setAgreeTerms(!!checked)}
-                      />
-                      <label htmlFor="terms" className="text-sm">
-                        I agree to the{" "}
-                        <Link href="/terms" className="text-primary hover:underline">
-                          Terms of Service
-                        </Link>{" "}
-                        and{" "}
-                        <Link href="/cancellation" className="text-primary hover:underline">
-                          Cancellation Policy
-                        </Link>
-                      </label>
-                    </div>
+                    <p className="text-sm text-muted-foreground">
+                      By completing this payment, you agree to our{" "}
+                      <Link href="/terms" className="text-primary hover:underline">
+                        Terms of Service
+                      </Link>{" "}
+                      and{" "}
+                      <Link href="/cancellation" className="text-primary hover:underline">
+                        Cancellation Policy
+                      </Link>.
+                    </p>
                     {tour.requires_waiver && (
-                      <div className="flex items-start gap-3">
-                        <Checkbox
-                          id="waiver"
-                          checked={agreeWaiver}
-                          onCheckedChange={(checked) => setAgreeWaiver(!!checked)}
-                        />
-                        <label htmlFor="waiver" className="text-sm">
-                          <Shield className="inline h-4 w-4 mr-1 text-primary" />
-                          I understand that all guests must sign a{" "}
-                          <span className="text-primary">liability waiver</span> before the tour.
-                          A link will be sent to each guest&apos;s email.
-                        </label>
-                      </div>
+                      <p className="text-sm text-muted-foreground flex items-start gap-2">
+                        <Shield className="h-4 w-4 mt-0.5 text-primary flex-shrink-0" />
+                        All guests will receive a liability waiver to sign before the tour.
+                      </p>
                     )}
                   </CardContent>
                 </Card>
 
-                <div className="flex gap-4">
-                  <Button
-                    variant="outline"
-                    className="flex-1 h-12"
-                    onClick={() => setStep(1)}
-                  >
-                    Back
-                  </Button>
-                  <Button
-                    className="flex-1 h-12 gradient-primary border-0 shadow-lg shadow-primary/25"
-                    onClick={handleSubmit}
-                    disabled={!isStep2Valid || isProcessing}
-                  >
-                    {isProcessing ? (
-                      <>
-                        <div className="h-4 w-4 border-2 border-white/30 border-t-white rounded-full animate-spin mr-2" />
-                        Processing...
-                      </>
-                    ) : (
-                      <>
-                        <Lock className="h-4 w-4 mr-2" />
-                        Pay ${totalPrice}
-                      </>
-                    )}
-                  </Button>
-                </div>
+                {error && (
+                  <Card className="border-destructive">
+                    <CardContent className="pt-6">
+                      <p className="text-sm text-destructive flex items-center gap-2">
+                        <AlertCircle className="h-4 w-4" />
+                        {error}
+                      </p>
+                    </CardContent>
+                  </Card>
+                )}
+
+                <Button
+                  variant="outline"
+                  className="w-full h-12"
+                  onClick={() => {
+                    setStep(1);
+                    setClientSecret(null);
+                    setError(null);
+                  }}
+                >
+                  <ChevronLeft className="h-4 w-4 mr-2" />
+                  Back to Guest Details
+                </Button>
               </>
             )}
           </div>

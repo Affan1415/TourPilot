@@ -1,0 +1,1171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TourPilot UI Design Plan</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+          },
+          colors: {
+            primary: {
+              50: '#eff6ff',
+              100: '#dbeafe',
+              500: '#3b82f6',
+              600: '#2563eb',
+              700: '#1d4ed8',
+            },
+            sidebar: '#0f172a',
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    body { font-family: 'Inter', sans-serif; }
+    .gradient-primary { background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%); }
+    .gradient-success { background: linear-gradient(135deg, #10b981 0%, #059669 100%); }
+    .gradient-warning { background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); }
+    .glass-card { background: rgba(255, 255, 255, 0.8); backdrop-filter: blur(10px); }
+    .card-hover { transition: all 0.2s ease; }
+    .card-hover:hover { transform: translateY(-2px); box-shadow: 0 10px 40px -10px rgba(0,0,0,0.15); }
+    .design-option { border: 3px solid transparent; cursor: pointer; transition: all 0.2s; }
+    .design-option:hover { border-color: #3b82f6; }
+    .design-option.selected { border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.3); }
+    .section-divider { height: 1px; background: linear-gradient(to right, transparent, #e5e7eb, transparent); }
+  </style>
+</head>
+<body class="bg-gray-100 min-h-screen">
+
+  <!-- Header -->
+  <header class="bg-white border-b sticky top-0 z-50">
+    <div class="max-w-7xl mx-auto px-6 py-4">
+      <div class="flex items-center justify-between">
+        <div>
+          <h1 class="text-2xl font-bold text-gray-900">TourPilot UI Design Plan</h1>
+          <p class="text-gray-500 text-sm mt-1">Select your preferred design options for each section</p>
+        </div>
+        <div class="flex gap-3">
+          <span class="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-sm font-medium">Admin Panel</span>
+          <span class="px-3 py-1 bg-purple-100 text-purple-700 rounded-full text-sm font-medium">Dashboard</span>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main class="max-w-7xl mx-auto px-6 py-8 space-y-12">
+
+    <!-- ============================================ -->
+    <!-- SECTION 1: SIDEBAR NAVIGATION STYLES -->
+    <!-- ============================================ -->
+    <section>
+      <div class="flex items-center gap-3 mb-6">
+        <span class="flex items-center justify-center w-10 h-10 rounded-xl bg-blue-500 text-white font-bold">1</span>
+        <div>
+          <h2 class="text-xl font-bold text-gray-900">Sidebar Navigation</h2>
+          <p class="text-gray-500 text-sm">Choose your preferred sidebar style</p>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+        <!-- Option A: Current Dark Sidebar -->
+        <div class="design-option rounded-2xl bg-white p-4 shadow-sm" data-option="sidebar-a">
+          <div class="flex items-center justify-between mb-3">
+            <span class="text-sm font-semibold text-gray-900">A. Dark Sidebar (Current)</span>
+            <span class="px-2 py-0.5 bg-green-100 text-green-700 text-xs rounded-full">Active</span>
+          </div>
+          <div class="rounded-xl overflow-hidden border shadow-sm">
+            <div class="flex h-64">
+              <div class="w-48 bg-slate-900 p-3 space-y-1">
+                <div class="flex items-center gap-2 px-3 py-2 text-white text-sm">
+                  <div class="w-7 h-7 rounded-lg bg-blue-500 flex items-center justify-center">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                  </div>
+                  <span class="font-bold">TourPilot</span>
+                </div>
+                <div class="px-3 py-2 bg-blue-600 rounded-lg text-white text-xs flex items-center gap-2">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6z"></path></svg>
+                  Dashboard
+                </div>
+                <div class="px-3 py-2 text-slate-400 text-xs flex items-center gap-2 hover:bg-slate-800 rounded-lg">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                  Calendar
+                </div>
+                <div class="px-3 py-2 text-slate-400 text-xs flex items-center gap-2 hover:bg-slate-800 rounded-lg">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path></svg>
+                  Bookings
+                </div>
+                <div class="px-3 py-2 text-slate-400 text-xs flex items-center gap-2 hover:bg-slate-800 rounded-lg">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z"></path></svg>
+                  Customers
+                </div>
+              </div>
+              <div class="flex-1 bg-gray-100 p-3">
+                <div class="h-full bg-white rounded-lg border shadow-sm"></div>
+              </div>
+            </div>
+          </div>
+          <p class="text-xs text-gray-500 mt-3">Classic dark sidebar with high contrast. Professional and clean.</p>
+        </div>
+
+        <!-- Option B: Light Sidebar with Border -->
+        <div class="design-option rounded-2xl bg-white p-4 shadow-sm" data-option="sidebar-b">
+          <div class="flex items-center justify-between mb-3">
+            <span class="text-sm font-semibold text-gray-900">B. Light Sidebar</span>
+            <span class="px-2 py-0.5 bg-gray-100 text-gray-600 text-xs rounded-full">Modern</span>
+          </div>
+          <div class="rounded-xl overflow-hidden border shadow-sm">
+            <div class="flex h-64">
+              <div class="w-48 bg-white border-r p-3 space-y-1">
+                <div class="flex items-center gap-2 px-3 py-2 text-gray-900 text-sm">
+                  <div class="w-7 h-7 rounded-lg gradient-primary flex items-center justify-center text-white">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                  </div>
+                  <span class="font-bold">TourPilot</span>
+                </div>
+                <div class="px-3 py-2 bg-blue-50 text-blue-600 rounded-lg text-xs flex items-center gap-2 font-medium">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6z"></path></svg>
+                  Dashboard
+                </div>
+                <div class="px-3 py-2 text-gray-500 text-xs flex items-center gap-2 hover:bg-gray-50 rounded-lg">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                  Calendar
+                </div>
+                <div class="px-3 py-2 text-gray-500 text-xs flex items-center gap-2 hover:bg-gray-50 rounded-lg">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path></svg>
+                  Bookings
+                </div>
+                <div class="px-3 py-2 text-gray-500 text-xs flex items-center gap-2 hover:bg-gray-50 rounded-lg">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z"></path></svg>
+                  Customers
+                </div>
+              </div>
+              <div class="flex-1 bg-gray-50 p-3">
+                <div class="h-full bg-white rounded-lg border shadow-sm"></div>
+              </div>
+            </div>
+          </div>
+          <p class="text-xs text-gray-500 mt-3">Clean light sidebar. Feels more open and airy.</p>
+        </div>
+
+        <!-- Option C: Gradient Sidebar -->
+        <div class="design-option rounded-2xl bg-white p-4 shadow-sm" data-option="sidebar-c">
+          <div class="flex items-center justify-between mb-3">
+            <span class="text-sm font-semibold text-gray-900">C. Gradient Sidebar</span>
+            <span class="px-2 py-0.5 bg-purple-100 text-purple-700 text-xs rounded-full">Premium</span>
+          </div>
+          <div class="rounded-xl overflow-hidden border shadow-sm">
+            <div class="flex h-64">
+              <div class="w-48 bg-gradient-to-b from-blue-600 to-purple-700 p-3 space-y-1">
+                <div class="flex items-center gap-2 px-3 py-2 text-white text-sm">
+                  <div class="w-7 h-7 rounded-lg bg-white/20 flex items-center justify-center">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                  </div>
+                  <span class="font-bold">TourPilot</span>
+                </div>
+                <div class="px-3 py-2 bg-white/20 rounded-lg text-white text-xs flex items-center gap-2">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6z"></path></svg>
+                  Dashboard
+                </div>
+                <div class="px-3 py-2 text-white/70 text-xs flex items-center gap-2 hover:bg-white/10 rounded-lg">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                  Calendar
+                </div>
+                <div class="px-3 py-2 text-white/70 text-xs flex items-center gap-2 hover:bg-white/10 rounded-lg">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path></svg>
+                  Bookings
+                </div>
+                <div class="px-3 py-2 text-white/70 text-xs flex items-center gap-2 hover:bg-white/10 rounded-lg">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z"></path></svg>
+                  Customers
+                </div>
+              </div>
+              <div class="flex-1 bg-gray-50 p-3">
+                <div class="h-full bg-white rounded-lg border shadow-sm"></div>
+              </div>
+            </div>
+          </div>
+          <p class="text-xs text-gray-500 mt-3">Bold gradient sidebar. Makes a strong brand statement.</p>
+        </div>
+      </div>
+    </section>
+
+    <div class="section-divider"></div>
+
+    <!-- ============================================ -->
+    <!-- SECTION 2: STATS CARDS STYLES -->
+    <!-- ============================================ -->
+    <section>
+      <div class="flex items-center gap-3 mb-6">
+        <span class="flex items-center justify-center w-10 h-10 rounded-xl bg-blue-500 text-white font-bold">2</span>
+        <div>
+          <h2 class="text-xl font-bold text-gray-900">Stats Cards</h2>
+          <p class="text-gray-500 text-sm">Dashboard statistics display style</p>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+
+        <!-- Option A: Simple Cards with Icons -->
+        <div class="design-option rounded-2xl bg-white p-4 shadow-sm" data-option="stats-a">
+          <div class="flex items-center justify-between mb-3">
+            <span class="text-sm font-semibold text-gray-900">A. Classic with Icon Background</span>
+            <span class="px-2 py-0.5 bg-green-100 text-green-700 text-xs rounded-full">Current</span>
+          </div>
+          <div class="rounded-xl overflow-hidden border bg-gray-50 p-4">
+            <div class="grid grid-cols-4 gap-3">
+              <div class="bg-white p-3 rounded-xl border">
+                <div class="flex items-center gap-3">
+                  <div class="w-10 h-10 rounded-xl bg-blue-100 flex items-center justify-center">
+                    <svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+                  </div>
+                  <div>
+                    <p class="text-lg font-bold text-gray-900">248</p>
+                    <p class="text-xs text-gray-500">Guests Today</p>
+                  </div>
+                </div>
+              </div>
+              <div class="bg-white p-3 rounded-xl border">
+                <div class="flex items-center gap-3">
+                  <div class="w-10 h-10 rounded-xl bg-green-100 flex items-center justify-center">
+                    <svg class="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                  </div>
+                  <div>
+                    <p class="text-lg font-bold text-gray-900">$12,450</p>
+                    <p class="text-xs text-gray-500">Revenue</p>
+                  </div>
+                </div>
+              </div>
+              <div class="bg-white p-3 rounded-xl border">
+                <div class="flex items-center gap-3">
+                  <div class="w-10 h-10 rounded-xl bg-purple-100 flex items-center justify-center">
+                    <svg class="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path></svg>
+                  </div>
+                  <div>
+                    <p class="text-lg font-bold text-gray-900">18</p>
+                    <p class="text-xs text-gray-500">Tours Today</p>
+                  </div>
+                </div>
+              </div>
+              <div class="bg-white p-3 rounded-xl border">
+                <div class="flex items-center gap-3">
+                  <div class="w-10 h-10 rounded-xl bg-orange-100 flex items-center justify-center">
+                    <svg class="w-5 h-5 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                  </div>
+                  <div>
+                    <p class="text-lg font-bold text-gray-900">4</p>
+                    <p class="text-xs text-gray-500">Pending</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Option B: Gradient Cards -->
+        <div class="design-option rounded-2xl bg-white p-4 shadow-sm" data-option="stats-b">
+          <div class="flex items-center justify-between mb-3">
+            <span class="text-sm font-semibold text-gray-900">B. Gradient Cards</span>
+            <span class="px-2 py-0.5 bg-purple-100 text-purple-700 text-xs rounded-full">Bold</span>
+          </div>
+          <div class="rounded-xl overflow-hidden border bg-gray-50 p-4">
+            <div class="grid grid-cols-4 gap-3">
+              <div class="gradient-primary p-3 rounded-xl text-white">
+                <div class="flex items-center justify-between mb-2">
+                  <svg class="w-5 h-5 opacity-80" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+                  <span class="text-xs bg-white/20 px-2 py-0.5 rounded">+12%</span>
+                </div>
+                <p class="text-xl font-bold">248</p>
+                <p class="text-xs opacity-80">Guests Today</p>
+              </div>
+              <div class="gradient-success p-3 rounded-xl text-white">
+                <div class="flex items-center justify-between mb-2">
+                  <svg class="w-5 h-5 opacity-80" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                  <span class="text-xs bg-white/20 px-2 py-0.5 rounded">+8%</span>
+                </div>
+                <p class="text-xl font-bold">$12,450</p>
+                <p class="text-xs opacity-80">Revenue</p>
+              </div>
+              <div class="bg-gradient-to-br from-purple-500 to-pink-500 p-3 rounded-xl text-white">
+                <div class="flex items-center justify-between mb-2">
+                  <svg class="w-5 h-5 opacity-80" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path></svg>
+                  <span class="text-xs bg-white/20 px-2 py-0.5 rounded">+5</span>
+                </div>
+                <p class="text-xl font-bold">18</p>
+                <p class="text-xs opacity-80">Tours Today</p>
+              </div>
+              <div class="gradient-warning p-3 rounded-xl text-white">
+                <div class="flex items-center justify-between mb-2">
+                  <svg class="w-5 h-5 opacity-80" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                  <span class="text-xs bg-white/20 px-2 py-0.5 rounded">-2</span>
+                </div>
+                <p class="text-xl font-bold">4</p>
+                <p class="text-xs opacity-80">Pending</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Option C: Minimal with Accent Bar -->
+        <div class="design-option rounded-2xl bg-white p-4 shadow-sm" data-option="stats-c">
+          <div class="flex items-center justify-between mb-3">
+            <span class="text-sm font-semibold text-gray-900">C. Minimal with Accent</span>
+            <span class="px-2 py-0.5 bg-gray-100 text-gray-600 text-xs rounded-full">Clean</span>
+          </div>
+          <div class="rounded-xl overflow-hidden border bg-gray-50 p-4">
+            <div class="grid grid-cols-4 gap-3">
+              <div class="bg-white p-3 rounded-xl border-l-4 border-l-blue-500 shadow-sm">
+                <p class="text-xs text-gray-500 uppercase tracking-wide">Guests</p>
+                <p class="text-xl font-bold text-gray-900 mt-1">248</p>
+                <p class="text-xs text-green-600 mt-1">+12% from yesterday</p>
+              </div>
+              <div class="bg-white p-3 rounded-xl border-l-4 border-l-green-500 shadow-sm">
+                <p class="text-xs text-gray-500 uppercase tracking-wide">Revenue</p>
+                <p class="text-xl font-bold text-gray-900 mt-1">$12,450</p>
+                <p class="text-xs text-green-600 mt-1">+8% from yesterday</p>
+              </div>
+              <div class="bg-white p-3 rounded-xl border-l-4 border-l-purple-500 shadow-sm">
+                <p class="text-xs text-gray-500 uppercase tracking-wide">Tours</p>
+                <p class="text-xl font-bold text-gray-900 mt-1">18</p>
+                <p class="text-xs text-green-600 mt-1">+5 more than avg</p>
+              </div>
+              <div class="bg-white p-3 rounded-xl border-l-4 border-l-orange-500 shadow-sm">
+                <p class="text-xs text-gray-500 uppercase tracking-wide">Pending</p>
+                <p class="text-xl font-bold text-gray-900 mt-1">4</p>
+                <p class="text-xs text-orange-600 mt-1">Needs attention</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Option D: Large Number Focus -->
+        <div class="design-option rounded-2xl bg-white p-4 shadow-sm" data-option="stats-d">
+          <div class="flex items-center justify-between mb-3">
+            <span class="text-sm font-semibold text-gray-900">D. Big Numbers</span>
+            <span class="px-2 py-0.5 bg-blue-100 text-blue-600 text-xs rounded-full">Impactful</span>
+          </div>
+          <div class="rounded-xl overflow-hidden border bg-gray-50 p-4">
+            <div class="grid grid-cols-4 gap-3">
+              <div class="bg-white p-3 rounded-xl border text-center">
+                <p class="text-3xl font-bold text-blue-600">248</p>
+                <p class="text-xs text-gray-500 mt-1">Guests Today</p>
+                <div class="flex items-center justify-center gap-1 mt-2">
+                  <svg class="w-3 h-3 text-green-500" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M5.293 9.707a1 1 0 010-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 01-1.414 1.414L11 7.414V15a1 1 0 11-2 0V7.414L6.707 9.707a1 1 0 01-1.414 0z" clip-rule="evenodd"></path></svg>
+                  <span class="text-xs text-green-500">12%</span>
+                </div>
+              </div>
+              <div class="bg-white p-3 rounded-xl border text-center">
+                <p class="text-3xl font-bold text-green-600">$12K</p>
+                <p class="text-xs text-gray-500 mt-1">Revenue</p>
+                <div class="flex items-center justify-center gap-1 mt-2">
+                  <svg class="w-3 h-3 text-green-500" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M5.293 9.707a1 1 0 010-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 01-1.414 1.414L11 7.414V15a1 1 0 11-2 0V7.414L6.707 9.707a1 1 0 01-1.414 0z" clip-rule="evenodd"></path></svg>
+                  <span class="text-xs text-green-500">8%</span>
+                </div>
+              </div>
+              <div class="bg-white p-3 rounded-xl border text-center">
+                <p class="text-3xl font-bold text-purple-600">18</p>
+                <p class="text-xs text-gray-500 mt-1">Tours</p>
+                <div class="flex items-center justify-center gap-1 mt-2">
+                  <svg class="w-3 h-3 text-green-500" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M5.293 9.707a1 1 0 010-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 01-1.414 1.414L11 7.414V15a1 1 0 11-2 0V7.414L6.707 9.707a1 1 0 01-1.414 0z" clip-rule="evenodd"></path></svg>
+                  <span class="text-xs text-green-500">5</span>
+                </div>
+              </div>
+              <div class="bg-white p-3 rounded-xl border text-center">
+                <p class="text-3xl font-bold text-orange-600">4</p>
+                <p class="text-xs text-gray-500 mt-1">Pending</p>
+                <div class="flex items-center justify-center gap-1 mt-2">
+                  <svg class="w-3 h-3 text-orange-500" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"></path></svg>
+                  <span class="text-xs text-orange-500">Action</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <div class="section-divider"></div>
+
+    <!-- ============================================ -->
+    <!-- SECTION 3: TABLE STYLES -->
+    <!-- ============================================ -->
+    <section>
+      <div class="flex items-center gap-3 mb-6">
+        <span class="flex items-center justify-center w-10 h-10 rounded-xl bg-blue-500 text-white font-bold">3</span>
+        <div>
+          <h2 class="text-xl font-bold text-gray-900">Data Tables</h2>
+          <p class="text-gray-500 text-sm">Bookings, customers, and other list views</p>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+
+        <!-- Option A: Simple Striped -->
+        <div class="design-option rounded-2xl bg-white p-4 shadow-sm" data-option="table-a">
+          <div class="flex items-center justify-between mb-3">
+            <span class="text-sm font-semibold text-gray-900">A. Clean with Hover</span>
+            <span class="px-2 py-0.5 bg-green-100 text-green-700 text-xs rounded-full">Current</span>
+          </div>
+          <div class="rounded-xl overflow-hidden border">
+            <table class="w-full text-xs">
+              <thead class="bg-gray-50">
+                <tr>
+                  <th class="px-3 py-2 text-left font-medium text-gray-500">Booking</th>
+                  <th class="px-3 py-2 text-left font-medium text-gray-500">Customer</th>
+                  <th class="px-3 py-2 text-left font-medium text-gray-500">Tour</th>
+                  <th class="px-3 py-2 text-left font-medium text-gray-500">Status</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-gray-100">
+                <tr class="hover:bg-gray-50">
+                  <td class="px-3 py-2 font-mono text-gray-900">#BK24001</td>
+                  <td class="px-3 py-2 text-gray-600">John Smith</td>
+                  <td class="px-3 py-2 text-gray-600">Sunset Cruise</td>
+                  <td class="px-3 py-2"><span class="px-2 py-0.5 bg-green-100 text-green-700 rounded-full text-xs">Confirmed</span></td>
+                </tr>
+                <tr class="hover:bg-gray-50">
+                  <td class="px-3 py-2 font-mono text-gray-900">#BK24002</td>
+                  <td class="px-3 py-2 text-gray-600">Sarah Wilson</td>
+                  <td class="px-3 py-2 text-gray-600">Dolphin Watch</td>
+                  <td class="px-3 py-2"><span class="px-2 py-0.5 bg-yellow-100 text-yellow-700 rounded-full text-xs">Pending</span></td>
+                </tr>
+                <tr class="hover:bg-gray-50">
+                  <td class="px-3 py-2 font-mono text-gray-900">#BK24003</td>
+                  <td class="px-3 py-2 text-gray-600">Mike Johnson</td>
+                  <td class="px-3 py-2 text-gray-600">Island Hop</td>
+                  <td class="px-3 py-2"><span class="px-2 py-0.5 bg-blue-100 text-blue-700 rounded-full text-xs">Checked In</span></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Option B: Card-based List -->
+        <div class="design-option rounded-2xl bg-white p-4 shadow-sm" data-option="table-b">
+          <div class="flex items-center justify-between mb-3">
+            <span class="text-sm font-semibold text-gray-900">B. Card-based List</span>
+            <span class="px-2 py-0.5 bg-purple-100 text-purple-700 text-xs rounded-full">Modern</span>
+          </div>
+          <div class="rounded-xl overflow-hidden border bg-gray-50 p-3 space-y-2">
+            <div class="bg-white p-3 rounded-lg border flex items-center justify-between hover:shadow-md transition-shadow">
+              <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-medium">JS</div>
+                <div>
+                  <p class="font-medium text-gray-900 text-sm">John Smith</p>
+                  <p class="text-xs text-gray-500">Sunset Cruise • 4 guests</p>
+                </div>
+              </div>
+              <div class="text-right">
+                <span class="px-2 py-0.5 bg-green-100 text-green-700 rounded-full text-xs">Confirmed</span>
+                <p class="text-xs text-gray-500 mt-1">#BK24001</p>
+              </div>
+            </div>
+            <div class="bg-white p-3 rounded-lg border flex items-center justify-between hover:shadow-md transition-shadow">
+              <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-full bg-purple-100 flex items-center justify-center text-purple-600 font-medium">SW</div>
+                <div>
+                  <p class="font-medium text-gray-900 text-sm">Sarah Wilson</p>
+                  <p class="text-xs text-gray-500">Dolphin Watch • 2 guests</p>
+                </div>
+              </div>
+              <div class="text-right">
+                <span class="px-2 py-0.5 bg-yellow-100 text-yellow-700 rounded-full text-xs">Pending</span>
+                <p class="text-xs text-gray-500 mt-1">#BK24002</p>
+              </div>
+            </div>
+            <div class="bg-white p-3 rounded-lg border flex items-center justify-between hover:shadow-md transition-shadow">
+              <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center text-green-600 font-medium">MJ</div>
+                <div>
+                  <p class="font-medium text-gray-900 text-sm">Mike Johnson</p>
+                  <p class="text-xs text-gray-500">Island Hop • 6 guests</p>
+                </div>
+              </div>
+              <div class="text-right">
+                <span class="px-2 py-0.5 bg-blue-100 text-blue-700 rounded-full text-xs">Checked In</span>
+                <p class="text-xs text-gray-500 mt-1">#BK24003</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Option C: Compact with Actions -->
+        <div class="design-option rounded-2xl bg-white p-4 shadow-sm" data-option="table-c">
+          <div class="flex items-center justify-between mb-3">
+            <span class="text-sm font-semibold text-gray-900">C. Compact with Actions</span>
+            <span class="px-2 py-0.5 bg-gray-100 text-gray-600 text-xs rounded-full">Efficient</span>
+          </div>
+          <div class="rounded-xl overflow-hidden border">
+            <table class="w-full text-xs">
+              <thead class="bg-slate-800 text-white">
+                <tr>
+                  <th class="px-3 py-2 text-left font-medium">Booking</th>
+                  <th class="px-3 py-2 text-left font-medium">Customer</th>
+                  <th class="px-3 py-2 text-left font-medium">Status</th>
+                  <th class="px-3 py-2 text-right font-medium">Actions</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-gray-100 bg-white">
+                <tr class="hover:bg-blue-50">
+                  <td class="px-3 py-2">
+                    <p class="font-mono text-gray-900">#BK24001</p>
+                    <p class="text-gray-500">Sunset Cruise</p>
+                  </td>
+                  <td class="px-3 py-2">
+                    <p class="text-gray-900">John Smith</p>
+                    <p class="text-gray-500">4 guests</p>
+                  </td>
+                  <td class="px-3 py-2">
+                    <span class="inline-flex items-center gap-1">
+                      <span class="w-2 h-2 rounded-full bg-green-500"></span>
+                      <span class="text-gray-600">Confirmed</span>
+                    </span>
+                  </td>
+                  <td class="px-3 py-2 text-right">
+                    <button class="px-2 py-1 text-blue-600 hover:bg-blue-100 rounded">View</button>
+                    <button class="px-2 py-1 text-gray-600 hover:bg-gray-100 rounded">Edit</button>
+                  </td>
+                </tr>
+                <tr class="hover:bg-blue-50">
+                  <td class="px-3 py-2">
+                    <p class="font-mono text-gray-900">#BK24002</p>
+                    <p class="text-gray-500">Dolphin Watch</p>
+                  </td>
+                  <td class="px-3 py-2">
+                    <p class="text-gray-900">Sarah Wilson</p>
+                    <p class="text-gray-500">2 guests</p>
+                  </td>
+                  <td class="px-3 py-2">
+                    <span class="inline-flex items-center gap-1">
+                      <span class="w-2 h-2 rounded-full bg-yellow-500"></span>
+                      <span class="text-gray-600">Pending</span>
+                    </span>
+                  </td>
+                  <td class="px-3 py-2 text-right">
+                    <button class="px-2 py-1 text-blue-600 hover:bg-blue-100 rounded">View</button>
+                    <button class="px-2 py-1 text-gray-600 hover:bg-gray-100 rounded">Edit</button>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Option D: Timeline Style -->
+        <div class="design-option rounded-2xl bg-white p-4 shadow-sm" data-option="table-d">
+          <div class="flex items-center justify-between mb-3">
+            <span class="text-sm font-semibold text-gray-900">D. Timeline Style</span>
+            <span class="px-2 py-0.5 bg-blue-100 text-blue-600 text-xs rounded-full">Visual</span>
+          </div>
+          <div class="rounded-xl overflow-hidden border bg-white p-4">
+            <div class="space-y-4">
+              <div class="flex gap-4">
+                <div class="flex flex-col items-center">
+                  <div class="w-10 h-10 rounded-full bg-green-500 flex items-center justify-center text-white">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                  </div>
+                  <div class="w-0.5 h-full bg-gray-200 mt-2"></div>
+                </div>
+                <div class="flex-1 pb-4">
+                  <div class="flex items-center justify-between">
+                    <p class="font-medium text-gray-900 text-sm">John Smith - Sunset Cruise</p>
+                    <span class="text-xs text-gray-500">10:30 AM</span>
+                  </div>
+                  <p class="text-xs text-gray-500 mt-1">4 guests • #BK24001 • Confirmed</p>
+                </div>
+              </div>
+              <div class="flex gap-4">
+                <div class="flex flex-col items-center">
+                  <div class="w-10 h-10 rounded-full bg-yellow-500 flex items-center justify-center text-white">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                  </div>
+                  <div class="w-0.5 h-full bg-gray-200 mt-2"></div>
+                </div>
+                <div class="flex-1 pb-4">
+                  <div class="flex items-center justify-between">
+                    <p class="font-medium text-gray-900 text-sm">Sarah Wilson - Dolphin Watch</p>
+                    <span class="text-xs text-gray-500">2:00 PM</span>
+                  </div>
+                  <p class="text-xs text-gray-500 mt-1">2 guests • #BK24002 • Pending Payment</p>
+                </div>
+              </div>
+              <div class="flex gap-4">
+                <div class="flex flex-col items-center">
+                  <div class="w-10 h-10 rounded-full bg-blue-500 flex items-center justify-center text-white">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                  </div>
+                </div>
+                <div class="flex-1">
+                  <div class="flex items-center justify-between">
+                    <p class="font-medium text-gray-900 text-sm">Mike Johnson - Island Hop</p>
+                    <span class="text-xs text-gray-500">4:30 PM</span>
+                  </div>
+                  <p class="text-xs text-gray-500 mt-1">6 guests • #BK24003 • Checked In</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <div class="section-divider"></div>
+
+    <!-- ============================================ -->
+    <!-- SECTION 4: BUTTON STYLES -->
+    <!-- ============================================ -->
+    <section>
+      <div class="flex items-center gap-3 mb-6">
+        <span class="flex items-center justify-center w-10 h-10 rounded-xl bg-blue-500 text-white font-bold">4</span>
+        <div>
+          <h2 class="text-xl font-bold text-gray-900">Buttons & Actions</h2>
+          <p class="text-gray-500 text-sm">Primary and secondary action styles</p>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+        <!-- Option A: Gradient Buttons -->
+        <div class="design-option rounded-2xl bg-white p-4 shadow-sm" data-option="button-a">
+          <div class="flex items-center justify-between mb-3">
+            <span class="text-sm font-semibold text-gray-900">A. Gradient Style</span>
+            <span class="px-2 py-0.5 bg-green-100 text-green-700 text-xs rounded-full">Current</span>
+          </div>
+          <div class="rounded-xl overflow-hidden border bg-gray-50 p-4 space-y-3">
+            <button class="w-full gradient-primary text-white px-4 py-2 rounded-lg font-medium text-sm hover:opacity-90 transition flex items-center justify-center gap-2">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+              New Booking
+            </button>
+            <button class="w-full bg-white border border-gray-200 text-gray-700 px-4 py-2 rounded-lg font-medium text-sm hover:bg-gray-50 transition flex items-center justify-center gap-2">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path></svg>
+              Export Data
+            </button>
+            <div class="flex gap-2">
+              <button class="flex-1 bg-green-500 text-white px-4 py-2 rounded-lg font-medium text-sm hover:bg-green-600 transition">Confirm</button>
+              <button class="flex-1 bg-red-500 text-white px-4 py-2 rounded-lg font-medium text-sm hover:bg-red-600 transition">Cancel</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Option B: Flat Modern -->
+        <div class="design-option rounded-2xl bg-white p-4 shadow-sm" data-option="button-b">
+          <div class="flex items-center justify-between mb-3">
+            <span class="text-sm font-semibold text-gray-900">B. Flat Modern</span>
+            <span class="px-2 py-0.5 bg-gray-100 text-gray-600 text-xs rounded-full">Clean</span>
+          </div>
+          <div class="rounded-xl overflow-hidden border bg-gray-50 p-4 space-y-3">
+            <button class="w-full bg-blue-600 text-white px-4 py-2 rounded-lg font-medium text-sm hover:bg-blue-700 transition flex items-center justify-center gap-2">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+              New Booking
+            </button>
+            <button class="w-full bg-gray-100 text-gray-700 px-4 py-2 rounded-lg font-medium text-sm hover:bg-gray-200 transition flex items-center justify-center gap-2">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path></svg>
+              Export Data
+            </button>
+            <div class="flex gap-2">
+              <button class="flex-1 bg-green-600 text-white px-4 py-2 rounded-lg font-medium text-sm hover:bg-green-700 transition">Confirm</button>
+              <button class="flex-1 bg-gray-200 text-gray-700 px-4 py-2 rounded-lg font-medium text-sm hover:bg-gray-300 transition">Cancel</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Option C: Pill Buttons -->
+        <div class="design-option rounded-2xl bg-white p-4 shadow-sm" data-option="button-c">
+          <div class="flex items-center justify-between mb-3">
+            <span class="text-sm font-semibold text-gray-900">C. Pill Shape</span>
+            <span class="px-2 py-0.5 bg-purple-100 text-purple-700 text-xs rounded-full">Soft</span>
+          </div>
+          <div class="rounded-xl overflow-hidden border bg-gray-50 p-4 space-y-3">
+            <button class="w-full bg-blue-600 text-white px-4 py-2 rounded-full font-medium text-sm hover:bg-blue-700 transition flex items-center justify-center gap-2 shadow-lg shadow-blue-200">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+              New Booking
+            </button>
+            <button class="w-full bg-white border border-gray-200 text-gray-700 px-4 py-2 rounded-full font-medium text-sm hover:bg-gray-50 transition flex items-center justify-center gap-2">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path></svg>
+              Export Data
+            </button>
+            <div class="flex gap-2">
+              <button class="flex-1 bg-green-500 text-white px-4 py-2 rounded-full font-medium text-sm hover:bg-green-600 transition shadow-lg shadow-green-200">Confirm</button>
+              <button class="flex-1 bg-white border border-red-200 text-red-600 px-4 py-2 rounded-full font-medium text-sm hover:bg-red-50 transition">Cancel</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <div class="section-divider"></div>
+
+    <!-- ============================================ -->
+    <!-- SECTION 5: CALENDAR STYLES -->
+    <!-- ============================================ -->
+    <section>
+      <div class="flex items-center gap-3 mb-6">
+        <span class="flex items-center justify-center w-10 h-10 rounded-xl bg-blue-500 text-white font-bold">5</span>
+        <div>
+          <h2 class="text-xl font-bold text-gray-900">Calendar View</h2>
+          <p class="text-gray-500 text-sm">Tour availability calendar display</p>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+
+        <!-- Option A: Grid Calendar -->
+        <div class="design-option rounded-2xl bg-white p-4 shadow-sm" data-option="calendar-a">
+          <div class="flex items-center justify-between mb-3">
+            <span class="text-sm font-semibold text-gray-900">A. Grid Calendar</span>
+            <span class="px-2 py-0.5 bg-green-100 text-green-700 text-xs rounded-full">Current</span>
+          </div>
+          <div class="rounded-xl overflow-hidden border bg-white p-3">
+            <div class="flex items-center justify-between mb-3">
+              <button class="p-1 hover:bg-gray-100 rounded"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg></button>
+              <span class="font-semibold text-sm">March 2024</span>
+              <button class="p-1 hover:bg-gray-100 rounded"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg></button>
+            </div>
+            <div class="grid grid-cols-7 gap-1 text-center text-xs">
+              <div class="text-gray-400 py-1">Su</div>
+              <div class="text-gray-400 py-1">Mo</div>
+              <div class="text-gray-400 py-1">Tu</div>
+              <div class="text-gray-400 py-1">We</div>
+              <div class="text-gray-400 py-1">Th</div>
+              <div class="text-gray-400 py-1">Fr</div>
+              <div class="text-gray-400 py-1">Sa</div>
+              <div class="py-1 text-gray-300">25</div>
+              <div class="py-1 text-gray-300">26</div>
+              <div class="py-1 text-gray-300">27</div>
+              <div class="py-1 text-gray-300">28</div>
+              <div class="py-1 text-gray-300">29</div>
+              <div class="py-1">1</div>
+              <div class="py-1">2</div>
+              <div class="py-1">3</div>
+              <div class="py-1">4</div>
+              <div class="py-1 rounded-lg bg-blue-100 text-blue-600 font-medium">5</div>
+              <div class="py-1 rounded-lg bg-green-100 text-green-600 font-medium">6</div>
+              <div class="py-1">7</div>
+              <div class="py-1 rounded-lg bg-green-100 text-green-600 font-medium">8</div>
+              <div class="py-1 rounded-lg bg-yellow-100 text-yellow-600 font-medium">9</div>
+              <div class="py-1">10</div>
+              <div class="py-1">11</div>
+              <div class="py-1 rounded-lg bg-blue-500 text-white font-medium">12</div>
+              <div class="py-1 rounded-lg bg-green-100 text-green-600 font-medium">13</div>
+              <div class="py-1">14</div>
+              <div class="py-1">15</div>
+              <div class="py-1">16</div>
+            </div>
+            <div class="flex items-center gap-4 mt-3 text-xs text-gray-500">
+              <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-green-500"></span> Available</span>
+              <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-yellow-500"></span> Limited</span>
+              <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-blue-500"></span> Today</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Option B: List Calendar -->
+        <div class="design-option rounded-2xl bg-white p-4 shadow-sm" data-option="calendar-b">
+          <div class="flex items-center justify-between mb-3">
+            <span class="text-sm font-semibold text-gray-900">B. Agenda Style</span>
+            <span class="px-2 py-0.5 bg-purple-100 text-purple-700 text-xs rounded-full">Detailed</span>
+          </div>
+          <div class="rounded-xl overflow-hidden border bg-white">
+            <div class="bg-blue-600 text-white p-3 flex items-center justify-between">
+              <span class="font-semibold text-sm">Today - March 12</span>
+              <span class="text-xs bg-white/20 px-2 py-0.5 rounded">4 Tours</span>
+            </div>
+            <div class="p-2 space-y-2">
+              <div class="flex items-center gap-3 p-2 bg-green-50 rounded-lg border border-green-100">
+                <div class="text-center">
+                  <p class="text-sm font-bold text-gray-900">9:00</p>
+                  <p class="text-xs text-gray-500">AM</p>
+                </div>
+                <div class="flex-1">
+                  <p class="text-sm font-medium text-gray-900">Sunrise Cruise</p>
+                  <p class="text-xs text-gray-500">8/10 booked • Sea Breeze</p>
+                </div>
+                <span class="px-2 py-0.5 bg-green-500 text-white text-xs rounded-full">Active</span>
+              </div>
+              <div class="flex items-center gap-3 p-2 bg-gray-50 rounded-lg border">
+                <div class="text-center">
+                  <p class="text-sm font-bold text-gray-900">1:00</p>
+                  <p class="text-xs text-gray-500">PM</p>
+                </div>
+                <div class="flex-1">
+                  <p class="text-sm font-medium text-gray-900">Dolphin Watch</p>
+                  <p class="text-xs text-gray-500">12/15 booked • Ocean Spirit</p>
+                </div>
+                <span class="px-2 py-0.5 bg-blue-100 text-blue-600 text-xs rounded-full">Upcoming</span>
+              </div>
+              <div class="flex items-center gap-3 p-2 bg-yellow-50 rounded-lg border border-yellow-100">
+                <div class="text-center">
+                  <p class="text-sm font-bold text-gray-900">5:00</p>
+                  <p class="text-xs text-gray-500">PM</p>
+                </div>
+                <div class="flex-1">
+                  <p class="text-sm font-medium text-gray-900">Sunset Tour</p>
+                  <p class="text-xs text-gray-500">10/10 booked • Wave Runner</p>
+                </div>
+                <span class="px-2 py-0.5 bg-yellow-500 text-white text-xs rounded-full">Full</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <div class="section-divider"></div>
+
+    <!-- ============================================ -->
+    <!-- SECTION 6: FORM STYLES -->
+    <!-- ============================================ -->
+    <section>
+      <div class="flex items-center gap-3 mb-6">
+        <span class="flex items-center justify-center w-10 h-10 rounded-xl bg-blue-500 text-white font-bold">6</span>
+        <div>
+          <h2 class="text-xl font-bold text-gray-900">Forms & Inputs</h2>
+          <p class="text-gray-500 text-sm">Input fields and form layouts</p>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+
+        <!-- Option A: Floating Labels -->
+        <div class="design-option rounded-2xl bg-white p-4 shadow-sm" data-option="form-a">
+          <div class="flex items-center justify-between mb-3">
+            <span class="text-sm font-semibold text-gray-900">A. Standard with Top Labels</span>
+            <span class="px-2 py-0.5 bg-green-100 text-green-700 text-xs rounded-full">Current</span>
+          </div>
+          <div class="rounded-xl overflow-hidden border bg-gray-50 p-4 space-y-3">
+            <div>
+              <label class="block text-xs font-medium text-gray-700 mb-1">Full Name</label>
+              <input type="text" placeholder="Enter customer name" class="w-full px-3 py-2 rounded-lg border bg-white text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none">
+            </div>
+            <div>
+              <label class="block text-xs font-medium text-gray-700 mb-1">Email Address</label>
+              <input type="email" placeholder="customer@example.com" class="w-full px-3 py-2 rounded-lg border bg-white text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none">
+            </div>
+            <div>
+              <label class="block text-xs font-medium text-gray-700 mb-1">Tour Selection</label>
+              <select class="w-full px-3 py-2 rounded-lg border bg-white text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none">
+                <option>Select a tour...</option>
+                <option>Sunset Cruise</option>
+                <option>Dolphin Watch</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <!-- Option B: Material Style -->
+        <div class="design-option rounded-2xl bg-white p-4 shadow-sm" data-option="form-b">
+          <div class="flex items-center justify-between mb-3">
+            <span class="text-sm font-semibold text-gray-900">B. Underline Style</span>
+            <span class="px-2 py-0.5 bg-gray-100 text-gray-600 text-xs rounded-full">Minimal</span>
+          </div>
+          <div class="rounded-xl overflow-hidden border bg-gray-50 p-4 space-y-4">
+            <div class="relative">
+              <input type="text" placeholder=" " class="peer w-full px-0 py-2 border-0 border-b-2 border-gray-300 bg-transparent text-sm focus:ring-0 focus:border-blue-500 outline-none">
+              <label class="absolute left-0 -top-3 text-xs text-blue-500 peer-placeholder-shown:top-2 peer-placeholder-shown:text-sm peer-placeholder-shown:text-gray-400 transition-all">Full Name</label>
+            </div>
+            <div class="relative">
+              <input type="email" placeholder=" " class="peer w-full px-0 py-2 border-0 border-b-2 border-gray-300 bg-transparent text-sm focus:ring-0 focus:border-blue-500 outline-none">
+              <label class="absolute left-0 -top-3 text-xs text-blue-500 peer-placeholder-shown:top-2 peer-placeholder-shown:text-sm peer-placeholder-shown:text-gray-400 transition-all">Email Address</label>
+            </div>
+            <div class="relative">
+              <select class="w-full px-0 py-2 border-0 border-b-2 border-gray-300 bg-transparent text-sm focus:ring-0 focus:border-blue-500 outline-none appearance-none">
+                <option value="" disabled selected>Select a tour...</option>
+                <option>Sunset Cruise</option>
+                <option>Dolphin Watch</option>
+              </select>
+              <label class="absolute left-0 -top-3 text-xs text-blue-500">Tour Selection</label>
+            </div>
+          </div>
+        </div>
+
+        <!-- Option C: Card Inputs -->
+        <div class="design-option rounded-2xl bg-white p-4 shadow-sm" data-option="form-c">
+          <div class="flex items-center justify-between mb-3">
+            <span class="text-sm font-semibold text-gray-900">C. Card Style with Icons</span>
+            <span class="px-2 py-0.5 bg-purple-100 text-purple-700 text-xs rounded-full">Rich</span>
+          </div>
+          <div class="rounded-xl overflow-hidden border bg-gray-50 p-4 space-y-3">
+            <div class="bg-white rounded-xl border p-3">
+              <label class="block text-xs font-medium text-gray-500 mb-1">Full Name</label>
+              <div class="flex items-center gap-2">
+                <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>
+                <input type="text" placeholder="Enter customer name" class="w-full text-sm outline-none">
+              </div>
+            </div>
+            <div class="bg-white rounded-xl border p-3">
+              <label class="block text-xs font-medium text-gray-500 mb-1">Email Address</label>
+              <div class="flex items-center gap-2">
+                <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path></svg>
+                <input type="email" placeholder="customer@example.com" class="w-full text-sm outline-none">
+              </div>
+            </div>
+            <div class="bg-white rounded-xl border p-3">
+              <label class="block text-xs font-medium text-gray-500 mb-1">Tour Selection</label>
+              <div class="flex items-center gap-2">
+                <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                <select class="w-full text-sm outline-none bg-transparent">
+                  <option>Select a tour...</option>
+                  <option>Sunset Cruise</option>
+                </select>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Option D: Inline Labels -->
+        <div class="design-option rounded-2xl bg-white p-4 shadow-sm" data-option="form-d">
+          <div class="flex items-center justify-between mb-3">
+            <span class="text-sm font-semibold text-gray-900">D. Horizontal Layout</span>
+            <span class="px-2 py-0.5 bg-blue-100 text-blue-600 text-xs rounded-full">Compact</span>
+          </div>
+          <div class="rounded-xl overflow-hidden border bg-gray-50 p-4 space-y-3">
+            <div class="flex items-center gap-3">
+              <label class="w-24 text-xs font-medium text-gray-700 text-right">Name</label>
+              <input type="text" placeholder="Enter customer name" class="flex-1 px-3 py-2 rounded-lg border bg-white text-sm focus:ring-2 focus:ring-blue-500 outline-none">
+            </div>
+            <div class="flex items-center gap-3">
+              <label class="w-24 text-xs font-medium text-gray-700 text-right">Email</label>
+              <input type="email" placeholder="customer@example.com" class="flex-1 px-3 py-2 rounded-lg border bg-white text-sm focus:ring-2 focus:ring-blue-500 outline-none">
+            </div>
+            <div class="flex items-center gap-3">
+              <label class="w-24 text-xs font-medium text-gray-700 text-right">Tour</label>
+              <select class="flex-1 px-3 py-2 rounded-lg border bg-white text-sm focus:ring-2 focus:ring-blue-500 outline-none">
+                <option>Select a tour...</option>
+                <option>Sunset Cruise</option>
+              </select>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <div class="section-divider"></div>
+
+    <!-- ============================================ -->
+    <!-- SECTION 7: PAGE HEADER STYLES -->
+    <!-- ============================================ -->
+    <section>
+      <div class="flex items-center gap-3 mb-6">
+        <span class="flex items-center justify-center w-10 h-10 rounded-xl bg-blue-500 text-white font-bold">7</span>
+        <div>
+          <h2 class="text-xl font-bold text-gray-900">Page Headers</h2>
+          <p class="text-gray-500 text-sm">Title section with breadcrumbs and actions</p>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 gap-6">
+
+        <!-- Option A: Simple Header -->
+        <div class="design-option rounded-2xl bg-white p-4 shadow-sm" data-option="header-a">
+          <div class="flex items-center justify-between mb-3">
+            <span class="text-sm font-semibold text-gray-900">A. Simple with Actions</span>
+            <span class="px-2 py-0.5 bg-green-100 text-green-700 text-xs rounded-full">Current</span>
+          </div>
+          <div class="rounded-xl overflow-hidden border bg-gray-100 p-4">
+            <div class="bg-white rounded-xl border p-4 flex items-center justify-between">
+              <div>
+                <h1 class="text-xl font-bold text-gray-900">Bookings</h1>
+                <p class="text-sm text-gray-500">Manage all your tour bookings</p>
+              </div>
+              <div class="flex items-center gap-2">
+                <button class="px-4 py-2 bg-white border rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50">Export</button>
+                <button class="px-4 py-2 gradient-primary text-white rounded-lg text-sm font-medium">+ New Booking</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Option B: Gradient Header -->
+        <div class="design-option rounded-2xl bg-white p-4 shadow-sm" data-option="header-b">
+          <div class="flex items-center justify-between mb-3">
+            <span class="text-sm font-semibold text-gray-900">B. Gradient Banner</span>
+            <span class="px-2 py-0.5 bg-purple-100 text-purple-700 text-xs rounded-full">Bold</span>
+          </div>
+          <div class="rounded-xl overflow-hidden border bg-gray-100 p-4">
+            <div class="gradient-primary rounded-xl p-4 flex items-center justify-between">
+              <div class="text-white">
+                <div class="flex items-center gap-2 text-white/70 text-sm mb-1">
+                  <span>Dashboard</span>
+                  <span>/</span>
+                  <span class="text-white">Bookings</span>
+                </div>
+                <h1 class="text-xl font-bold">Bookings</h1>
+                <p class="text-sm text-white/80">Manage all your tour bookings</p>
+              </div>
+              <div class="flex items-center gap-2">
+                <button class="px-4 py-2 bg-white/20 text-white rounded-lg text-sm font-medium hover:bg-white/30">Export</button>
+                <button class="px-4 py-2 bg-white text-blue-600 rounded-lg text-sm font-medium">+ New Booking</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Option C: Card with Stats -->
+        <div class="design-option rounded-2xl bg-white p-4 shadow-sm" data-option="header-c">
+          <div class="flex items-center justify-between mb-3">
+            <span class="text-sm font-semibold text-gray-900">C. Header with Quick Stats</span>
+            <span class="px-2 py-0.5 bg-blue-100 text-blue-600 text-xs rounded-full">Informative</span>
+          </div>
+          <div class="rounded-xl overflow-hidden border bg-gray-100 p-4">
+            <div class="bg-white rounded-xl border p-4">
+              <div class="flex items-start justify-between mb-4">
+                <div>
+                  <h1 class="text-xl font-bold text-gray-900">Bookings</h1>
+                  <p class="text-sm text-gray-500">Manage all your tour bookings</p>
+                </div>
+                <button class="px-4 py-2 gradient-primary text-white rounded-lg text-sm font-medium">+ New Booking</button>
+              </div>
+              <div class="flex items-center gap-6 pt-4 border-t">
+                <div class="flex items-center gap-2">
+                  <div class="w-2 h-2 rounded-full bg-green-500"></div>
+                  <span class="text-sm text-gray-600"><strong>124</strong> Confirmed</span>
+                </div>
+                <div class="flex items-center gap-2">
+                  <div class="w-2 h-2 rounded-full bg-yellow-500"></div>
+                  <span class="text-sm text-gray-600"><strong>18</strong> Pending</span>
+                </div>
+                <div class="flex items-center gap-2">
+                  <div class="w-2 h-2 rounded-full bg-blue-500"></div>
+                  <span class="text-sm text-gray-600"><strong>45</strong> Today</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <div class="section-divider"></div>
+
+    <!-- ============================================ -->
+    <!-- ADDITIONAL UI IMPROVEMENTS -->
+    <!-- ============================================ -->
+    <section>
+      <div class="flex items-center gap-3 mb-6">
+        <span class="flex items-center justify-center w-10 h-10 rounded-xl bg-purple-500 text-white font-bold">+</span>
+        <div>
+          <h2 class="text-xl font-bold text-gray-900">Additional Improvements</h2>
+          <p class="text-gray-500 text-sm">Extra UI enhancements to consider</p>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div class="bg-white rounded-xl border p-4">
+          <div class="flex items-center gap-3 mb-3">
+            <div class="w-10 h-10 rounded-lg bg-blue-100 flex items-center justify-center">
+              <svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"></path></svg>
+            </div>
+            <div>
+              <h3 class="font-semibold text-gray-900">Dark Mode</h3>
+              <p class="text-xs text-gray-500">Toggle light/dark theme</p>
+            </div>
+          </div>
+          <p class="text-sm text-gray-600">Add dark mode support for reduced eye strain during night operations.</p>
+        </div>
+
+        <div class="bg-white rounded-xl border p-4">
+          <div class="flex items-center gap-3 mb-3">
+            <div class="w-10 h-10 rounded-lg bg-green-100 flex items-center justify-center">
+              <svg class="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+            </div>
+            <div>
+              <h3 class="font-semibold text-gray-900">Toast Notifications</h3>
+              <p class="text-xs text-gray-500">Better feedback system</p>
+            </div>
+          </div>
+          <p class="text-sm text-gray-600">Add slide-in toast notifications for actions like bookings created, saved, etc.</p>
+        </div>
+
+        <div class="bg-white rounded-xl border p-4">
+          <div class="flex items-center gap-3 mb-3">
+            <div class="w-10 h-10 rounded-lg bg-purple-100 flex items-center justify-center">
+              <svg class="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM4 13a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6zM16 13a1 1 0 011-1h2a1 1 0 011 1v6a1 1 0 01-1 1h-2a1 1 0 01-1-1v-6z"></path></svg>
+            </div>
+            <div>
+              <h3 class="font-semibold text-gray-900">Drag & Drop</h3>
+              <p class="text-xs text-gray-500">Interactive calendar</p>
+            </div>
+          </div>
+          <p class="text-sm text-gray-600">Enable drag-and-drop for rescheduling bookings on the calendar view.</p>
+        </div>
+
+        <div class="bg-white rounded-xl border p-4">
+          <div class="flex items-center gap-3 mb-3">
+            <div class="w-10 h-10 rounded-lg bg-orange-100 flex items-center justify-center">
+              <svg class="w-5 h-5 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+            </div>
+            <div>
+              <h3 class="font-semibold text-gray-900">Command Palette</h3>
+              <p class="text-xs text-gray-500">Quick navigation (⌘K)</p>
+            </div>
+          </div>
+          <p class="text-sm text-gray-600">Add a command palette for power users to quickly navigate and search.</p>
+        </div>
+
+        <div class="bg-white rounded-xl border p-4">
+          <div class="flex items-center gap-3 mb-3">
+            <div class="w-10 h-10 rounded-lg bg-red-100 flex items-center justify-center">
+              <svg class="w-5 h-5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path></svg>
+            </div>
+            <div>
+              <h3 class="font-semibold text-gray-900">Real-time Updates</h3>
+              <p class="text-xs text-gray-500">Live data sync</p>
+            </div>
+          </div>
+          <p class="text-sm text-gray-600">Show real-time booking updates and notifications using Supabase realtime.</p>
+        </div>
+
+        <div class="bg-white rounded-xl border p-4">
+          <div class="flex items-center gap-3 mb-3">
+            <div class="w-10 h-10 rounded-lg bg-cyan-100 flex items-center justify-center">
+              <svg class="w-5 h-5 text-cyan-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+            </div>
+            <div>
+              <h3 class="font-semibold text-gray-900">Better Empty States</h3>
+              <p class="text-xs text-gray-500">Engaging illustrations</p>
+            </div>
+          </div>
+          <p class="text-sm text-gray-600">Add illustrated empty states for when there's no data to show.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Summary Section -->
+    <section class="bg-slate-900 text-white rounded-2xl p-6 mt-8">
+      <h2 class="text-xl font-bold mb-4">How to Use This Guide</h2>
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div>
+          <div class="w-10 h-10 rounded-lg bg-blue-500 flex items-center justify-center text-xl font-bold mb-3">1</div>
+          <h3 class="font-semibold mb-2">Review Options</h3>
+          <p class="text-sm text-gray-300">Look through each section and compare the design options. Consider what fits your brand and user needs.</p>
+        </div>
+        <div>
+          <div class="w-10 h-10 rounded-lg bg-blue-500 flex items-center justify-center text-xl font-bold mb-3">2</div>
+          <h3 class="font-semibold mb-2">Tell Me Your Choices</h3>
+          <p class="text-sm text-gray-300">Let me know which options you prefer for each section (e.g., "Sidebar B, Stats C, Table A").</p>
+        </div>
+        <div>
+          <div class="w-10 h-10 rounded-lg bg-blue-500 flex items-center justify-center text-xl font-bold mb-3">3</div>
+          <h3 class="font-semibold mb-2">Implementation</h3>
+          <p class="text-sm text-gray-300">I'll implement your selected designs across the entire admin panel consistently.</p>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <footer class="border-t bg-white mt-12 py-6">
+    <div class="max-w-7xl mx-auto px-6 text-center text-sm text-gray-500">
+      <p>TourPilot UI Design Plan • Ready for your feedback!</p>
+    </div>
+  </footer>
+
+</body>
+</html>

@@ -16,6 +16,10 @@ export interface Tour {
   includes: string[];
   requires_waiver: boolean;
   status: 'active' | 'draft' | 'archived';
+  boat_id: string | null; // Legacy single boat (deprecated)
+  boat?: Boat;
+  tour_boats?: TourBoat[]; // Multiple boats via junction table
+  default_slots?: TourDefaultSlot[]; // Default time slots
   created_at: string;
   updated_at: string;
 }
@@ -23,6 +27,7 @@ export interface Tour {
 export interface Availability {
   id: string;
   tour_id: string;
+  boat_id: string | null;
   date: string;
   start_time: string;
   end_time: string;
@@ -32,6 +37,7 @@ export interface Availability {
   status: 'available' | 'full' | 'cancelled';
   created_at: string;
   tour?: Tour;
+  boat?: Boat;
 }
 
 export interface Customer {
@@ -124,6 +130,120 @@ export interface Staff {
 }
 
 export type StaffRole = 'admin' | 'manager' | 'captain' | 'guide' | 'front_desk';
+
+// Boat/Fleet Types
+export interface Boat {
+  id: string;
+  name: string;
+  registration_number: string | null;
+  boat_type: string | null;
+  capacity: number;
+  description: string | null;
+  images: string[];
+  features: string[];
+  status: BoatStatus;
+  maintenance_notes: string | null;
+  last_maintenance_date: string | null;
+  next_maintenance_date: string | null;
+  location_id: string | null;
+  location?: Location;
+  assigned_captain_id: string | null;
+  assigned_captain?: Staff;
+  created_at: string;
+  updated_at: string;
+}
+
+export type BoatStatus = 'active' | 'maintenance' | 'retired';
+
+// Tour-Boat Assignment Types
+export interface TourBoat {
+  id: string;
+  tour_id: string;
+  boat_id: string;
+  is_primary: boolean;
+  price_modifier: number;
+  created_at: string;
+  boat?: Boat;
+  tour?: Tour;
+}
+
+// Tour Default Slots (daily recurring)
+export interface TourDefaultSlot {
+  id: string;
+  tour_id: string;
+  start_time: string;
+  end_time: string;
+  price_override: number | null;
+  capacity_override: number | null;
+  days_of_week: number[]; // 0-6, Sunday-Saturday
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+// Tour Blackouts (entire tour unavailable)
+export interface TourBlackout {
+  id: string;
+  tour_id: string;
+  date: string;
+  reason: string | null;
+  created_by: string | null;
+  created_at: string;
+}
+
+// Boat Blackouts (specific boat unavailable)
+export interface BoatBlackout {
+  id: string;
+  boat_id: string;
+  date: string;
+  reason: string | null;
+  created_by: string | null;
+  created_at: string;
+  boat?: Boat;
+}
+
+// Slot Exceptions (override specific slot on specific date)
+export interface SlotException {
+  id: string;
+  tour_id: string;
+  default_slot_id: string | null;
+  date: string;
+  start_time: string | null;
+  end_time: string | null;
+  price_override: number | null;
+  capacity_override: number | null;
+  boat_id: string | null;
+  is_cancelled: boolean;
+  reason: string | null;
+  created_by: string | null;
+  created_at: string;
+}
+
+// Location Types
+export interface Location {
+  id: string;
+  name: string;
+  slug: string;
+  address: string | null;
+  city: string | null;
+  state: string | null;
+  country: string;
+  postal_code: string | null;
+  latitude: number | null;
+  longitude: number | null;
+  timezone: string;
+  phone: string | null;
+  email: string | null;
+  description: string | null;
+  images: string[];
+  operating_hours: Record<string, { open: string; close: string }>;
+  parking_info: string | null;
+  amenities: string[];
+  is_active: boolean;
+  is_primary: boolean;
+  created_at: string;
+  updated_at: string;
+}
 
 export interface AvailabilityStaff {
   id: string;

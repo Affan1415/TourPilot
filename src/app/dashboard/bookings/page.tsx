@@ -51,6 +51,8 @@ import { toast } from "sonner";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/client";
+import { StatCard } from "@/components/ui/stat-card";
+import { IconBox } from "@/components/ui/icon-box";
 
 interface Booking {
   id: string;
@@ -73,13 +75,14 @@ interface Booking {
   createdAt: string;
 }
 
-const statusConfig: Record<string, { label: string; color: string; icon: any }> = {
-  pending: { label: "Pending", color: "bg-yellow-100 text-yellow-800", icon: Clock },
-  confirmed: { label: "Confirmed", color: "bg-blue-100 text-blue-800", icon: CheckCircle2 },
-  checked_in: { label: "Checked In", color: "bg-green-100 text-green-800", icon: CheckCircle2 },
-  completed: { label: "Completed", color: "bg-gray-100 text-gray-800", icon: CheckCircle2 },
-  cancelled: { label: "Cancelled", color: "bg-red-100 text-red-800", icon: XCircle },
-  no_show: { label: "No Show", color: "bg-orange-100 text-orange-800", icon: AlertCircle },
+// V6 Pastel status colors
+const statusConfig: Record<string, { label: string; variant: "mint" | "lavender" | "peach" | "sky" | "rose" | "secondary"; icon: any }> = {
+  pending: { label: "Pending", variant: "peach", icon: Clock },
+  confirmed: { label: "Confirmed", variant: "sky", icon: CheckCircle2 },
+  checked_in: { label: "Checked In", variant: "mint", icon: CheckCircle2 },
+  completed: { label: "Completed", variant: "secondary", icon: CheckCircle2 },
+  cancelled: { label: "Cancelled", variant: "rose", icon: XCircle },
+  no_show: { label: "No Show", variant: "peach", icon: AlertCircle },
 };
 
 export default function BookingsPage() {
@@ -304,13 +307,13 @@ export default function BookingsPage() {
     return (
       <div className="p-6 space-y-6">
         <div className="animate-pulse space-y-6">
-          <div className="h-8 bg-muted rounded w-48" />
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="h-8 bg-muted rounded-xl w-48" />
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-5">
             {[1, 2, 3, 4].map((i) => (
-              <div key={i} className="h-20 bg-muted rounded-lg" />
+              <div key={i} className="h-32 bg-muted rounded-2xl" />
             ))}
           </div>
-          <div className="h-96 bg-muted rounded-lg" />
+          <div className="h-96 bg-muted rounded-2xl" />
         </div>
       </div>
     );
@@ -321,29 +324,26 @@ export default function BookingsPage() {
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold flex items-center gap-2">
-            <ClipboardList className="h-6 w-6 text-primary" />
-            Bookings
-          </h1>
+          <h1 className="text-2xl font-bold">Bookings</h1>
           <p className="text-muted-foreground">
             Manage and track all tour bookings
           </p>
         </div>
 
         <div className="flex items-center gap-3">
-          <Button variant="outline" size="icon" onClick={handleRefresh} disabled={refreshing}>
+          <Button variant="outline" size="icon" onClick={handleRefresh} disabled={refreshing} className="rounded-xl">
             {refreshing ? (
               <Loader2 className="h-4 w-4 animate-spin" />
             ) : (
               <RefreshCw className="h-4 w-4" />
             )}
           </Button>
-          <Button variant="outline" className="gap-2" onClick={exportBookings}>
+          <Button variant="outline" className="gap-2 rounded-xl" onClick={exportBookings}>
             <Download className="h-4 w-4" />
             Export
           </Button>
           <Link href="/dashboard/bookings/new">
-            <Button className="gap-2 gradient-primary border-0">
+            <Button className="gap-2 gradient-primary border-0 rounded-xl shadow-lg shadow-primary/30">
               <Plus className="h-4 w-4" />
               New Booking
             </Button>
@@ -351,27 +351,39 @@ export default function BookingsPage() {
         </div>
       </div>
 
-      {/* Quick Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <Card className="p-4">
-          <p className="text-sm text-muted-foreground">Total Bookings</p>
-          <p className="text-2xl font-bold">{stats.total}</p>
-        </Card>
-        <Card className="p-4">
-          <p className="text-sm text-muted-foreground">Confirmed</p>
-          <p className="text-2xl font-bold text-blue-600">{stats.confirmed}</p>
-        </Card>
-        <Card className="p-4">
-          <p className="text-sm text-muted-foreground">Pending Payment</p>
-          <p className="text-2xl font-bold text-yellow-600">{stats.pending}</p>
-        </Card>
-        <Card className="p-4">
-          <p className="text-sm text-muted-foreground">Pending Waivers</p>
-          <p className="text-2xl font-bold text-orange-600">{stats.pendingWaivers}</p>
-        </Card>
+      {/* V6 Stats Grid */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-5">
+        <StatCard
+          title="Total Bookings"
+          value={stats.total}
+          icon={<ClipboardList className="h-5 w-5" />}
+          color="sky"
+          className="animate-fade-in-up stagger-1"
+        />
+        <StatCard
+          title="Confirmed"
+          value={stats.confirmed}
+          icon={<CheckCircle2 className="h-5 w-5" />}
+          color="mint"
+          className="animate-fade-in-up stagger-2"
+        />
+        <StatCard
+          title="Pending Payment"
+          value={stats.pending}
+          icon={<Clock className="h-5 w-5" />}
+          color="peach"
+          className="animate-fade-in-up stagger-3"
+        />
+        <StatCard
+          title="Pending Waivers"
+          value={stats.pendingWaivers}
+          icon={<FileText className="h-5 w-5" />}
+          color="lavender"
+          className="animate-fade-in-up stagger-4"
+        />
       </div>
 
-      {/* Filters */}
+      {/* V6 Filters */}
       <div className="flex flex-col md:flex-row gap-4">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -379,15 +391,15 @@ export default function BookingsPage() {
             placeholder="Search by booking ID, customer, or tour..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-10"
+            className="pl-10 rounded-xl border-border focus:border-primary"
           />
         </div>
 
         <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="w-[150px]">
+          <SelectTrigger className="w-[150px] rounded-xl">
             <SelectValue placeholder="Status" />
           </SelectTrigger>
-          <SelectContent>
+          <SelectContent className="rounded-xl">
             <SelectItem value="all">All Status</SelectItem>
             <SelectItem value="pending">Pending</SelectItem>
             <SelectItem value="confirmed">Confirmed</SelectItem>
@@ -398,11 +410,11 @@ export default function BookingsPage() {
         </Select>
 
         <Select value={dateFilter} onValueChange={setDateFilter}>
-          <SelectTrigger className="w-[150px]">
+          <SelectTrigger className="w-[150px] rounded-xl">
             <Calendar className="h-4 w-4 mr-2" />
             <SelectValue placeholder="Date" />
           </SelectTrigger>
-          <SelectContent>
+          <SelectContent className="rounded-xl">
             <SelectItem value="all">All Dates</SelectItem>
             <SelectItem value="today">Today</SelectItem>
             <SelectItem value="tomorrow">Tomorrow</SelectItem>
@@ -412,11 +424,11 @@ export default function BookingsPage() {
         </Select>
       </div>
 
-      {/* Bookings Table */}
-      <Card>
+      {/* V6 Bookings Table */}
+      <Card className="rounded-2xl border shadow-sm animate-fade-in-up stagger-5">
         {filteredBookings.length === 0 ? (
           <div className="text-center py-16">
-            <ClipboardList className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+            <ClipboardList className="h-12 w-12 text-muted-foreground/30 mx-auto mb-4" />
             <p className="text-lg font-medium">No bookings found</p>
             <p className="text-muted-foreground mb-4">
               {searchQuery || statusFilter !== "all"
@@ -424,152 +436,163 @@ export default function BookingsPage() {
                 : "Create your first booking to get started"}
             </p>
             <Link href="/dashboard/bookings/new">
-              <Button className="gap-2">
+              <Button className="gap-2 gradient-primary border-0 rounded-xl">
                 <Plus className="h-4 w-4" />
                 Create Booking
               </Button>
             </Link>
           </div>
         ) : (
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Booking</TableHead>
-                <TableHead>Customer</TableHead>
-                <TableHead>Tour</TableHead>
-                <TableHead>Date & Time</TableHead>
-                <TableHead>Guests</TableHead>
-                <TableHead>Total</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Waiver</TableHead>
-                <TableHead></TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredBookings.map((booking) => {
-                const StatusIcon = statusConfig[booking.status]?.icon || Clock;
+          <div className="overflow-x-auto">
+            <table className="table-v6 w-full">
+              <thead>
+                <tr>
+                  <th>Booking</th>
+                  <th>Customer</th>
+                  <th>Tour</th>
+                  <th>Date & Time</th>
+                  <th>Guests</th>
+                  <th>Total</th>
+                  <th>Status</th>
+                  <th>Waiver</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredBookings.map((booking) => {
+                  const StatusIcon = statusConfig[booking.status]?.icon || Clock;
 
-                return (
-                  <TableRow key={booking.id} className="hover:bg-muted/50">
-                    <TableCell>
-                      <Link
-                        href={`/dashboard/bookings/${booking.id}`}
-                        className="font-mono text-sm font-medium hover:text-primary"
-                      >
-                        {booking.id}
-                      </Link>
-                      <p className="text-xs text-muted-foreground">
-                        {format(new Date(booking.createdAt), "MMM d, h:mm a")}
-                      </p>
-                    </TableCell>
-                    <TableCell>
-                      <p className="font-medium">
-                        {booking.customer.first_name} {booking.customer.last_name}
-                      </p>
-                      <p className="text-sm text-muted-foreground">{booking.customer.email}</p>
-                    </TableCell>
-                    <TableCell>
-                      <p className="font-medium">{booking.tour}</p>
-                    </TableCell>
-                    <TableCell>
-                      <p className="font-medium">{booking.date ? format(new Date(booking.date), "MMM d, yyyy") : '-'}</p>
-                      <p className="text-sm text-muted-foreground">{booking.time || '-'}</p>
-                    </TableCell>
-                    <TableCell>
-                      <span className="flex items-center gap-1">
-                        <Users className="h-4 w-4 text-muted-foreground" />
-                        {booking.guests}
-                      </span>
-                    </TableCell>
-                    <TableCell>
-                      <p className="font-semibold">${booking.total}</p>
-                      <Badge
-                        variant="outline"
-                        className={cn(
-                          "text-xs",
-                          booking.paymentStatus === "paid"
-                            ? "text-green-600"
-                            : booking.paymentStatus === "refunded"
-                            ? "text-gray-600"
-                            : "text-yellow-600"
-                        )}
-                      >
-                        {booking.paymentStatus}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <Badge className={statusConfig[booking.status]?.color}>
-                        <StatusIcon className="h-3 w-3 mr-1" />
-                        {statusConfig[booking.status]?.label}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <Badge
-                        className={cn(
-                          "text-xs",
-                          booking.waiverStatus === "all_signed"
-                            ? "waiver-signed"
+                  return (
+                    <tr key={booking.id} className="cursor-pointer">
+                      <td>
+                        <Link
+                          href={`/dashboard/bookings/${booking.id}`}
+                          className="font-mono text-sm font-medium hover:text-primary"
+                        >
+                          {booking.id}
+                        </Link>
+                        <p className="text-xs text-muted-foreground">
+                          {format(new Date(booking.createdAt), "MMM d, h:mm a")}
+                        </p>
+                      </td>
+                      <td>
+                        <div className="flex items-center gap-3">
+                          <IconBox
+                            icon={<Users className="h-4 w-4" />}
+                            color="lavender"
+                            size="sm"
+                          />
+                          <div>
+                            <p className="font-medium text-sm">
+                              {booking.customer.first_name} {booking.customer.last_name}
+                            </p>
+                            <p className="text-xs text-muted-foreground">{booking.customer.email}</p>
+                          </div>
+                        </div>
+                      </td>
+                      <td>
+                        <p className="font-medium text-sm">{booking.tour}</p>
+                      </td>
+                      <td>
+                        <p className="font-medium text-sm">{booking.date ? format(new Date(booking.date), "MMM d, yyyy") : '-'}</p>
+                        <p className="text-xs text-muted-foreground">{booking.time || '-'}</p>
+                      </td>
+                      <td>
+                        <span className="flex items-center gap-1 text-sm">
+                          <Users className="h-4 w-4 text-muted-foreground" />
+                          {booking.guests}
+                        </span>
+                      </td>
+                      <td>
+                        <p className="font-semibold text-sm">${booking.total}</p>
+                        <Badge
+                          variant={
+                            booking.paymentStatus === "paid"
+                              ? "mint"
+                              : booking.paymentStatus === "refunded"
+                              ? "secondary"
+                              : "peach"
+                          }
+                          className="text-xs"
+                        >
+                          {booking.paymentStatus}
+                        </Badge>
+                      </td>
+                      <td>
+                        <Badge variant={statusConfig[booking.status]?.variant || "secondary"}>
+                          <StatusIcon className="h-3 w-3 mr-1" />
+                          {statusConfig[booking.status]?.label}
+                        </Badge>
+                      </td>
+                      <td>
+                        <Badge
+                          variant={
+                            booking.waiverStatus === "all_signed"
+                              ? "mint"
+                              : booking.waiverStatus === "partial"
+                              ? "peach"
+                              : "lavender"
+                          }
+                          className="text-xs"
+                        >
+                          {booking.waiverStatus === "all_signed"
+                            ? "Signed"
                             : booking.waiverStatus === "partial"
-                            ? "waiver-partial"
-                            : "waiver-pending"
-                        )}
-                      >
-                        {booking.waiverStatus === "all_signed"
-                          ? "Signed"
-                          : booking.waiverStatus === "partial"
-                          ? "Partial"
-                          : "Pending"}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon">
-                            <MoreHorizontal className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem asChild>
-                            <Link href={`/dashboard/bookings/${booking.id}`}>
-                              <ExternalLink className="h-4 w-4 mr-2" />
-                              View Details
-                            </Link>
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            onClick={() => sendWaiverForBooking(booking)}
-                            disabled={sendingWaiver === booking.uuid}
-                          >
-                            {sendingWaiver === booking.uuid ? (
-                              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                            ) : (
-                              <FileText className="h-4 w-4 mr-2" />
-                            )}
-                            Send Waiver
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => sendEmailForBooking(booking)}>
-                            <Mail className="h-4 w-4 mr-2" />
-                            Send Email
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => callCustomer(booking)}>
-                            <Phone className="h-4 w-4 mr-2" />
-                            Call Customer
-                          </DropdownMenuItem>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem
-                            className="text-destructive"
-                            onClick={() => cancelBooking(booking)}
-                          >
-                            <XCircle className="h-4 w-4 mr-2" />
-                            Cancel Booking
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </TableCell>
-                  </TableRow>
-                );
-              })}
-            </TableBody>
-          </Table>
+                            ? "Partial"
+                            : "Pending"}
+                        </Badge>
+                      </td>
+                      <td>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon" className="rounded-lg">
+                              <MoreHorizontal className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end" className="rounded-xl">
+                            <DropdownMenuItem asChild className="rounded-lg">
+                              <Link href={`/dashboard/bookings/${booking.id}`}>
+                                <ExternalLink className="h-4 w-4 mr-2" />
+                                View Details
+                              </Link>
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={() => sendWaiverForBooking(booking)}
+                              disabled={sendingWaiver === booking.uuid}
+                              className="rounded-lg"
+                            >
+                              {sendingWaiver === booking.uuid ? (
+                                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                              ) : (
+                                <FileText className="h-4 w-4 mr-2" />
+                              )}
+                              Send Waiver
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => sendEmailForBooking(booking)} className="rounded-lg">
+                              <Mail className="h-4 w-4 mr-2" />
+                              Send Email
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => callCustomer(booking)} className="rounded-lg">
+                              <Phone className="h-4 w-4 mr-2" />
+                              Call Customer
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem
+                              className="text-destructive rounded-lg"
+                              onClick={() => cancelBooking(booking)}
+                            >
+                              <XCircle className="h-4 w-4 mr-2" />
+                              Cancel Booking
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
         )}
       </Card>
     </div>

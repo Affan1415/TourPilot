@@ -257,6 +257,7 @@ CREATE TRIGGER tours_updated_at BEFORE UPDATE ON tours FOR EACH ROW EXECUTE FUNC
 CREATE TRIGGER customers_updated_at BEFORE UPDATE ON customers FOR EACH ROW EXECUTE FUNCTION update_updated_at();
 CREATE TRIGGER bookings_updated_at BEFORE UPDATE ON bookings FOR EACH ROW EXECUTE FUNCTION update_updated_at();
 CREATE TRIGGER waiver_templates_updated_at BEFORE UPDATE ON waiver_templates FOR EACH ROW EXECUTE FUNCTION update_updated_at();
+CREATE TRIGGER boats_updated_at BEFORE UPDATE ON boats FOR EACH ROW EXECUTE FUNCTION update_updated_at();
 
 -- Insert default waiver template
 INSERT INTO waiver_templates (name, content, is_active) VALUES (
@@ -274,7 +275,37 @@ INSERT INTO waiver_templates (name, content, is_active) VALUES (
   true
 );
 
+-- Boats Table
+CREATE TABLE boats (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  name VARCHAR(255) NOT NULL,
+  registration_number VARCHAR(100),
+  boat_type VARCHAR(100),
+  capacity INTEGER NOT NULL DEFAULT 10,
+  description TEXT,
+  images TEXT[] DEFAULT '{}',
+  features TEXT[] DEFAULT '{}',
+  status VARCHAR(20) DEFAULT 'active' CHECK (status IN ('active', 'maintenance', 'retired')),
+  maintenance_notes TEXT,
+  last_maintenance_date DATE,
+  next_maintenance_date DATE,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Add boat_id to tours (default boat for a tour)
+ALTER TABLE tours ADD COLUMN boat_id UUID REFERENCES boats(id) ON DELETE SET NULL;
+
+-- Add boat_id to availabilities (can override tour's default boat per slot)
+ALTER TABLE availabilities ADD COLUMN boat_id UUID REFERENCES boats(id) ON DELETE SET NULL;
+
+-- Indexes for boats
+CREATE INDEX idx_boats_status ON boats(status);
+CREATE INDEX idx_tours_boat ON tours(boat_id);
+CREATE INDEX idx_availabilities_boat ON availabilities(boat_id);
+
 -- RLS Policies
+ALTER TABLE boats ENABLE ROW LEVEL SECURITY;
 ALTER TABLE tours ENABLE ROW LEVEL SECURITY;
 ALTER TABLE availabilities ENABLE ROW LEVEL SECURITY;
 ALTER TABLE customers ENABLE ROW LEVEL SECURITY;
@@ -285,6 +316,14 @@ ALTER TABLE waivers ENABLE ROW LEVEL SECURITY;
 ALTER TABLE staff ENABLE ROW LEVEL SECURITY;
 ALTER TABLE availability_staff ENABLE ROW LEVEL SECURITY;
 ALTER TABLE communications ENABLE ROW LEVEL SECURITY;
+
+-- Public read access for boats
+CREATE POLICY "Active boats are viewable by everyone" ON boats FOR SELECT USING (status = 'active');
+
+-- Staff full access to boats
+CREATE POLICY "Staff full access to boats" ON boats FOR ALL USING (
+  EXISTS (SELECT 1 FROM staff WHERE user_id = auth.uid() AND is_active = true)
+);
 
 -- Public read access for tours
 CREATE POLICY "Tours are viewable by everyone" ON tours FOR SELECT USING (status = 'active');

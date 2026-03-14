@@ -75,6 +75,7 @@ interface Booking {
 
 interface ManifestTour {
   id: string;
+  tourId: string;
   availabilityId: string;
   name: string;
   time: string;
@@ -103,7 +104,7 @@ export default function ManifestPage() {
         // Fetch availabilities for the selected date with tour info
         const { data: availabilities } = await supabase
           .from('availabilities')
-          .select('*, tours(id, name, meeting_point, max_capacity)')
+          .select('*, tours(id, name, location, meeting_point, max_capacity)')
           .eq('date', dateStr)
           .order('start_time');
 
@@ -130,13 +131,14 @@ export default function ManifestPage() {
           const tourBookings = bookings?.filter(b => b.availability_id === avail.id) || [];
 
           return {
-            id: avail.tours?.id || avail.id,
+            id: avail.id, // Use availability ID as the unique identifier
+            tourId: avail.tours?.id || avail.id,
             availabilityId: avail.id,
             name: avail.tours?.name || 'Unknown Tour',
             time: avail.start_time?.substring(0, 5) || '',
             endTime: avail.end_time?.substring(0, 5) || '',
             captain: 'Staff', // Would need a staff assignment table
-            location: avail.tours?.meeting_point || 'See tour details',
+            location: avail.tours?.location || avail.tours?.meeting_point || 'See tour details',
             capacity: avail.capacity_override || avail.tours?.max_capacity || 10,
             bookings: tourBookings.map(b => ({
               id: b.booking_reference || b.id,
@@ -250,9 +252,9 @@ export default function ManifestPage() {
     window.open(`tel:${phone}`, '_blank');
   };
 
-  const handleWalkUp = (tourId: string) => {
+  const handleWalkUp = (availabilityId: string, tourId: string) => {
     toast.info("Walk-up Registration", { description: "Redirecting to new booking form..." });
-    window.location.href = `/dashboard/bookings/new?tour=${tourId}&date=${format(selectedDate, 'yyyy-MM-dd')}`;
+    window.location.href = `/dashboard/bookings/new?tour=${tourId}&availability=${availabilityId}&date=${format(selectedDate, 'yyyy-MM-dd')}`;
   };
 
   const filteredManifest = manifestData
@@ -422,8 +424,8 @@ export default function ManifestPage() {
             <SelectContent>
               <SelectItem value="all">All Tours</SelectItem>
               {manifestData.map((tour) => (
-                <SelectItem key={tour.id} value={tour.id}>
-                  {tour.name}
+                <SelectItem key={tour.availabilityId} value={tour.id}>
+                  {tour.name} ({tour.time})
                 </SelectItem>
               ))}
             </SelectContent>
@@ -527,7 +529,7 @@ export default function ManifestPage() {
                           )}
                         </div>
 
-                        <Button variant="outline" className="gap-2" onClick={() => handleWalkUp(tour.id)}>
+                        <Button variant="outline" className="gap-2" onClick={() => handleWalkUp(tour.availabilityId, tour.tourId)}>
                           <UserPlus className="h-4 w-4" />
                           Walk-up
                         </Button>

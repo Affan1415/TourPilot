@@ -29,6 +29,7 @@ import {
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { createClient } from "@/lib/supabase/client";
 import type { User as SupabaseUser } from "@supabase/supabase-js";
+import { LanguageSwitcher } from "@/components/shared/language-switcher";
 
 interface UserInfo {
   user: SupabaseUser | null;
@@ -131,6 +132,7 @@ export function Navbar() {
 
   const navLinks = [
     { href: "/tours", label: "Tours", icon: Ship },
+    { href: "/timeline", label: "Timeline", icon: Calendar },
     { href: "/about", label: "About", icon: Users },
     { href: "/contact", label: "Contact", icon: Phone },
   ];
@@ -179,6 +181,7 @@ export function Navbar() {
 
         {/* Desktop Actions */}
         <div className="hidden md:flex items-center gap-3">
+          <LanguageSwitcher variant="minimal" />
           {loading ? (
             <div className="h-8 w-24 bg-muted rounded animate-pulse" />
           ) : userInfo.user ? (

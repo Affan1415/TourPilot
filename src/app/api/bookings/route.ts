@@ -161,8 +161,8 @@ export async function POST(request: NextRequest) {
         guest_count,
         total_price,
         notes,
-        status: "confirmed",
-        payment_status: "paid",
+        status: "pending",
+        payment_status: "pending",
       }])
       .select()
       .single();
@@ -252,6 +252,7 @@ export async function POST(request: NextRequest) {
         ...booking,
         guests: createdGuests,
       },
+      booking_id: booking.id,
       booking_reference: booking.booking_reference,
     }, { status: 201 });
   } catch (error) {

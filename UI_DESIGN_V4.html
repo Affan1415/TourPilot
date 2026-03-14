@@ -1,0 +1,913 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TourPilot - Lumina Style</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'system-ui', 'sans-serif'],
+          },
+        }
+      }
+    }
+  </script>
+  <style>
+    * { -webkit-font-smoothing: antialiased; }
+    body {
+      font-family: 'Inter', system-ui, sans-serif;
+      background: linear-gradient(135deg, #0a0a0f 0%, #12121a 50%, #0d0d14 100%);
+      color: #e4e4e7;
+    }
+
+    /* Glass morphism */
+    .glass {
+      background: rgba(255, 255, 255, 0.03);
+      backdrop-filter: blur(20px);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+    }
+    .glass-light {
+      background: rgba(255, 255, 255, 0.05);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+    .glass-hover:hover {
+      background: rgba(255, 255, 255, 0.07);
+      border-color: rgba(255, 255, 255, 0.12);
+    }
+
+    /* Glow effects */
+    .glow-sm { box-shadow: 0 0 20px rgba(99, 102, 241, 0.15); }
+    .glow-primary { box-shadow: 0 0 30px rgba(99, 102, 241, 0.3); }
+    .glow-success { box-shadow: 0 0 20px rgba(34, 197, 94, 0.3); }
+    .text-glow { text-shadow: 0 0 20px rgba(99, 102, 241, 0.5); }
+
+    /* Gradient text */
+    .gradient-text {
+      background: linear-gradient(135deg, #818cf8 0%, #c084fc 50%, #f472b6 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    /* Gradient border */
+    .gradient-border {
+      position: relative;
+      background: linear-gradient(135deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0.02) 100%);
+    }
+    .gradient-border::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      border-radius: inherit;
+      padding: 1px;
+      background: linear-gradient(135deg, rgba(129, 140, 248, 0.5), rgba(192, 132, 252, 0.2), transparent);
+      -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+      mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+      -webkit-mask-composite: xor;
+      mask-composite: exclude;
+    }
+
+    /* Smooth transitions */
+    * {
+      transition-property: background-color, border-color, color, fill, stroke, opacity, box-shadow, transform;
+      transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+      transition-duration: 200ms;
+    }
+
+    /* Button effects */
+    .btn-glow {
+      background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+      box-shadow: 0 4px 15px rgba(99, 102, 241, 0.4), inset 0 1px 0 rgba(255,255,255,0.2);
+    }
+    .btn-glow:hover {
+      box-shadow: 0 6px 25px rgba(99, 102, 241, 0.5), inset 0 1px 0 rgba(255,255,255,0.2);
+      transform: translateY(-1px);
+    }
+    .btn-glow:active {
+      transform: translateY(0);
+      box-shadow: 0 2px 10px rgba(99, 102, 241, 0.3);
+    }
+
+    /* Animated gradient background */
+    .animated-gradient {
+      background: linear-gradient(-45deg, #0a0a0f, #1a1a2e, #16213e, #0f0f1a);
+      background-size: 400% 400%;
+      animation: gradientBG 15s ease infinite;
+    }
+    @keyframes gradientBG {
+      0% { background-position: 0% 50%; }
+      50% { background-position: 100% 50%; }
+      100% { background-position: 0% 50%; }
+    }
+
+    /* Animations */
+    @keyframes float {
+      0%, 100% { transform: translateY(0px); }
+      50% { transform: translateY(-5px); }
+    }
+    @keyframes pulse-glow {
+      0%, 100% { box-shadow: 0 0 20px rgba(99, 102, 241, 0.3); }
+      50% { box-shadow: 0 0 40px rgba(99, 102, 241, 0.5); }
+    }
+    @keyframes shimmer {
+      0% { background-position: -1000px 0; }
+      100% { background-position: 1000px 0; }
+    }
+    @keyframes fadeInUp {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes scaleIn {
+      from { opacity: 0; transform: scale(0.95); }
+      to { opacity: 1; transform: scale(1); }
+    }
+    @keyframes slideInLeft {
+      from { opacity: 0; transform: translateX(-10px); }
+      to { opacity: 1; transform: translateX(0); }
+    }
+
+    .animate-float { animation: float 3s ease-in-out infinite; }
+    .animate-pulse-glow { animation: pulse-glow 2s ease-in-out infinite; }
+    .animate-fade-up { animation: fadeInUp 0.5s ease-out forwards; }
+    .animate-scale-in { animation: scaleIn 0.3s ease-out forwards; }
+    .animate-slide-left { animation: slideInLeft 0.3s ease-out forwards; }
+
+    .delay-1 { animation-delay: 0.1s; }
+    .delay-2 { animation-delay: 0.2s; }
+    .delay-3 { animation-delay: 0.3s; }
+    .delay-4 { animation-delay: 0.4s; }
+
+    /* Scrollbar */
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.2); }
+
+    /* Nav indicator */
+    .nav-indicator {
+      position: relative;
+    }
+    .nav-indicator::before {
+      content: '';
+      position: absolute;
+      left: -12px;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 3px;
+      height: 0;
+      background: linear-gradient(180deg, #6366f1, #8b5cf6);
+      border-radius: 0 2px 2px 0;
+      transition: height 0.2s ease;
+    }
+    .nav-indicator:hover::before,
+    .nav-indicator.active::before {
+      height: 24px;
+    }
+
+    /* Card shine effect */
+    .card-shine {
+      position: relative;
+      overflow: hidden;
+    }
+    .card-shine::after {
+      content: '';
+      position: absolute;
+      top: -50%;
+      left: -50%;
+      width: 200%;
+      height: 200%;
+      background: linear-gradient(
+        to bottom right,
+        rgba(255, 255, 255, 0) 0%,
+        rgba(255, 255, 255, 0.03) 50%,
+        rgba(255, 255, 255, 0) 100%
+      );
+      transform: rotate(30deg);
+      pointer-events: none;
+    }
+
+    /* Live indicator */
+    .live-dot {
+      position: relative;
+    }
+    .live-dot::before {
+      content: '';
+      position: absolute;
+      inset: -3px;
+      border-radius: 50%;
+      background: inherit;
+      animation: ping 1.5s cubic-bezier(0, 0, 0.2, 1) infinite;
+      opacity: 0.5;
+    }
+    @keyframes ping {
+      0% { transform: scale(1); opacity: 0.5; }
+      75%, 100% { transform: scale(2); opacity: 0; }
+    }
+
+    /* Progress ring */
+    .progress-ring {
+      transform: rotate(-90deg);
+    }
+    .progress-ring circle {
+      transition: stroke-dashoffset 0.5s ease;
+    }
+
+    /* Hover lift */
+    .hover-lift {
+      transition: transform 0.3s ease, box-shadow 0.3s ease;
+    }
+    .hover-lift:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 20px 40px rgba(0,0,0,0.3);
+    }
+
+    /* Row highlight */
+    .row-highlight {
+      position: relative;
+    }
+    .row-highlight::before {
+      content: '';
+      position: absolute;
+      left: 0;
+      top: 0;
+      bottom: 0;
+      width: 2px;
+      background: transparent;
+      transition: background 0.2s ease;
+    }
+    .row-highlight:hover::before {
+      background: linear-gradient(180deg, #6366f1, #8b5cf6);
+    }
+
+    /* Input focus */
+    .input-glow:focus {
+      outline: none;
+      box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.3), 0 0 20px rgba(99, 102, 241, 0.1);
+      border-color: rgba(99, 102, 241, 0.5);
+    }
+
+    /* Tooltip */
+    .tooltip-wrapper {
+      position: relative;
+    }
+    .tooltip-wrapper .tooltip {
+      position: absolute;
+      bottom: 100%;
+      left: 50%;
+      transform: translateX(-50%) translateY(5px);
+      padding: 6px 12px;
+      background: rgba(255,255,255,0.1);
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 8px;
+      font-size: 12px;
+      white-space: nowrap;
+      opacity: 0;
+      pointer-events: none;
+      transition: all 0.2s ease;
+    }
+    .tooltip-wrapper:hover .tooltip {
+      opacity: 1;
+      transform: translateX(-50%) translateY(-8px);
+    }
+
+    /* Number animation */
+    @property --num {
+      syntax: "<integer>";
+      initial-value: 0;
+      inherits: false;
+    }
+    .animate-number {
+      animation: counter 1s ease-out forwards;
+      counter-reset: num var(--num);
+    }
+    .animate-number::after {
+      content: counter(num);
+    }
+    @keyframes counter {
+      from { --num: 0; }
+      to { --num: var(--target); }
+    }
+  </style>
+</head>
+<body class="min-h-screen animated-gradient">
+
+  <div class="flex h-screen">
+
+    <!-- Sidebar -->
+    <aside class="w-60 glass flex flex-col border-r border-white/5">
+
+      <!-- Logo -->
+      <div class="h-16 px-5 flex items-center">
+        <div class="flex items-center gap-3">
+          <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center animate-float">
+            <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+            </svg>
+          </div>
+          <span class="text-lg font-semibold gradient-text">TourPilot</span>
+        </div>
+      </div>
+
+      <!-- Search -->
+      <div class="px-4 mb-2">
+        <div class="relative">
+          <input
+            type="text"
+            placeholder="Search..."
+            class="w-full h-10 pl-10 pr-4 text-sm bg-white/5 rounded-xl border border-white/10 placeholder:text-white/30 text-white input-glow"
+          >
+          <svg class="w-4 h-4 text-white/30 absolute left-3.5 top-1/2 -translate-y-1/2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+          </svg>
+          <kbd class="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] text-white/20 bg-white/5 px-1.5 py-0.5 rounded border border-white/10 font-mono">⌘K</kbd>
+        </div>
+      </div>
+
+      <!-- Navigation -->
+      <nav class="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
+
+        <a href="#" class="nav-indicator active flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-white bg-white/10 animate-slide-left">
+          <svg class="w-[18px] h-[18px] text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"/></svg>
+          Dashboard
+        </a>
+
+        <a href="#" class="nav-indicator flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-white/60 hover:text-white hover:bg-white/5 animate-slide-left delay-1">
+          <svg class="w-[18px] h-[18px]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+          Calendar
+          <span class="ml-auto px-2 py-0.5 text-[10px] font-medium bg-indigo-500/20 text-indigo-300 rounded-full">8</span>
+        </a>
+
+        <a href="#" class="nav-indicator flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-white/60 hover:text-white hover:bg-white/5 animate-slide-left delay-2">
+          <svg class="w-[18px] h-[18px]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
+          Bookings
+        </a>
+
+        <a href="#" class="nav-indicator flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-white/60 hover:text-white hover:bg-white/5 animate-slide-left delay-3">
+          <svg class="w-[18px] h-[18px]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+          Customers
+        </a>
+
+        <div class="pt-6 pb-2 px-3">
+          <p class="text-[10px] font-semibold text-white/30 uppercase tracking-widest">Manage</p>
+        </div>
+
+        <a href="#" class="nav-indicator flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-white/60 hover:text-white hover:bg-white/5">
+          <svg class="w-[18px] h-[18px]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+          Tours
+        </a>
+
+        <a href="#" class="nav-indicator flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-white/60 hover:text-white hover:bg-white/5">
+          <svg class="w-[18px] h-[18px]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+          Availability
+        </a>
+
+        <a href="#" class="nav-indicator flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-white/60 hover:text-white hover:bg-white/5">
+          <svg class="w-[18px] h-[18px]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+          Pricing
+        </a>
+
+        <a href="#" class="nav-indicator flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-white/60 hover:text-white hover:bg-white/5">
+          <svg class="w-[18px] h-[18px]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+          Analytics
+        </a>
+
+        <div class="pt-6 pb-2 px-3">
+          <p class="text-[10px] font-semibold text-white/30 uppercase tracking-widest">System</p>
+        </div>
+
+        <a href="#" class="nav-indicator flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-white/60 hover:text-white hover:bg-white/5">
+          <svg class="w-[18px] h-[18px]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+          Settings
+        </a>
+      </nav>
+
+      <!-- User -->
+      <div class="p-4 border-t border-white/5">
+        <div class="flex items-center gap-3 px-2 py-2 rounded-xl hover:bg-white/5 cursor-pointer group">
+          <div class="w-9 h-9 rounded-full bg-gradient-to-br from-indigo-400 to-purple-500 flex items-center justify-center text-white text-sm font-medium ring-2 ring-white/10">
+            AZ
+          </div>
+          <div class="flex-1 min-w-0">
+            <p class="text-sm font-medium text-white truncate">Affan Zahir</p>
+            <p class="text-xs text-white/40 truncate">Admin</p>
+          </div>
+          <svg class="w-4 h-4 text-white/30 group-hover:text-white/60" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 9l4-4 4 4m0 6l-4 4-4-4"/></svg>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="flex-1 overflow-y-auto">
+
+      <!-- Top Bar -->
+      <header class="h-16 glass sticky top-0 z-10 border-b border-white/5">
+        <div class="h-full px-8 flex items-center justify-between">
+          <div class="flex items-center gap-4">
+            <h1 class="text-xl font-semibold text-white">Dashboard</h1>
+            <div class="flex items-center gap-2 px-3 py-1 rounded-full bg-green-500/10 border border-green-500/20">
+              <span class="w-2 h-2 rounded-full bg-green-400 live-dot"></span>
+              <span class="text-xs font-medium text-green-400">Live</span>
+            </div>
+          </div>
+
+          <div class="flex items-center gap-3">
+            <!-- Theme Toggle -->
+            <button class="tooltip-wrapper p-2.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10">
+              <span class="tooltip">Toggle theme</span>
+              <svg class="w-5 h-5 text-white/60" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"/></svg>
+            </button>
+
+            <!-- Notifications -->
+            <button class="tooltip-wrapper relative p-2.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10">
+              <span class="tooltip">Notifications</span>
+              <svg class="w-5 h-5 text-white/60" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/></svg>
+              <span class="absolute top-2 right-2 w-2 h-2 bg-indigo-500 rounded-full ring-2 ring-[#12121a]"></span>
+            </button>
+
+            <!-- New Booking -->
+            <button class="btn-glow h-10 px-5 rounded-xl text-white text-sm font-medium flex items-center gap-2 group">
+              <svg class="w-4 h-4 group-hover:rotate-90 transition-transform duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+              New Booking
+            </button>
+          </div>
+        </div>
+      </header>
+
+      <!-- Dashboard Content -->
+      <div class="p-8 space-y-8">
+
+        <!-- Stats Grid -->
+        <div class="grid grid-cols-4 gap-5">
+
+          <!-- Stat Card 1 -->
+          <div class="glass rounded-2xl p-6 card-shine hover-lift animate-fade-up">
+            <div class="flex items-start justify-between mb-4">
+              <div class="w-12 h-12 rounded-2xl bg-gradient-to-br from-indigo-500/20 to-purple-500/20 flex items-center justify-center border border-indigo-500/20">
+                <svg class="w-6 h-6 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+              </div>
+              <span class="px-2.5 py-1 text-xs font-medium text-green-400 bg-green-500/10 rounded-full border border-green-500/20 flex items-center gap-1">
+                <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M5.293 9.707a1 1 0 010-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 01-1.414 1.414L11 7.414V15a1 1 0 11-2 0V7.414L6.707 9.707a1 1 0 01-1.414 0z" clip-rule="evenodd"/></svg>
+                12%
+              </span>
+            </div>
+            <p class="text-4xl font-bold text-white tracking-tight mb-1">248</p>
+            <p class="text-sm text-white/50">Today's Guests</p>
+          </div>
+
+          <!-- Stat Card 2 -->
+          <div class="glass rounded-2xl p-6 card-shine hover-lift animate-fade-up delay-1">
+            <div class="flex items-start justify-between mb-4">
+              <div class="w-12 h-12 rounded-2xl bg-gradient-to-br from-green-500/20 to-emerald-500/20 flex items-center justify-center border border-green-500/20">
+                <svg class="w-6 h-6 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+              </div>
+              <span class="px-2.5 py-1 text-xs font-medium text-green-400 bg-green-500/10 rounded-full border border-green-500/20 flex items-center gap-1">
+                <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M5.293 9.707a1 1 0 010-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 01-1.414 1.414L11 7.414V15a1 1 0 11-2 0V7.414L6.707 9.707a1 1 0 01-1.414 0z" clip-rule="evenodd"/></svg>
+                8%
+              </span>
+            </div>
+            <p class="text-4xl font-bold text-white tracking-tight mb-1">$12,450</p>
+            <p class="text-sm text-white/50">Revenue</p>
+          </div>
+
+          <!-- Stat Card 3 - with progress ring -->
+          <div class="glass rounded-2xl p-6 card-shine hover-lift animate-fade-up delay-2">
+            <div class="flex items-start justify-between mb-4">
+              <div class="w-12 h-12 rounded-2xl bg-gradient-to-br from-purple-500/20 to-pink-500/20 flex items-center justify-center border border-purple-500/20">
+                <svg class="w-6 h-6 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+              </div>
+              <!-- Progress Ring -->
+              <div class="relative w-12 h-12">
+                <svg class="progress-ring w-12 h-12" viewBox="0 0 44 44">
+                  <circle cx="22" cy="22" r="18" fill="none" stroke="rgba(255,255,255,0.1)" stroke-width="3"/>
+                  <circle cx="22" cy="22" r="18" fill="none" stroke="url(#gradient)" stroke-width="3" stroke-linecap="round" stroke-dasharray="113" stroke-dashoffset="75"/>
+                  <defs>
+                    <linearGradient id="gradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                      <stop offset="0%" stop-color="#8b5cf6"/>
+                      <stop offset="100%" stop-color="#ec4899"/>
+                    </linearGradient>
+                  </defs>
+                </svg>
+                <span class="absolute inset-0 flex items-center justify-center text-xs font-medium text-white">33%</span>
+              </div>
+            </div>
+            <p class="text-4xl font-bold text-white tracking-tight mb-1">18</p>
+            <p class="text-sm text-white/50">Tours Today • 6 completed</p>
+          </div>
+
+          <!-- Stat Card 4 -->
+          <div class="glass rounded-2xl p-6 card-shine hover-lift animate-fade-up delay-3">
+            <div class="flex items-start justify-between mb-4">
+              <div class="w-12 h-12 rounded-2xl bg-gradient-to-br from-amber-500/20 to-orange-500/20 flex items-center justify-center border border-amber-500/20">
+                <svg class="w-6 h-6 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+              </div>
+              <span class="px-2.5 py-1 text-xs font-medium text-amber-400 bg-amber-500/10 rounded-full border border-amber-500/20">
+                Action needed
+              </span>
+            </div>
+            <p class="text-4xl font-bold text-white tracking-tight mb-1">4</p>
+            <p class="text-sm text-white/50">Pending Items</p>
+          </div>
+        </div>
+
+        <!-- Main Grid -->
+        <div class="grid grid-cols-3 gap-6">
+
+          <!-- Today's Schedule -->
+          <div class="col-span-2 glass rounded-2xl overflow-hidden animate-fade-up">
+            <div class="px-6 py-5 border-b border-white/5 flex items-center justify-between">
+              <div>
+                <h2 class="text-lg font-semibold text-white">Today's Schedule</h2>
+                <p class="text-sm text-white/40 mt-0.5">8 tours • 248 guests</p>
+              </div>
+              <button class="text-sm text-indigo-400 hover:text-indigo-300 font-medium flex items-center gap-1 group">
+                View all
+                <svg class="w-4 h-4 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+              </button>
+            </div>
+
+            <div class="divide-y divide-white/5">
+              <!-- Tour - Live -->
+              <div class="px-6 py-4 row-highlight hover:bg-white/[0.02] cursor-pointer group">
+                <div class="flex items-center gap-5">
+                  <div class="text-center min-w-[56px]">
+                    <p class="text-2xl font-semibold text-white">9:00</p>
+                    <p class="text-[10px] text-white/40 uppercase tracking-wider">AM</p>
+                  </div>
+                  <div class="w-1.5 h-12 rounded-full bg-gradient-to-b from-green-400 to-emerald-500 glow-success"></div>
+                  <div class="flex-1 min-w-0">
+                    <div class="flex items-center gap-3">
+                      <h3 class="font-medium text-white truncate">Sunrise Dolphin Cruise</h3>
+                      <span class="flex-shrink-0 inline-flex items-center gap-1.5 px-2.5 py-1 bg-green-500/10 text-green-400 text-xs font-medium rounded-full border border-green-500/20">
+                        <span class="w-1.5 h-1.5 bg-green-400 rounded-full live-dot"></span>
+                        Live
+                      </span>
+                    </div>
+                    <p class="text-sm text-white/40 mt-1">Sea Breeze • Captain Mike</p>
+                  </div>
+                  <div class="flex items-center gap-4">
+                    <div class="text-right">
+                      <p class="text-sm font-medium text-white">10/12</p>
+                      <p class="text-xs text-white/40">guests</p>
+                    </div>
+                    <div class="flex -space-x-2">
+                      <div class="w-8 h-8 rounded-full bg-gradient-to-br from-indigo-400 to-purple-500 border-2 border-[#12121a] flex items-center justify-center text-[10px] font-medium text-white">JS</div>
+                      <div class="w-8 h-8 rounded-full bg-white/10 border-2 border-[#12121a] flex items-center justify-center text-[10px] font-medium text-white/60">+9</div>
+                    </div>
+                    <svg class="w-5 h-5 text-white/20 group-hover:text-white/60 group-hover:translate-x-1 transition-all" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Tour - Boarding -->
+              <div class="px-6 py-4 row-highlight hover:bg-white/[0.02] cursor-pointer group">
+                <div class="flex items-center gap-5">
+                  <div class="text-center min-w-[56px]">
+                    <p class="text-2xl font-semibold text-white">11:30</p>
+                    <p class="text-[10px] text-white/40 uppercase tracking-wider">AM</p>
+                  </div>
+                  <div class="w-1.5 h-12 rounded-full bg-gradient-to-b from-indigo-400 to-purple-500 glow-sm"></div>
+                  <div class="flex-1 min-w-0">
+                    <div class="flex items-center gap-3">
+                      <h3 class="font-medium text-white truncate">Snorkeling Adventure</h3>
+                      <span class="flex-shrink-0 px-2.5 py-1 bg-indigo-500/10 text-indigo-400 text-xs font-medium rounded-full border border-indigo-500/20">
+                        Boarding
+                      </span>
+                    </div>
+                    <p class="text-sm text-white/40 mt-1">Ocean Spirit • Captain Sarah</p>
+                  </div>
+                  <div class="flex items-center gap-4">
+                    <div class="text-right">
+                      <p class="text-sm font-medium text-white">15/20</p>
+                      <p class="text-xs text-white/40">guests</p>
+                    </div>
+                    <div class="flex -space-x-2">
+                      <div class="w-8 h-8 rounded-full bg-gradient-to-br from-green-400 to-emerald-500 border-2 border-[#12121a] flex items-center justify-center text-[10px] font-medium text-white">AK</div>
+                      <div class="w-8 h-8 rounded-full bg-white/10 border-2 border-[#12121a] flex items-center justify-center text-[10px] font-medium text-white/60">+14</div>
+                    </div>
+                    <svg class="w-5 h-5 text-white/20 group-hover:text-white/60 group-hover:translate-x-1 transition-all" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Tour - Scheduled -->
+              <div class="px-6 py-4 row-highlight hover:bg-white/[0.02] cursor-pointer group">
+                <div class="flex items-center gap-5">
+                  <div class="text-center min-w-[56px]">
+                    <p class="text-2xl font-semibold text-white">2:00</p>
+                    <p class="text-[10px] text-white/40 uppercase tracking-wider">PM</p>
+                  </div>
+                  <div class="w-1.5 h-12 rounded-full bg-white/20"></div>
+                  <div class="flex-1 min-w-0">
+                    <div class="flex items-center gap-3">
+                      <h3 class="font-medium text-white truncate">Island Hopping Tour</h3>
+                    </div>
+                    <p class="text-sm text-white/40 mt-1">Wave Runner • Captain Dan</p>
+                  </div>
+                  <div class="flex items-center gap-4">
+                    <div class="text-right">
+                      <p class="text-sm font-medium text-white">6/8</p>
+                      <p class="text-xs text-white/40">guests</p>
+                    </div>
+                    <div class="flex -space-x-2">
+                      <div class="w-8 h-8 rounded-full bg-gradient-to-br from-pink-400 to-rose-500 border-2 border-[#12121a] flex items-center justify-center text-[10px] font-medium text-white">KL</div>
+                      <div class="w-8 h-8 rounded-full bg-white/10 border-2 border-[#12121a] flex items-center justify-center text-[10px] font-medium text-white/60">+5</div>
+                    </div>
+                    <svg class="w-5 h-5 text-white/20 group-hover:text-white/60 group-hover:translate-x-1 transition-all" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Tour - Almost Full -->
+              <div class="px-6 py-4 row-highlight hover:bg-white/[0.02] cursor-pointer group">
+                <div class="flex items-center gap-5">
+                  <div class="text-center min-w-[56px]">
+                    <p class="text-2xl font-semibold text-white">5:30</p>
+                    <p class="text-[10px] text-white/40 uppercase tracking-wider">PM</p>
+                  </div>
+                  <div class="w-1.5 h-12 rounded-full bg-gradient-to-b from-amber-400 to-orange-500"></div>
+                  <div class="flex-1 min-w-0">
+                    <div class="flex items-center gap-3">
+                      <h3 class="font-medium text-white truncate">Sunset Cruise</h3>
+                      <span class="flex-shrink-0 px-2.5 py-1 bg-amber-500/10 text-amber-400 text-xs font-medium rounded-full border border-amber-500/20">
+                        2 spots left
+                      </span>
+                    </div>
+                    <p class="text-sm text-white/40 mt-1">Sea Breeze • Captain Mike</p>
+                  </div>
+                  <div class="flex items-center gap-4">
+                    <div class="text-right">
+                      <p class="text-sm font-medium text-white">10/12</p>
+                      <p class="text-xs text-white/40">guests</p>
+                    </div>
+                    <div class="flex -space-x-2">
+                      <div class="w-8 h-8 rounded-full bg-gradient-to-br from-cyan-400 to-blue-500 border-2 border-[#12121a] flex items-center justify-center text-[10px] font-medium text-white">RJ</div>
+                      <div class="w-8 h-8 rounded-full bg-white/10 border-2 border-[#12121a] flex items-center justify-center text-[10px] font-medium text-white/60">+9</div>
+                    </div>
+                    <svg class="w-5 h-5 text-white/20 group-hover:text-white/60 group-hover:translate-x-1 transition-all" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Right Column -->
+          <div class="space-y-6">
+
+            <!-- Quick Actions -->
+            <div class="glass rounded-2xl p-6 animate-fade-up">
+              <h2 class="text-lg font-semibold text-white mb-4">Quick Actions</h2>
+              <div class="grid grid-cols-2 gap-3">
+                <button class="p-4 rounded-xl glass-light glass-hover text-left group">
+                  <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
+                    <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+                  </div>
+                  <p class="text-sm font-medium text-white">New Booking</p>
+                </button>
+                <button class="p-4 rounded-xl glass-light glass-hover text-left group">
+                  <div class="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
+                    <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                  </div>
+                  <p class="text-sm font-medium text-white">Check In</p>
+                </button>
+                <button class="p-4 rounded-xl glass-light glass-hover text-left group">
+                  <div class="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
+                    <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                  </div>
+                  <p class="text-sm font-medium text-white">Add Slot</p>
+                </button>
+                <button class="p-4 rounded-xl glass-light glass-hover text-left group">
+                  <div class="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
+                    <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                  </div>
+                  <p class="text-sm font-medium text-white">Reports</p>
+                </button>
+              </div>
+            </div>
+
+            <!-- Activity Feed -->
+            <div class="glass rounded-2xl p-6 animate-fade-up delay-1">
+              <h2 class="text-lg font-semibold text-white mb-4">Activity</h2>
+              <div class="space-y-4">
+                <div class="flex items-start gap-3">
+                  <div class="w-2 h-2 rounded-full bg-green-400 mt-2 live-dot"></div>
+                  <div class="flex-1 min-w-0">
+                    <p class="text-sm text-white"><span class="font-medium">John Smith</span> checked in</p>
+                    <p class="text-xs text-white/40 mt-0.5">2 min ago</p>
+                  </div>
+                </div>
+                <div class="flex items-start gap-3">
+                  <div class="w-2 h-2 rounded-full bg-indigo-400 mt-2"></div>
+                  <div class="flex-1 min-w-0">
+                    <p class="text-sm text-white">New booking <span class="font-mono text-xs bg-white/10 px-1.5 py-0.5 rounded">#BK24089</span></p>
+                    <p class="text-xs text-white/40 mt-0.5">5 min ago</p>
+                  </div>
+                </div>
+                <div class="flex items-start gap-3">
+                  <div class="w-2 h-2 rounded-full bg-purple-400 mt-2"></div>
+                  <div class="flex-1 min-w-0">
+                    <p class="text-sm text-white"><span class="font-medium">Sarah Wilson</span> signed waiver</p>
+                    <p class="text-xs text-white/40 mt-0.5">8 min ago</p>
+                  </div>
+                </div>
+                <div class="flex items-start gap-3">
+                  <div class="w-2 h-2 rounded-full bg-amber-400 mt-2"></div>
+                  <div class="flex-1 min-w-0">
+                    <p class="text-sm text-white">Waiver pending <span class="font-medium">Mike Johnson</span></p>
+                    <p class="text-xs text-white/40 mt-0.5">15 min ago</p>
+                  </div>
+                </div>
+              </div>
+              <button class="w-full mt-5 py-2.5 rounded-xl glass-light glass-hover text-sm text-white/60 hover:text-white font-medium">
+                View all activity
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Recent Bookings -->
+        <div class="glass rounded-2xl overflow-hidden animate-fade-up">
+          <div class="px-6 py-5 border-b border-white/5 flex items-center justify-between">
+            <div>
+              <h2 class="text-lg font-semibold text-white">Recent Bookings</h2>
+              <p class="text-sm text-white/40 mt-0.5">Latest transactions</p>
+            </div>
+            <div class="flex items-center gap-2">
+              <div class="flex items-center glass-light rounded-xl p-1">
+                <button class="px-4 py-2 bg-white/10 rounded-lg text-sm font-medium text-white">All</button>
+                <button class="px-4 py-2 text-sm text-white/50 hover:text-white">Confirmed</button>
+                <button class="px-4 py-2 text-sm text-white/50 hover:text-white">Pending</button>
+              </div>
+            </div>
+          </div>
+
+          <table class="w-full">
+            <thead>
+              <tr class="text-left text-xs font-medium text-white/40 uppercase tracking-wider border-b border-white/5">
+                <th class="px-6 py-4">Booking</th>
+                <th class="px-6 py-4">Customer</th>
+                <th class="px-6 py-4">Tour</th>
+                <th class="px-6 py-4">Date</th>
+                <th class="px-6 py-4">Amount</th>
+                <th class="px-6 py-4">Status</th>
+                <th class="px-6 py-4"></th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-white/5">
+              <tr class="hover:bg-white/[0.02] transition-colors group">
+                <td class="px-6 py-4">
+                  <span class="font-mono text-sm text-white">#BK24089</span>
+                </td>
+                <td class="px-6 py-4">
+                  <div class="flex items-center gap-3">
+                    <div class="w-9 h-9 rounded-full bg-gradient-to-br from-indigo-400 to-purple-500 flex items-center justify-center text-white text-xs font-medium">JS</div>
+                    <div>
+                      <p class="text-sm font-medium text-white">John Smith</p>
+                      <p class="text-xs text-white/40">john@email.com</p>
+                    </div>
+                  </div>
+                </td>
+                <td class="px-6 py-4">
+                  <p class="text-sm text-white">Sunset Cruise</p>
+                </td>
+                <td class="px-6 py-4">
+                  <p class="text-sm text-white">Mar 13</p>
+                  <p class="text-xs text-white/40">5:30 PM</p>
+                </td>
+                <td class="px-6 py-4">
+                  <span class="text-sm font-medium text-white">$450</span>
+                </td>
+                <td class="px-6 py-4">
+                  <span class="inline-flex items-center gap-1.5 px-2.5 py-1 bg-green-500/10 text-green-400 text-xs font-medium rounded-full border border-green-500/20">
+                    <span class="w-1.5 h-1.5 bg-green-400 rounded-full"></span>
+                    Confirmed
+                  </span>
+                </td>
+                <td class="px-6 py-4">
+                  <button class="opacity-0 group-hover:opacity-100 p-2 rounded-lg hover:bg-white/10 transition-all">
+                    <svg class="w-4 h-4 text-white/40" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z"/></svg>
+                  </button>
+                </td>
+              </tr>
+
+              <tr class="hover:bg-white/[0.02] transition-colors group">
+                <td class="px-6 py-4">
+                  <span class="font-mono text-sm text-white">#BK24088</span>
+                </td>
+                <td class="px-6 py-4">
+                  <div class="flex items-center gap-3">
+                    <div class="w-9 h-9 rounded-full bg-gradient-to-br from-pink-400 to-rose-500 flex items-center justify-center text-white text-xs font-medium">SW</div>
+                    <div>
+                      <p class="text-sm font-medium text-white">Sarah Wilson</p>
+                      <p class="text-xs text-white/40">sarah@email.com</p>
+                    </div>
+                  </div>
+                </td>
+                <td class="px-6 py-4">
+                  <p class="text-sm text-white">Dolphin Watch</p>
+                </td>
+                <td class="px-6 py-4">
+                  <p class="text-sm text-white">Mar 14</p>
+                  <p class="text-xs text-white/40">9:00 AM</p>
+                </td>
+                <td class="px-6 py-4">
+                  <span class="text-sm font-medium text-white">$180</span>
+                </td>
+                <td class="px-6 py-4">
+                  <span class="inline-flex items-center gap-1.5 px-2.5 py-1 bg-amber-500/10 text-amber-400 text-xs font-medium rounded-full border border-amber-500/20">
+                    <span class="w-1.5 h-1.5 bg-amber-400 rounded-full"></span>
+                    Pending
+                  </span>
+                </td>
+                <td class="px-6 py-4">
+                  <button class="opacity-0 group-hover:opacity-100 p-2 rounded-lg hover:bg-white/10 transition-all">
+                    <svg class="w-4 h-4 text-white/40" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z"/></svg>
+                  </button>
+                </td>
+              </tr>
+
+              <tr class="hover:bg-white/[0.02] transition-colors group">
+                <td class="px-6 py-4">
+                  <span class="font-mono text-sm text-white">#BK24087</span>
+                </td>
+                <td class="px-6 py-4">
+                  <div class="flex items-center gap-3">
+                    <div class="w-9 h-9 rounded-full bg-gradient-to-br from-green-400 to-emerald-500 flex items-center justify-center text-white text-xs font-medium">MJ</div>
+                    <div>
+                      <p class="text-sm font-medium text-white">Mike Johnson</p>
+                      <p class="text-xs text-white/40">mike@email.com</p>
+                    </div>
+                  </div>
+                </td>
+                <td class="px-6 py-4">
+                  <p class="text-sm text-white">Island Hopping</p>
+                </td>
+                <td class="px-6 py-4">
+                  <p class="text-sm text-white">Mar 13</p>
+                  <p class="text-xs text-white/40">2:00 PM</p>
+                </td>
+                <td class="px-6 py-4">
+                  <span class="text-sm font-medium text-white">$720</span>
+                </td>
+                <td class="px-6 py-4">
+                  <span class="inline-flex items-center gap-1.5 px-2.5 py-1 bg-indigo-500/10 text-indigo-400 text-xs font-medium rounded-full border border-indigo-500/20">
+                    <span class="w-1.5 h-1.5 bg-indigo-400 rounded-full"></span>
+                    Checked In
+                  </span>
+                </td>
+                <td class="px-6 py-4">
+                  <button class="opacity-0 group-hover:opacity-100 p-2 rounded-lg hover:bg-white/10 transition-all">
+                    <svg class="w-4 h-4 text-white/40" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z"/></svg>
+                  </button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+
+          <!-- Pagination -->
+          <div class="px-6 py-4 border-t border-white/5 flex items-center justify-between">
+            <p class="text-sm text-white/40">Showing 1-3 of 156</p>
+            <div class="flex items-center gap-1">
+              <button class="p-2 rounded-lg hover:bg-white/10 text-white/40 disabled:opacity-30" disabled>
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+              </button>
+              <button class="w-9 h-9 rounded-lg bg-indigo-500/20 text-indigo-400 text-sm font-medium border border-indigo-500/30">1</button>
+              <button class="w-9 h-9 rounded-lg hover:bg-white/10 text-white/60 text-sm">2</button>
+              <button class="w-9 h-9 rounded-lg hover:bg-white/10 text-white/60 text-sm">3</button>
+              <span class="px-2 text-white/30">...</span>
+              <button class="w-9 h-9 rounded-lg hover:bg-white/10 text-white/60 text-sm">52</button>
+              <button class="p-2 rounded-lg hover:bg-white/10 text-white/40">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+              </button>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </main>
+  </div>
+
+  <!-- Toast -->
+  <div class="fixed bottom-6 right-6 z-50 animate-fade-up">
+    <div class="glass rounded-2xl p-4 flex items-center gap-4 gradient-border">
+      <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-green-400 to-emerald-500 flex items-center justify-center flex-shrink-0">
+        <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+      </div>
+      <div class="flex-1 min-w-0">
+        <p class="text-sm font-medium text-white">New booking received!</p>
+        <p class="text-xs text-white/50 mt-0.5">#BK24090 • Sunset Cruise • $380</p>
+      </div>
+      <button class="p-2 rounded-lg hover:bg-white/10 text-white/40 hover:text-white">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+      </button>
+    </div>
+  </div>
+
+</body>
+</html>

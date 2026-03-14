@@ -22,36 +22,33 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Separator } from "@/components/ui/separator";
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Slider } from "@/components/ui/slider";
 import {
   Search,
   Users,
-  MoreHorizontal,
   Mail,
   Phone,
-  Calendar,
   DollarSign,
-  Tag,
   ExternalLink,
-  MessageSquare,
-  FileText,
   TrendingUp,
   UserPlus,
   Download,
   Filter,
-  Loader2,
+  X,
+  ChevronDown,
 } from "lucide-react";
 import { format } from "date-fns";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/client";
+import { StatCard } from "@/components/ui/stat-card";
+import { IconBox } from "@/components/ui/icon-box";
 
 interface Customer {
   id: string;
@@ -68,19 +65,41 @@ interface Customer {
   notes: string | null;
 }
 
+// V6 Pastel tag colors
 const tagColors: Record<string, string> = {
-  VIP: "bg-purple-100 text-purple-800 hover:bg-purple-100",
-  Repeat: "bg-blue-100 text-blue-800 hover:bg-blue-100",
-  Corporate: "bg-green-100 text-green-800 hover:bg-green-100",
-  Family: "bg-orange-100 text-orange-800 hover:bg-orange-100",
+  VIP: "bg-lavender text-lavender-dark hover:bg-lavender",
+  Repeat: "bg-sky text-sky-dark hover:bg-sky",
+  Corporate: "bg-mint text-mint-dark hover:bg-mint",
+  Family: "bg-peach text-peach-dark hover:bg-peach",
 };
+
+const availableTags = ["VIP", "Repeat", "Corporate", "Family"];
+
+interface Filters {
+  tags: string[];
+  minBookings: number;
+  maxBookings: number;
+  minSpent: number;
+  maxSpent: number;
+  hasEmail: boolean | null;
+  hasPhone: boolean | null;
+}
 
 export default function CustomersPage() {
   const [loading, setLoading] = useState(true);
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
-  const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
-  const [sendingMessage, setSendingMessage] = useState(false);
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const [filters, setFilters] = useState<Filters>({
+    tags: [],
+    minBookings: 0,
+    maxBookings: 100,
+    minSpent: 0,
+    maxSpent: 10000,
+    hasEmail: null,
+    hasPhone: null,
+  });
+  const [activeFilterCount, setActiveFilterCount] = useState(0);
 
   useEffect(() => {
     const fetchCustomers = async () => {
@@ -147,13 +166,82 @@ export default function CustomersPage() {
     fetchCustomers();
   }, []);
 
-  const filteredCustomers = customers.filter(
-    (customer) =>
+  // Calculate active filter count
+  useEffect(() => {
+    let count = 0;
+    if (filters.tags.length > 0) count++;
+    if (filters.minBookings > 0 || filters.maxBookings < 100) count++;
+    if (filters.minSpent > 0 || filters.maxSpent < 10000) count++;
+    if (filters.hasEmail !== null) count++;
+    if (filters.hasPhone !== null) count++;
+    setActiveFilterCount(count);
+  }, [filters]);
+
+  const filteredCustomers = customers.filter((customer) => {
+    // Text search
+    const matchesSearch =
       customer.firstName.toLowerCase().includes(searchQuery.toLowerCase()) ||
       customer.lastName.toLowerCase().includes(searchQuery.toLowerCase()) ||
       customer.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      customer.phone.includes(searchQuery)
-  );
+      customer.phone.includes(searchQuery);
+
+    if (!matchesSearch) return false;
+
+    // Tag filter
+    if (filters.tags.length > 0) {
+      const hasMatchingTag = filters.tags.some((tag) =>
+        customer.tags.includes(tag)
+      );
+      if (!hasMatchingTag) return false;
+    }
+
+    // Bookings range filter
+    if (
+      customer.totalBookings < filters.minBookings ||
+      customer.totalBookings > filters.maxBookings
+    ) {
+      return false;
+    }
+
+    // Spent range filter
+    if (
+      customer.totalSpent < filters.minSpent ||
+      customer.totalSpent > filters.maxSpent
+    ) {
+      return false;
+    }
+
+    // Has email filter
+    if (filters.hasEmail === true && !customer.email) return false;
+    if (filters.hasEmail === false && customer.email) return false;
+
+    // Has phone filter
+    if (filters.hasPhone === true && !customer.phone) return false;
+    if (filters.hasPhone === false && customer.phone) return false;
+
+    return true;
+  });
+
+  const clearFilters = () => {
+    setFilters({
+      tags: [],
+      minBookings: 0,
+      maxBookings: 100,
+      minSpent: 0,
+      maxSpent: 10000,
+      hasEmail: null,
+      hasPhone: null,
+    });
+  };
+
+  const toggleTag = (tag: string) => {
+    setFilters((prev) => ({
+      ...prev,
+      tags: prev.tags.includes(tag)
+        ? prev.tags.filter((t) => t !== tag)
+        : [...prev.tags, tag],
+    }));
+  };
 
   const totalCustomers = customers.length;
   const totalRevenue = customers.reduce((acc, c) => acc + c.totalSpent, 0);
@@ -194,10 +282,8 @@ export default function CustomersPage() {
       return;
     }
 
-    setSendingMessage(true);
     // Open email client as a simple solution
     window.open(`mailto:${customer.email}`, '_blank');
-    setSendingMessage(false);
     toast.info("Email client opened", { description: `Compose email to ${customer.email}` });
   };
 
@@ -209,13 +295,13 @@ export default function CustomersPage() {
     return (
       <div className="p-6 space-y-6">
         <div className="animate-pulse space-y-6">
-          <div className="h-8 bg-muted rounded w-48" />
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div className="h-8 bg-muted rounded-xl w-48" />
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
             {[1, 2, 3].map((i) => (
-              <div key={i} className="h-24 bg-muted rounded-lg" />
+              <div key={i} className="h-32 bg-muted rounded-2xl" />
             ))}
           </div>
-          <div className="h-96 bg-muted rounded-lg" />
+          <div className="h-96 bg-muted rounded-2xl" />
         </div>
       </div>
     );
@@ -226,71 +312,50 @@ export default function CustomersPage() {
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold flex items-center gap-2">
-            <Users className="h-6 w-6 text-primary" />
-            Customer CRM
-          </h1>
+          <h1 className="text-2xl font-bold">Customer CRM</h1>
           <p className="text-muted-foreground">
             Manage customer relationships and booking history
           </p>
         </div>
 
         <div className="flex items-center gap-3">
-          <Button variant="outline" className="gap-2" onClick={exportCustomers}>
+          <Button variant="outline" className="gap-2 rounded-xl" onClick={exportCustomers}>
             <Download className="h-4 w-4" />
             Export
           </Button>
-          <Button className="gap-2 gradient-primary border-0" onClick={handleAddCustomer}>
+          <Button className="gap-2 gradient-primary border-0 rounded-xl shadow-lg shadow-primary/30" onClick={handleAddCustomer}>
             <UserPlus className="h-4 w-4" />
             Add Customer
           </Button>
         </div>
       </div>
 
-      {/* Stats */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center gap-4">
-              <div className="h-12 w-12 rounded-xl bg-primary/10 flex items-center justify-center">
-                <Users className="h-6 w-6 text-primary" />
-              </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Total Customers</p>
-                <p className="text-2xl font-bold">{totalCustomers}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center gap-4">
-              <div className="h-12 w-12 rounded-xl bg-green-100 flex items-center justify-center">
-                <DollarSign className="h-6 w-6 text-green-600" />
-              </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Total Revenue</p>
-                <p className="text-2xl font-bold">${totalRevenue.toLocaleString()}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center gap-4">
-              <div className="h-12 w-12 rounded-xl bg-purple-100 flex items-center justify-center">
-                <TrendingUp className="h-6 w-6 text-purple-600" />
-              </div>
-              <div>
-                <p className="text-sm text-muted-foreground">VIP Customers</p>
-                <p className="text-2xl font-bold">{vipCustomers}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+      {/* V6 Stats Grid */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
+        <StatCard
+          title="Total Customers"
+          value={totalCustomers}
+          icon={<Users className="h-5 w-5" />}
+          color="sky"
+          className="animate-fade-in-up stagger-1"
+        />
+        <StatCard
+          title="Total Revenue"
+          value={`$${totalRevenue.toLocaleString()}`}
+          icon={<DollarSign className="h-5 w-5" />}
+          color="mint"
+          className="animate-fade-in-up stagger-2"
+        />
+        <StatCard
+          title="VIP Customers"
+          value={vipCustomers}
+          icon={<TrendingUp className="h-5 w-5" />}
+          color="lavender"
+          className="animate-fade-in-up stagger-3"
+        />
       </div>
 
-      {/* Search and Filters */}
+      {/* V6 Search and Filters */}
       <div className="flex flex-col md:flex-row gap-4">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -298,286 +363,384 @@ export default function CustomersPage() {
             placeholder="Search by name, email, or phone..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-10"
+            className="pl-10 rounded-xl border-border focus:border-primary"
           />
         </div>
-        <Button
-          variant="outline"
-          className="gap-2"
-          onClick={() => toast.info("Filters", { description: "Filter functionality coming soon." })}
-        >
-          <Filter className="h-4 w-4" />
-          Filters
-        </Button>
+        <Popover open={filtersOpen} onOpenChange={setFiltersOpen}>
+          <PopoverTrigger asChild>
+            <Button variant="outline" className="gap-2 rounded-xl">
+              <Filter className="h-4 w-4" />
+              Filters
+              {activeFilterCount > 0 && (
+                <Badge className="ml-1 h-5 w-5 p-0 flex items-center justify-center bg-primary text-primary-foreground rounded-full">
+                  {activeFilterCount}
+                </Badge>
+              )}
+              <ChevronDown className="h-4 w-4 ml-1" />
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-80" align="end">
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <h4 className="font-medium">Filters</h4>
+                {activeFilterCount > 0 && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={clearFilters}
+                    className="h-8 px-2 text-muted-foreground"
+                  >
+                    <X className="h-4 w-4 mr-1" />
+                    Clear all
+                  </Button>
+                )}
+              </div>
+
+              {/* Tags Filter */}
+              <div className="space-y-2">
+                <Label className="text-sm font-medium">Tags</Label>
+                <div className="flex flex-wrap gap-2">
+                  {availableTags.map((tag) => (
+                    <Badge
+                      key={tag}
+                      variant={filters.tags.includes(tag) ? "default" : "outline"}
+                      className={cn(
+                        "cursor-pointer transition-colors",
+                        filters.tags.includes(tag)
+                          ? "bg-primary"
+                          : tagColors[tag] || "hover:bg-muted"
+                      )}
+                      onClick={() => toggleTag(tag)}
+                    >
+                      {tag}
+                    </Badge>
+                  ))}
+                </div>
+              </div>
+
+              {/* Bookings Range */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <Label className="text-sm font-medium">Bookings</Label>
+                  <span className="text-xs text-muted-foreground">
+                    {filters.minBookings} - {filters.maxBookings === 100 ? "100+" : filters.maxBookings}
+                  </span>
+                </div>
+                <div className="flex gap-2 items-center">
+                  <Input
+                    type="number"
+                    min={0}
+                    max={filters.maxBookings}
+                    value={filters.minBookings}
+                    onChange={(e) =>
+                      setFilters((prev) => ({
+                        ...prev,
+                        minBookings: Math.max(0, parseInt(e.target.value) || 0),
+                      }))
+                    }
+                    className="w-20 h-8"
+                    placeholder="Min"
+                  />
+                  <span className="text-muted-foreground">to</span>
+                  <Input
+                    type="number"
+                    min={filters.minBookings}
+                    value={filters.maxBookings}
+                    onChange={(e) =>
+                      setFilters((prev) => ({
+                        ...prev,
+                        maxBookings: Math.max(prev.minBookings, parseInt(e.target.value) || 100),
+                      }))
+                    }
+                    className="w-20 h-8"
+                    placeholder="Max"
+                  />
+                </div>
+              </div>
+
+              {/* Spending Range */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <Label className="text-sm font-medium">Total Spent ($)</Label>
+                  <span className="text-xs text-muted-foreground">
+                    ${filters.minSpent.toLocaleString()} - ${filters.maxSpent === 10000 ? "10k+" : filters.maxSpent.toLocaleString()}
+                  </span>
+                </div>
+                <div className="flex gap-2 items-center">
+                  <Input
+                    type="number"
+                    min={0}
+                    max={filters.maxSpent}
+                    value={filters.minSpent}
+                    onChange={(e) =>
+                      setFilters((prev) => ({
+                        ...prev,
+                        minSpent: Math.max(0, parseInt(e.target.value) || 0),
+                      }))
+                    }
+                    className="w-24 h-8"
+                    placeholder="Min"
+                  />
+                  <span className="text-muted-foreground">to</span>
+                  <Input
+                    type="number"
+                    min={filters.minSpent}
+                    value={filters.maxSpent}
+                    onChange={(e) =>
+                      setFilters((prev) => ({
+                        ...prev,
+                        maxSpent: Math.max(prev.minSpent, parseInt(e.target.value) || 10000),
+                      }))
+                    }
+                    className="w-24 h-8"
+                    placeholder="Max"
+                  />
+                </div>
+              </div>
+
+              {/* Contact Info Filters */}
+              <div className="space-y-2">
+                <Label className="text-sm font-medium">Contact Info</Label>
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <Checkbox
+                      id="hasEmail"
+                      checked={filters.hasEmail === true}
+                      onCheckedChange={(checked) =>
+                        setFilters((prev) => ({
+                          ...prev,
+                          hasEmail: checked ? true : null,
+                        }))
+                      }
+                    />
+                    <label htmlFor="hasEmail" className="text-sm cursor-pointer">
+                      Has email address
+                    </label>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Checkbox
+                      id="hasPhone"
+                      checked={filters.hasPhone === true}
+                      onCheckedChange={(checked) =>
+                        setFilters((prev) => ({
+                          ...prev,
+                          hasPhone: checked ? true : null,
+                        }))
+                      }
+                    />
+                    <label htmlFor="hasPhone" className="text-sm cursor-pointer">
+                      Has phone number
+                    </label>
+                  </div>
+                </div>
+              </div>
+
+              <Button
+                className="w-full"
+                onClick={() => setFiltersOpen(false)}
+              >
+                Apply Filters
+              </Button>
+            </div>
+          </PopoverContent>
+        </Popover>
       </div>
 
-      {/* Customer Table */}
-      <Card>
+      {/* Active Filters Display */}
+      {activeFilterCount > 0 && (
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-sm text-muted-foreground">Active filters:</span>
+          {filters.tags.map((tag) => (
+            <Badge
+              key={tag}
+              variant="secondary"
+              className="gap-1 cursor-pointer"
+              onClick={() => toggleTag(tag)}
+            >
+              {tag}
+              <X className="h-3 w-3" />
+            </Badge>
+          ))}
+          {(filters.minBookings > 0 || filters.maxBookings < 100) && (
+            <Badge
+              variant="secondary"
+              className="gap-1 cursor-pointer"
+              onClick={() =>
+                setFilters((prev) => ({
+                  ...prev,
+                  minBookings: 0,
+                  maxBookings: 100,
+                }))
+              }
+            >
+              {filters.minBookings}-{filters.maxBookings} bookings
+              <X className="h-3 w-3" />
+            </Badge>
+          )}
+          {(filters.minSpent > 0 || filters.maxSpent < 10000) && (
+            <Badge
+              variant="secondary"
+              className="gap-1 cursor-pointer"
+              onClick={() =>
+                setFilters((prev) => ({
+                  ...prev,
+                  minSpent: 0,
+                  maxSpent: 10000,
+                }))
+              }
+            >
+              ${filters.minSpent.toLocaleString()}-${filters.maxSpent.toLocaleString()} spent
+              <X className="h-3 w-3" />
+            </Badge>
+          )}
+          {filters.hasEmail === true && (
+            <Badge
+              variant="secondary"
+              className="gap-1 cursor-pointer"
+              onClick={() =>
+                setFilters((prev) => ({ ...prev, hasEmail: null }))
+              }
+            >
+              Has email
+              <X className="h-3 w-3" />
+            </Badge>
+          )}
+          {filters.hasPhone === true && (
+            <Badge
+              variant="secondary"
+              className="gap-1 cursor-pointer"
+              onClick={() =>
+                setFilters((prev) => ({ ...prev, hasPhone: null }))
+              }
+            >
+              Has phone
+              <X className="h-3 w-3" />
+            </Badge>
+          )}
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={clearFilters}
+            className="h-6 px-2 text-xs"
+          >
+            Clear all
+          </Button>
+        </div>
+      )}
+
+      {/* Results Count */}
+      {(searchQuery || activeFilterCount > 0) && (
+        <p className="text-sm text-muted-foreground">
+          Showing {filteredCustomers.length} of {customers.length} customers
+        </p>
+      )}
+
+      {/* V6 Customer Table */}
+      <Card className="rounded-2xl border shadow-sm animate-fade-in-up stagger-4">
         {filteredCustomers.length === 0 ? (
           <div className="text-center py-16">
-            <Users className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+            <Users className="h-12 w-12 text-muted-foreground/30 mx-auto mb-4" />
             <p className="text-lg font-medium">No customers found</p>
             <p className="text-muted-foreground mb-4">
-              {searchQuery
-                ? "Try adjusting your search"
+              {searchQuery || activeFilterCount > 0
+                ? "Try adjusting your search or filters"
                 : "Customers will appear here when they make bookings"}
             </p>
+            {activeFilterCount > 0 && (
+              <Button variant="outline" onClick={clearFilters} className="rounded-xl">
+                Clear filters
+              </Button>
+            )}
           </div>
         ) : (
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Customer</TableHead>
-                <TableHead>Contact</TableHead>
-                <TableHead>Bookings</TableHead>
-                <TableHead>Revenue</TableHead>
-                <TableHead>Tags</TableHead>
-                <TableHead>Last Booking</TableHead>
-                <TableHead></TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredCustomers.map((customer) => (
-                <TableRow key={customer.id} className="cursor-pointer hover:bg-muted/50">
-                  <TableCell>
-                    <div className="flex items-center gap-3">
-                      <Avatar className="h-10 w-10">
-                        <AvatarFallback className="bg-primary/10 text-primary">
-                          {customer.firstName[0] || '?'}
-                          {customer.lastName[0] || '?'}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div>
-                        <p className="font-medium">
-                          {customer.firstName} {customer.lastName}
+          <div className="overflow-x-auto">
+            <table className="table-v6 w-full">
+              <thead>
+                <tr>
+                  <th>Customer</th>
+                  <th>Contact</th>
+                  <th>Bookings</th>
+                  <th>Revenue</th>
+                  <th>Tags</th>
+                  <th>Last Booking</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredCustomers.map((customer) => (
+                  <tr key={customer.id} className="cursor-pointer">
+                    <td>
+                      <div className="flex items-center gap-3">
+                        <Avatar className="h-10 w-10 rounded-xl">
+                          <AvatarFallback className="rounded-xl bg-gradient-to-br from-sky to-lavender text-sky-dark font-semibold">
+                            {customer.firstName[0] || '?'}
+                            {customer.lastName[0] || '?'}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div>
+                          <p className="font-medium text-sm">
+                            {customer.firstName} {customer.lastName}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            Customer since {format(new Date(customer.createdAt), "MMM yyyy")}
+                          </p>
+                        </div>
+                      </div>
+                    </td>
+                    <td>
+                      <div className="space-y-1">
+                        <p className="text-xs flex items-center gap-1">
+                          <Mail className="h-3 w-3 text-muted-foreground" />
+                          {customer.email}
                         </p>
-                        <p className="text-sm text-muted-foreground">
-                          Customer since {format(new Date(customer.createdAt), "MMM yyyy")}
+                        <p className="text-xs flex items-center gap-1">
+                          <Phone className="h-3 w-3 text-muted-foreground" />
+                          {customer.phone || '-'}
                         </p>
                       </div>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <div className="space-y-1">
-                      <p className="text-sm flex items-center gap-1">
-                        <Mail className="h-3 w-3 text-muted-foreground" />
-                        {customer.email}
-                      </p>
-                      <p className="text-sm flex items-center gap-1">
-                        <Phone className="h-3 w-3 text-muted-foreground" />
-                        {customer.phone || '-'}
-                      </p>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <span className="font-medium">{customer.totalBookings}</span>
-                  </TableCell>
-                  <TableCell>
-                    <span className="font-medium text-green-600">
-                      ${customer.totalSpent.toLocaleString()}
-                    </span>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex flex-wrap gap-1">
-                      {customer.tags.map((tag) => (
-                        <Badge
-                          key={tag}
-                          className={cn("text-xs", tagColors[tag] || "bg-gray-100 text-gray-800")}
-                        >
-                          {tag}
-                        </Badge>
-                      ))}
-                      {customer.tags.length === 0 && (
-                        <span className="text-sm text-muted-foreground">—</span>
-                      )}
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <span className="text-sm">
-                      {customer.lastBooking
-                        ? format(new Date(customer.lastBooking), "MMM d, yyyy")
-                        : '-'}
-                    </span>
-                  </TableCell>
-                  <TableCell>
-                    <Dialog>
-                      <DialogTrigger asChild>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => setSelectedCustomer(customer)}
-                        >
+                    </td>
+                    <td>
+                      <span className="font-medium text-sm">{customer.totalBookings}</span>
+                    </td>
+                    <td>
+                      <span className="font-medium text-sm text-mint-dark">
+                        ${customer.totalSpent.toLocaleString()}
+                      </span>
+                    </td>
+                    <td>
+                      <div className="flex flex-wrap gap-1">
+                        {customer.tags.map((tag) => (
+                          <Badge
+                            key={tag}
+                            className={cn("text-xs", tagColors[tag] || "bg-secondary text-secondary-foreground")}
+                          >
+                            {tag}
+                          </Badge>
+                        ))}
+                        {customer.tags.length === 0 && (
+                          <span className="text-xs text-muted-foreground">—</span>
+                        )}
+                      </div>
+                    </td>
+                    <td>
+                      <span className="text-xs">
+                        {customer.lastBooking
+                          ? format(new Date(customer.lastBooking), "MMM d, yyyy")
+                          : '-'}
+                      </span>
+                    </td>
+                    <td>
+                      <Link href={`/dashboard/customers/${customer.id}`}>
+                        <Button variant="ghost" size="icon" className="rounded-lg">
                           <ExternalLink className="h-4 w-4" />
                         </Button>
-                      </DialogTrigger>
-                      <DialogContent className="max-w-2xl">
-                        <DialogHeader>
-                          <DialogTitle className="flex items-center gap-3">
-                            <Avatar className="h-12 w-12">
-                              <AvatarFallback className="bg-primary text-primary-foreground text-lg">
-                                {customer.firstName[0] || '?'}
-                                {customer.lastName[0] || '?'}
-                              </AvatarFallback>
-                            </Avatar>
-                            <div>
-                              <p>
-                                {customer.firstName} {customer.lastName}
-                              </p>
-                              <div className="flex gap-1 mt-1">
-                                {customer.tags.map((tag) => (
-                                  <Badge
-                                    key={tag}
-                                    className={cn("text-xs", tagColors[tag])}
-                                  >
-                                    {tag}
-                                  </Badge>
-                                ))}
-                              </div>
-                            </div>
-                          </DialogTitle>
-                        </DialogHeader>
-
-                        <Tabs defaultValue="overview" className="mt-4">
-                          <TabsList>
-                            <TabsTrigger value="overview">Overview</TabsTrigger>
-                            <TabsTrigger value="bookings">Bookings</TabsTrigger>
-                            <TabsTrigger value="communications">Communications</TabsTrigger>
-                          </TabsList>
-
-                          <TabsContent value="overview" className="mt-4 space-y-4">
-                            {/* Contact Info */}
-                            <div className="grid grid-cols-2 gap-4">
-                              <div className="p-4 bg-muted rounded-lg">
-                                <p className="text-sm text-muted-foreground mb-1">Email</p>
-                                <a
-                                  href={`mailto:${customer.email}`}
-                                  className="font-medium hover:text-primary"
-                                >
-                                  {customer.email}
-                                </a>
-                              </div>
-                              <div className="p-4 bg-muted rounded-lg">
-                                <p className="text-sm text-muted-foreground mb-1">Phone</p>
-                                <a
-                                  href={`tel:${customer.phone}`}
-                                  className="font-medium hover:text-primary"
-                                >
-                                  {customer.phone || '-'}
-                                </a>
-                              </div>
-                            </div>
-
-                            {/* Stats */}
-                            <div className="grid grid-cols-3 gap-4">
-                              <div className="p-4 bg-muted rounded-lg text-center">
-                                <p className="text-2xl font-bold">{customer.totalBookings}</p>
-                                <p className="text-sm text-muted-foreground">Total Bookings</p>
-                              </div>
-                              <div className="p-4 bg-muted rounded-lg text-center">
-                                <p className="text-2xl font-bold text-green-600">
-                                  ${customer.totalSpent}
-                                </p>
-                                <p className="text-sm text-muted-foreground">Total Spent</p>
-                              </div>
-                              <div className="p-4 bg-muted rounded-lg text-center">
-                                <p className="text-2xl font-bold">
-                                  ${customer.totalBookings > 0 ? Math.round(customer.totalSpent / customer.totalBookings) : 0}
-                                </p>
-                                <p className="text-sm text-muted-foreground">Avg. Booking</p>
-                              </div>
-                            </div>
-
-                            {/* Notes */}
-                            {customer.notes && (
-                              <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-                                <p className="text-sm font-medium text-yellow-800 mb-1">Notes</p>
-                                <p className="text-sm text-yellow-900">{customer.notes}</p>
-                              </div>
-                            )}
-
-                            {/* Actions */}
-                            <div className="flex gap-3">
-                              <Button
-                                className="flex-1 gap-2"
-                                onClick={() => sendMessageToCustomer(customer)}
-                                disabled={sendingMessage}
-                              >
-                                {sendingMessage ? (
-                                  <Loader2 className="h-4 w-4 animate-spin" />
-                                ) : (
-                                  <MessageSquare className="h-4 w-4" />
-                                )}
-                                Send Message
-                              </Button>
-                              <Button
-                                variant="outline"
-                                className="flex-1 gap-2"
-                                onClick={() => newBookingForCustomer(customer)}
-                              >
-                                <Calendar className="h-4 w-4" />
-                                New Booking
-                              </Button>
-                            </div>
-                          </TabsContent>
-
-                          <TabsContent value="bookings" className="mt-4">
-                            {customer.bookings.length === 0 ? (
-                              <div className="text-center py-8 text-muted-foreground">
-                                <Calendar className="h-12 w-12 mx-auto mb-3 opacity-50" />
-                                <p>No bookings yet</p>
-                              </div>
-                            ) : (
-                              <div className="space-y-3">
-                                {customer.bookings.map((booking: any) => (
-                                  <div
-                                    key={booking.id}
-                                    className="flex items-center justify-between p-4 bg-muted rounded-lg"
-                                  >
-                                    <div>
-                                      <div className="flex items-center gap-2 mb-1">
-                                        <p className="font-medium">{booking.tour}</p>
-                                        <Badge variant="outline" className="text-xs font-mono">
-                                          {booking.id}
-                                        </Badge>
-                                      </div>
-                                      <p className="text-sm text-muted-foreground">
-                                        {format(new Date(booking.date), "MMMM d, yyyy")}
-                                      </p>
-                                    </div>
-                                    <div className="text-right">
-                                      <p className="font-semibold">${booking.amount}</p>
-                                      <Badge
-                                        className={
-                                          booking.status === "completed"
-                                            ? "bg-green-100 text-green-800"
-                                            : booking.status === "confirmed"
-                                            ? "bg-blue-100 text-blue-800"
-                                            : "bg-yellow-100 text-yellow-800"
-                                        }
-                                      >
-                                        {booking.status}
-                                      </Badge>
-                                    </div>
-                                  </div>
-                                ))}
-                              </div>
-                            )}
-                          </TabsContent>
-
-                          <TabsContent value="communications" className="mt-4">
-                            <div className="text-center py-8 text-muted-foreground">
-                              <MessageSquare className="h-12 w-12 mx-auto mb-3 opacity-50" />
-                              <p>Communication history will appear here</p>
-                            </div>
-                          </TabsContent>
-                        </Tabs>
-                      </DialogContent>
-                    </Dialog>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+                      </Link>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
       </Card>
     </div>
