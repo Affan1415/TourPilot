@@ -37,10 +37,13 @@ async function showData() {
 
   console.log('\n📋 Sample Bookings:');
   sample?.forEach(b => {
+    const customer = (b.customer as any)?.[0] ?? b.customer;
+    const availability = (b.availability as any)?.[0] ?? b.availability;
+    const tour = availability?.tour?.[0] ?? availability?.tour;
     console.log(`   Booking ${b.booking_reference}:`);
-    console.log(`     • Customer: ${b.customer?.first_name} ${b.customer?.last_name}`);
-    console.log(`     • Tour: ${b.availability?.tour?.name}`);
-    console.log(`     • Date: ${b.availability?.date} @ ${b.availability?.start_time}`);
+    console.log(`     • Customer: ${customer?.first_name} ${customer?.last_name}`);
+    console.log(`     • Tour: ${tour?.name}`);
+    console.log(`     • Date: ${availability?.date} @ ${availability?.start_time}`);
     console.log(`     • Guests: ${b.guest_count} | Price: $${b.total_price}`);
     console.log(`     • Status: ${b.status} | Payment: ${b.payment_status}`);
   });

@@ -35,7 +35,7 @@ const guestNames = [
   { first: 'Barbara', last: 'Thompson' },
 ];
 
-function getRandomItem<T>(arr: T[]): T {
+function getRandomItem<T>(arr: readonly T[]): T {
   return arr[Math.floor(Math.random() * arr.length)];
 }
 

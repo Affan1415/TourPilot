@@ -37,7 +37,8 @@ async function runCaptainMigration() {
       if (boats && boats.length > 0) {
         console.log('📊 Current captain assignments:');
         boats.forEach(b => {
-          const captain = b.assigned_captain as { name: string } | null;
+          const captainData = b.assigned_captain as { name: string }[] | null;
+          const captain = captainData?.[0];
           console.log(`   • ${b.name} → ${captain?.name || 'Unknown'}`);
         });
       } else {

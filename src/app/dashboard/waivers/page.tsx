@@ -189,7 +189,22 @@ export default function WaiversPage() {
         .limit(50);
 
       if (error) throw error;
-      setWaiverRecords(data || []);
+      const transformedData: WaiverRecord[] = (data || []).map((w: any) => ({
+        id: w.id,
+        booking_id: w.booking_id,
+        status: w.status,
+        signed_at: w.signed_at,
+        created_at: w.created_at,
+        guest: w.guest?.[0],
+        template: w.template?.[0],
+        booking: w.booking?.[0] ? {
+          booking_reference: w.booking[0].booking_reference,
+          availability: w.booking[0].availability?.[0] ? {
+            tour: w.booking[0].availability[0].tour?.[0],
+          } : undefined,
+        } : undefined,
+      }));
+      setWaiverRecords(transformedData);
     } catch (error) {
       console.error('Error loading waiver records:', error);
     }

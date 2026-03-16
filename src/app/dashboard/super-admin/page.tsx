@@ -163,7 +163,7 @@ export default function SuperAdminPage() {
           name: loc.name,
           city: loc.city,
           is_primary: loc.is_primary,
-          status: loc.status,
+          status: loc.is_active ? "active" : "inactive",
           bookings_count: 0,
           revenue: 0,
           guests_count: 0,

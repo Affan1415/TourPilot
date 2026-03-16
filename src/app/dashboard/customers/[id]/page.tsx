@@ -238,7 +238,15 @@ export default function CustomerDetailPage() {
         .eq("customer_id", customerId)
         .order("created_at", { ascending: false });
 
-      setBookings(bookingsData || []);
+      const transformedBookings: Booking[] = (bookingsData || []).map((b: any) => ({
+        ...b,
+        availability: b.availability?.[0] ? {
+          date: b.availability[0].date,
+          start_time: b.availability[0].start_time,
+          tour: b.availability[0].tour?.[0],
+        } : undefined,
+      }));
+      setBookings(transformedBookings);
 
       // Fetch reminders
       const { data: remindersData } = await supabase
