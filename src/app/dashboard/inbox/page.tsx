@@ -2,20 +2,10 @@
 
 import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-  DropdownMenuSeparator,
-} from "@/components/ui/dropdown-menu";
 import {
   Tooltip,
   TooltipContent,
@@ -24,85 +14,63 @@ import {
 } from "@/components/ui/tooltip";
 import {
   Search,
-  Mail,
-  MessageSquare,
-  Phone,
-  Instagram,
   Send,
   Paperclip,
-  MoreVertical,
   CheckCheck,
   Clock,
-  User,
-  Tag,
-  Archive,
-  Trash2,
-  Star,
-  RefreshCw,
-  Filter,
-  Settings,
-  Plus,
-  ChevronDown,
-  ExternalLink,
-  X,
   Smile,
-  Image,
-  FileText,
-  AlertCircle,
   Check,
   Loader2,
+  MessageSquare,
+  Instagram,
+  MessageCircle,
+  Phone,
+  Mail,
 } from "lucide-react";
-import { format, formatDistanceToNow, isToday, isYesterday } from "date-fns";
+import { format, isToday, isYesterday } from "date-fns";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
-import { createClient } from "@/lib/supabase/client";
-import Link from "next/link";
+import Image from "next/image";
 
-// Channel icons and colors
-const channelConfig: Record<string, { icon: any; color: string; label: string }> = {
-  email: { icon: Mail, color: "text-blue-500", label: "Email" },
-  whatsapp: { icon: MessageSquare, color: "text-green-500", label: "WhatsApp" },
-  instagram: { icon: Instagram, color: "text-pink-500", label: "Instagram" },
-  sms: { icon: Phone, color: "text-purple-500", label: "SMS" },
-  messenger: { icon: MessageSquare, color: "text-blue-600", label: "Messenger" },
-  internal: { icon: FileText, color: "text-gray-500", label: "Internal" },
-};
+// Channel configuration
+const channels = [
+  { id: "instagram", icon: Instagram, label: "Instagram", bgColor: "bg-gradient-to-br from-purple-500 via-pink-500 to-orange-400", unread: 3 },
+  { id: "telegram", icon: Send, label: "Telegram", bgColor: "bg-[#0088cc]", unread: 0 },
+  { id: "whatsapp", icon: MessageCircle, label: "WhatsApp", bgColor: "bg-[#25D366]", unread: 5 },
+  { id: "messenger", icon: MessageSquare, label: "Messenger", bgColor: "bg-[#0084FF]", unread: 2 },
+  { id: "sms", icon: Phone, label: "SMS", bgColor: "bg-purple-500", unread: 0 },
+  { id: "email", icon: Mail, label: "Email", bgColor: "bg-gray-500", unread: 1 },
+];
 
-const statusColors: Record<string, string> = {
-  open: "bg-blue-100 text-blue-800",
-  pending: "bg-yellow-100 text-yellow-800",
-  resolved: "bg-green-100 text-green-800",
-  spam: "bg-gray-100 text-gray-800",
+const channelConfig: Record<string, { icon: any; label: string; bgColor: string }> = {
+  instagram: { icon: Instagram, label: "Instagram", bgColor: "bg-gradient-to-br from-purple-500 via-pink-500 to-orange-400" },
+  telegram: { icon: Send, label: "Telegram", bgColor: "bg-[#0088cc]" },
+  whatsapp: { icon: MessageCircle, label: "WhatsApp", bgColor: "bg-[#25D366]" },
+  messenger: { icon: MessageSquare, label: "Messenger", bgColor: "bg-[#0084FF]" },
+  sms: { icon: Phone, label: "SMS", bgColor: "bg-purple-500" },
+  email: { icon: Mail, label: "Email", bgColor: "bg-gray-500" },
 };
 
 interface Conversation {
   id: string;
   channel: string;
-  subject: string | null;
-  status: string;
-  priority: number;
   customer: {
     id: string;
     name: string;
-    email: string;
-    phone: string;
+    username?: string;
+    avatar?: string;
   } | null;
-  assignedTo: string | null;
   lastMessageAt: string;
   lastMessagePreview: string;
   unreadCount: number;
-  tags: string[];
 }
 
 interface Message {
   id: string;
   direction: "inbound" | "outbound";
   status: string;
-  senderType: string;
   senderName: string;
   content: string;
-  contentType: string;
-  attachments: any[];
   createdAt: string;
 }
 
@@ -110,55 +78,51 @@ interface Message {
 const mockConversations: Conversation[] = [
   {
     id: "1",
-    channel: "whatsapp",
-    subject: null,
-    status: "open",
-    priority: 1,
-    customer: { id: "c1", name: "John Smith", email: "john@example.com", phone: "+1234567890" },
-    assignedTo: null,
+    channel: "instagram",
+    customer: { id: "c1", name: "John Smith", username: "@johnsmith" },
     lastMessageAt: new Date().toISOString(),
-    lastMessagePreview: "Hi, I wanted to check if the sunset tour is available tomorrow?",
+    lastMessagePreview: "Hi, I wanted to check availability",
     unreadCount: 2,
-    tags: ["VIP"],
   },
   {
     id: "2",
-    channel: "email",
-    subject: "Re: Booking Confirmation #BK-2024-0042",
-    status: "open",
-    priority: 0,
-    customer: { id: "c2", name: "Sarah Johnson", email: "sarah.j@gmail.com", phone: "" },
-    assignedTo: null,
-    lastMessageAt: new Date(Date.now() - 3600000).toISOString(),
-    lastMessagePreview: "Thank you for the confirmation. Just wanted to confirm the meeting point...",
+    channel: "instagram",
+    customer: { id: "c2", name: "Emma Wilson", username: "@emmaw" },
+    lastMessageAt: new Date(Date.now() - 1800000).toISOString(),
+    lastMessagePreview: "Thanks for the quick response!",
     unreadCount: 1,
-    tags: [],
   },
   {
     id: "3",
-    channel: "instagram",
-    subject: null,
-    status: "pending",
-    priority: 0,
-    customer: { id: "c3", name: "Mike Wilson", email: "", phone: "" },
-    assignedTo: null,
-    lastMessageAt: new Date(Date.now() - 7200000).toISOString(),
-    lastMessagePreview: "Hey! Saw your amazing photos. How much for a private tour?",
-    unreadCount: 0,
-    tags: [],
+    channel: "whatsapp",
+    customer: { id: "c3", name: "Sarah Johnson", username: "+1 234 567 8900" },
+    lastMessageAt: new Date(Date.now() - 3600000).toISOString(),
+    lastMessagePreview: "Can I book for tomorrow?",
+    unreadCount: 3,
   },
   {
     id: "4",
-    channel: "sms",
-    subject: null,
-    status: "resolved",
-    priority: 0,
-    customer: { id: "c4", name: "Emily Davis", email: "emily@company.com", phone: "+1987654321" },
-    assignedTo: null,
+    channel: "whatsapp",
+    customer: { id: "c4", name: "Mike Davis", username: "+1 987 654 3210" },
+    lastMessageAt: new Date(Date.now() - 7200000).toISOString(),
+    lastMessagePreview: "What time does it start?",
+    unreadCount: 2,
+  },
+  {
+    id: "5",
+    channel: "messenger",
+    customer: { id: "c5", name: "Lisa Brown", username: "@lisab" },
+    lastMessageAt: new Date(Date.now() - 10800000).toISOString(),
+    lastMessagePreview: "Is there parking available?",
+    unreadCount: 2,
+  },
+  {
+    id: "6",
+    channel: "email",
+    customer: { id: "c6", name: "David Lee", username: "david@example.com" },
     lastMessageAt: new Date(Date.now() - 86400000).toISOString(),
-    lastMessagePreview: "Got it, thanks for the update!",
-    unreadCount: 0,
-    tags: ["Corporate"],
+    lastMessagePreview: "Re: Booking Confirmation",
+    unreadCount: 1,
   },
 ];
 
@@ -167,69 +131,40 @@ const mockMessages: Message[] = [
     id: "m1",
     direction: "inbound",
     status: "read",
-    senderType: "customer",
     senderName: "John Smith",
-    content: "Hi! I saw your sunset tour on Instagram. Is it available tomorrow evening?",
-    contentType: "text",
-    attachments: [],
+    content: "Hi! I saw your post. Is the service available?",
     createdAt: new Date(Date.now() - 7200000).toISOString(),
   },
   {
     id: "m2",
     direction: "outbound",
     status: "delivered",
-    senderType: "staff",
-    senderName: "Tour Team",
-    content: "Hello John! Yes, we have availability for the sunset tour tomorrow. We have slots at 5:30 PM and 6:00 PM. Which would you prefer?",
-    contentType: "text",
-    attachments: [],
+    senderName: "You",
+    content: "Hello! Yes, we're available. Would you like to book?",
     createdAt: new Date(Date.now() - 5400000).toISOString(),
   },
   {
     id: "m3",
     direction: "inbound",
     status: "read",
-    senderType: "customer",
     senderName: "John Smith",
-    content: "5:30 PM works great! How many people can join? I'm thinking of bringing my family - 2 adults and 2 kids.",
-    contentType: "text",
-    attachments: [],
-    createdAt: new Date(Date.now() - 3600000).toISOString(),
-  },
-  {
-    id: "m4",
-    direction: "inbound",
-    status: "delivered",
-    senderType: "customer",
-    senderName: "John Smith",
-    content: "Hi, I wanted to check if the sunset tour is available tomorrow?",
-    contentType: "text",
-    attachments: [],
+    content: "Hi, I wanted to check availability",
     createdAt: new Date().toISOString(),
   },
 ];
 
-const quickReplies = [
-  { shortcut: "/thanks", content: "Thank you for your message! We'll get back to you shortly." },
-  { shortcut: "/hours", content: "Our office hours are Monday-Saturday, 8 AM - 6 PM." },
-  { shortcut: "/location", content: "We're located at the marina. I'll send you the map link." },
-];
-
-export default function UnifiedInboxPage() {
+export default function YettiInboxPage() {
   const [loading, setLoading] = useState(true);
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [selectedConversation, setSelectedConversation] = useState<Conversation | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
-  const [channelFilter, setChannelFilter] = useState<string>("all");
-  const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [activeChannel, setActiveChannel] = useState<string>("instagram");
   const [newMessage, setNewMessage] = useState("");
   const [sending, setSending] = useState(false);
-  const [showQuickReplies, setShowQuickReplies] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    // Simulate loading
     setTimeout(() => {
       setConversations(mockConversations);
       setLoading(false);
@@ -239,7 +174,6 @@ export default function UnifiedInboxPage() {
   useEffect(() => {
     if (selectedConversation) {
       setMessages(mockMessages);
-      // Mark as read
       setConversations(prev =>
         prev.map(c =>
           c.id === selectedConversation.id ? { ...c, unreadCount: 0 } : c
@@ -255,13 +189,9 @@ export default function UnifiedInboxPage() {
   const filteredConversations = conversations.filter((conv) => {
     const matchesSearch =
       conv.customer?.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      conv.lastMessagePreview.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      conv.subject?.toLowerCase().includes(searchQuery.toLowerCase());
-
-    const matchesChannel = channelFilter === "all" || conv.channel === channelFilter;
-    const matchesStatus = statusFilter === "all" || conv.status === statusFilter;
-
-    return matchesSearch && matchesChannel && matchesStatus;
+      conv.lastMessagePreview.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesChannel = conv.channel === activeChannel;
+    return matchesSearch && matchesChannel;
   });
 
   const formatMessageTime = (dateString: string) => {
@@ -279,23 +209,18 @@ export default function UnifiedInboxPage() {
 
     setSending(true);
 
-    // Add optimistic message
     const optimisticMessage: Message = {
       id: `temp-${Date.now()}`,
       direction: "outbound",
       status: "pending",
-      senderType: "staff",
       senderName: "You",
       content: newMessage,
-      contentType: "text",
-      attachments: [],
       createdAt: new Date().toISOString(),
     };
 
     setMessages(prev => [...prev, optimisticMessage]);
     setNewMessage("");
 
-    // Simulate sending
     setTimeout(() => {
       setMessages(prev =>
         prev.map(m =>
@@ -307,500 +232,321 @@ export default function UnifiedInboxPage() {
     }, 1000);
   };
 
-  const handleQuickReply = (content: string) => {
-    setNewMessage(content);
-    setShowQuickReplies(false);
-  };
-
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       handleSendMessage();
     }
-    if (newMessage.startsWith("/") && !showQuickReplies) {
-      setShowQuickReplies(true);
-    }
   };
-
-  const updateConversationStatus = (status: string) => {
-    if (!selectedConversation) return;
-    setConversations(prev =>
-      prev.map(c =>
-        c.id === selectedConversation.id ? { ...c, status } : c
-      )
-    );
-    setSelectedConversation(prev => prev ? { ...prev, status } : null);
-    toast.success(`Marked as ${status}`);
-  };
-
-  const totalUnread = conversations.reduce((sum, c) => sum + c.unreadCount, 0);
 
   if (loading) {
     return (
-      <div className="h-[calc(100vh-4rem)] flex items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      <div className="h-[calc(100vh-4rem)] flex items-center justify-center bg-[#f8fafc]">
+        <Loader2 className="h-8 w-8 animate-spin text-[#3b82f6]" />
       </div>
     );
   }
 
   return (
-    <div className="h-[calc(100vh-4rem)] flex flex-col">
-      {/* Header */}
-      <div className="flex items-center justify-between p-4 border-b">
-        <div className="flex items-center gap-3">
-          <h1 className="text-xl font-bold flex items-center gap-2">
-            <Mail className="h-5 w-5 text-primary" />
-            Inbox
-            {totalUnread > 0 && (
-              <Badge className="bg-red-500 text-white">{totalUnread}</Badge>
-            )}
-          </h1>
+    <div className="h-[calc(100vh-4rem)] flex bg-[#f8fafc] overflow-hidden">
+      {/* Channel Sidebar */}
+      <div className="w-20 bg-white border-r border-gray-100 flex flex-col items-center py-4">
+        <h2 className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-4">Channels</h2>
+
+        <div className="flex-1 flex flex-col items-center space-y-2 w-full px-2">
+          {channels.map((channel) => {
+            const Icon = channel.icon;
+            const isActive = activeChannel === channel.id;
+
+            return (
+              <TooltipProvider key={channel.id}>
+                <Tooltip delayDuration={0}>
+                  <TooltipTrigger asChild>
+                    <button
+                      onClick={() => setActiveChannel(channel.id)}
+                      className={cn(
+                        "relative w-12 h-12 rounded-xl flex items-center justify-center transition-all duration-200",
+                        isActive
+                          ? "bg-[#eff6ff] ring-2 ring-[#3b82f6]"
+                          : "hover:bg-gray-50"
+                      )}
+                    >
+                      <div className={cn("w-8 h-8 rounded-lg flex items-center justify-center", channel.bgColor)}>
+                        <Icon className="h-4 w-4 text-white" />
+                      </div>
+                      {channel.unread > 0 && (
+                        <span className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center">
+                          {channel.unread}
+                        </span>
+                      )}
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent side="right" className="bg-gray-900 text-white border-0">
+                    {channel.label}
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            );
+          })}
         </div>
 
-        <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" className="gap-2">
-            <RefreshCw className="h-4 w-4" />
-            Sync
-          </Button>
-          <Link href="/dashboard/inbox/settings">
-            <Button variant="outline" size="sm" className="gap-2">
-              <Settings className="h-4 w-4" />
-              Channels
-            </Button>
-          </Link>
-        </div>
       </div>
 
-      <div className="flex-1 flex overflow-hidden">
+      {/* Chat List Panel */}
+      <div className="w-[300px] bg-white border-r border-gray-100 flex flex-col">
+        {/* Chat Header */}
+        <div className="p-4 border-b border-gray-100">
+          <div className="flex items-center gap-2 mb-1">
+            {(() => {
+              const channel = channels.find(c => c.id === activeChannel);
+              const Icon = channel?.icon || MessageSquare;
+              return (
+                <>
+                  <div className={cn("w-6 h-6 rounded-lg flex items-center justify-center", channel?.bgColor)}>
+                    <Icon className="h-3.5 w-3.5 text-white" />
+                  </div>
+                  <h1 className="text-lg font-semibold text-gray-900">{channel?.label || "Chat"}</h1>
+                </>
+              );
+            })()}
+          </div>
+          <p className="text-xs text-gray-400">
+            {filteredConversations.length} conversation{filteredConversations.length !== 1 ? "s" : ""}
+          </p>
+        </div>
+
+        {/* Search */}
+        <div className="px-4 py-3">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+            <Input
+              placeholder="Search chat..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-10 h-10 bg-gray-50 border-0 rounded-xl text-sm placeholder:text-gray-400 focus-visible:ring-1 focus-visible:ring-[#3b82f6]"
+            />
+          </div>
+        </div>
+
         {/* Conversation List */}
-        <div className="w-80 border-r flex flex-col bg-muted/30">
-          {/* Search and Filters */}
-          <div className="p-3 space-y-2 border-b">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Search conversations..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-9 h-9"
-              />
+        <ScrollArea className="flex-1">
+          {filteredConversations.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-16 px-4">
+              <div className="w-16 h-16 rounded-full bg-gray-50 flex items-center justify-center mb-4">
+                <MessageSquare className="h-7 w-7 text-gray-300" />
+              </div>
+              <p className="text-gray-400 text-sm">No chat found</p>
             </div>
-            <div className="flex gap-2">
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="outline" size="sm" className="flex-1 justify-between">
-                    <span className="flex items-center gap-1">
-                      {channelFilter === "all" ? (
-                        "All Channels"
-                      ) : (
-                        <>
-                          {(() => {
-                            const config = channelConfig[channelFilter];
-                            const Icon = config?.icon || Mail;
-                            return <Icon className={cn("h-3 w-3", config?.color)} />;
-                          })()}
-                          {channelConfig[channelFilter]?.label}
-                        </>
-                      )}
-                    </span>
-                    <ChevronDown className="h-3 w-3" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent>
-                  <DropdownMenuItem onClick={() => setChannelFilter("all")}>
-                    All Channels
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                  {Object.entries(channelConfig).map(([key, config]) => {
-                    const Icon = config.icon;
-                    return (
-                      <DropdownMenuItem key={key} onClick={() => setChannelFilter(key)}>
-                        <Icon className={cn("h-4 w-4 mr-2", config.color)} />
-                        {config.label}
-                      </DropdownMenuItem>
-                    );
-                  })}
-                </DropdownMenuContent>
-              </DropdownMenu>
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="outline" size="sm" className="flex-1 justify-between">
-                    {statusFilter === "all" ? "All Status" : statusFilter}
-                    <ChevronDown className="h-3 w-3" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent>
-                  <DropdownMenuItem onClick={() => setStatusFilter("all")}>
-                    All Status
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={() => setStatusFilter("open")}>
-                    <div className="h-2 w-2 rounded-full bg-blue-500 mr-2" />
-                    Open
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => setStatusFilter("pending")}>
-                    <div className="h-2 w-2 rounded-full bg-yellow-500 mr-2" />
-                    Pending
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => setStatusFilter("resolved")}>
-                    <div className="h-2 w-2 rounded-full bg-green-500 mr-2" />
-                    Resolved
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
+          ) : (
+            <div className="px-2">
+              {filteredConversations.map((conversation) => {
+                const isSelected = selectedConversation?.id === conversation.id;
+
+                return (
+                  <div
+                    key={conversation.id}
+                    className={cn(
+                      "flex items-center gap-3 p-3 rounded-xl cursor-pointer transition-all duration-200 mb-1",
+                      isSelected
+                        ? "bg-[#eff6ff]"
+                        : "hover:bg-gray-50"
+                    )}
+                    onClick={() => setSelectedConversation(conversation)}
+                  >
+                    <Avatar className="h-11 w-11 border border-gray-100">
+                      <AvatarFallback className="bg-gradient-to-br from-[#3b82f6] to-[#60a5fa] text-white text-sm font-medium">
+                        {conversation.customer?.name
+                          .split(" ")
+                          .map((n) => n[0])
+                          .join("") || "?"}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between">
+                        <span className={cn(
+                          "font-medium text-sm truncate",
+                          conversation.unreadCount > 0 ? "text-gray-900" : "text-gray-700"
+                        )}>
+                          {conversation.customer?.name || "Unknown"}
+                        </span>
+                        <span className="text-xs text-gray-400 flex-shrink-0 ml-2">
+                          {formatMessageTime(conversation.lastMessageAt)}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2 mt-0.5">
+                        <p className={cn(
+                          "text-sm truncate",
+                          conversation.unreadCount > 0
+                            ? "text-gray-600 font-medium"
+                            : "text-gray-400"
+                        )}>
+                          {conversation.lastMessagePreview}
+                        </p>
+                        {conversation.unreadCount > 0 && (
+                          <span className="flex-shrink-0 w-5 h-5 rounded-full bg-[#3b82f6] text-white text-xs flex items-center justify-center font-medium">
+                            {conversation.unreadCount}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </ScrollArea>
+      </div>
+
+      {/* Main Chat Area */}
+      {selectedConversation ? (
+        <div className="flex-1 flex flex-col bg-white">
+          {/* Chat Header */}
+          <div className="h-16 px-6 border-b border-gray-100 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <Avatar className="h-10 w-10 border border-gray-100">
+                <AvatarFallback className="bg-gradient-to-br from-[#3b82f6] to-[#60a5fa] text-white text-sm font-medium">
+                  {selectedConversation.customer?.name
+                    .split(" ")
+                    .map((n) => n[0])
+                    .join("") || "?"}
+                </AvatarFallback>
+              </Avatar>
+              <div>
+                <h3 className="font-semibold text-gray-900">
+                  {selectedConversation.customer?.name || "Unknown"}
+                </h3>
+                <p className="text-xs text-gray-400">
+                  {selectedConversation.customer?.username || "via " + channelConfig[selectedConversation.channel]?.label}
+                </p>
+              </div>
             </div>
           </div>
 
-          {/* Conversation List */}
-          <ScrollArea className="flex-1">
-            {filteredConversations.length === 0 ? (
-              <div className="p-8 text-center text-muted-foreground">
-                <Mail className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                <p>No conversations found</p>
-              </div>
-            ) : (
-              <div className="divide-y">
-                {filteredConversations.map((conversation) => {
-                  const ChannelIcon = channelConfig[conversation.channel]?.icon || Mail;
-                  const isSelected = selectedConversation?.id === conversation.id;
-
-                  return (
-                    <div
-                      key={conversation.id}
-                      className={cn(
-                        "p-3 cursor-pointer hover:bg-muted/50 transition-colors",
-                        isSelected && "bg-muted",
-                        conversation.unreadCount > 0 && "bg-blue-50/50"
-                      )}
-                      onClick={() => setSelectedConversation(conversation)}
-                    >
-                      <div className="flex items-start gap-3">
-                        <div className="relative">
-                          <Avatar className="h-10 w-10">
-                            <AvatarFallback className="bg-primary/10 text-primary text-sm">
-                              {conversation.customer?.name
-                                .split(" ")
-                                .map((n) => n[0])
-                                .join("") || "?"}
-                            </AvatarFallback>
-                          </Avatar>
-                          <div
-                            className={cn(
-                              "absolute -bottom-0.5 -right-0.5 h-4 w-4 rounded-full bg-white flex items-center justify-center"
-                            )}
-                          >
-                            <ChannelIcon
-                              className={cn(
-                                "h-3 w-3",
-                                channelConfig[conversation.channel]?.color
-                              )}
-                            />
-                          </div>
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center justify-between gap-2">
-                            <span
-                              className={cn(
-                                "font-medium truncate",
-                                conversation.unreadCount > 0 && "font-semibold"
-                              )}
-                            >
-                              {conversation.customer?.name || "Unknown"}
-                            </span>
-                            <span className="text-xs text-muted-foreground whitespace-nowrap">
-                              {formatMessageTime(conversation.lastMessageAt)}
-                            </span>
-                          </div>
-                          {conversation.subject && (
-                            <p className="text-sm text-muted-foreground truncate">
-                              {conversation.subject}
-                            </p>
-                          )}
-                          <p
-                            className={cn(
-                              "text-sm truncate",
-                              conversation.unreadCount > 0
-                                ? "text-foreground"
-                                : "text-muted-foreground"
-                            )}
-                          >
-                            {conversation.lastMessagePreview}
-                          </p>
-                          <div className="flex items-center gap-2 mt-1">
-                            {conversation.unreadCount > 0 && (
-                              <Badge className="h-5 px-1.5 bg-blue-500 text-white text-xs">
-                                {conversation.unreadCount}
-                              </Badge>
-                            )}
-                            {conversation.priority > 0 && (
-                              <Badge variant="outline" className="h-5 px-1.5 text-xs border-orange-300 text-orange-600">
-                                High
-                              </Badge>
-                            )}
-                            {conversation.tags.map((tag) => (
-                              <Badge
-                                key={tag}
-                                variant="secondary"
-                                className="h-5 px-1.5 text-xs"
-                              >
-                                {tag}
-                              </Badge>
-                            ))}
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </ScrollArea>
-        </div>
-
-        {/* Message Thread */}
-        {selectedConversation ? (
-          <div className="flex-1 flex flex-col">
-            {/* Thread Header */}
-            <div className="p-4 border-b flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <Avatar className="h-10 w-10">
-                  <AvatarFallback className="bg-primary/10 text-primary">
-                    {selectedConversation.customer?.name
-                      .split(" ")
-                      .map((n) => n[0])
-                      .join("") || "?"}
-                  </AvatarFallback>
-                </Avatar>
-                <div>
-                  <div className="flex items-center gap-2">
-                    <span className="font-semibold">
-                      {selectedConversation.customer?.name || "Unknown"}
-                    </span>
-                    <Badge className={cn("text-xs", statusColors[selectedConversation.status])}>
-                      {selectedConversation.status}
-                    </Badge>
-                  </div>
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    {(() => {
-                      const config = channelConfig[selectedConversation.channel];
-                      const Icon = config?.icon || Mail;
-                      return (
-                        <>
-                          <Icon className={cn("h-3 w-3", config?.color)} />
-                          <span>{config?.label}</span>
-                        </>
-                      );
-                    })()}
-                    {selectedConversation.customer?.email && (
-                      <>
-                        <span>-</span>
-                        <span>{selectedConversation.customer.email}</span>
-                      </>
-                    )}
-                  </div>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-2">
-                {selectedConversation.customer && (
-                  <TooltipProvider>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Link href={`/dashboard/customers/${selectedConversation.customer.id}`}>
-                          <Button variant="outline" size="sm">
-                            <User className="h-4 w-4" />
-                          </Button>
-                        </Link>
-                      </TooltipTrigger>
-                      <TooltipContent>View Customer Profile</TooltipContent>
-                    </Tooltip>
-                  </TooltipProvider>
-                )}
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="outline" size="sm">
-                      <MoreVertical className="h-4 w-4" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    <DropdownMenuItem onClick={() => updateConversationStatus("resolved")}>
-                      <Check className="h-4 w-4 mr-2" />
-                      Mark Resolved
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => updateConversationStatus("pending")}>
-                      <Clock className="h-4 w-4 mr-2" />
-                      Mark Pending
-                    </DropdownMenuItem>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem>
-                      <Tag className="h-4 w-4 mr-2" />
-                      Add Tag
-                    </DropdownMenuItem>
-                    <DropdownMenuItem>
-                      <User className="h-4 w-4 mr-2" />
-                      Assign To...
-                    </DropdownMenuItem>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem onClick={() => updateConversationStatus("spam")}>
-                      <AlertCircle className="h-4 w-4 mr-2" />
-                      Mark as Spam
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </div>
-            </div>
-
-            {/* Messages */}
-            <ScrollArea className="flex-1 p-4">
-              <div className="space-y-4 max-w-3xl mx-auto">
-                {messages.map((message) => (
+          {/* Messages */}
+          <ScrollArea className="flex-1 px-6 py-4">
+            <div className="space-y-4 max-w-2xl mx-auto">
+              {messages.map((message) => (
+                <div
+                  key={message.id}
+                  className={cn(
+                    "flex",
+                    message.direction === "outbound" ? "justify-end" : "justify-start"
+                  )}
+                >
                   <div
-                    key={message.id}
                     className={cn(
-                      "flex",
-                      message.direction === "outbound" ? "justify-end" : "justify-start"
+                      "max-w-[70%] rounded-2xl px-4 py-3",
+                      message.direction === "outbound"
+                        ? "bg-[#3b82f6] text-white"
+                        : "bg-gray-100 text-gray-900"
                     )}
                   >
+                    <p className="text-sm leading-relaxed">{message.content}</p>
                     <div
                       className={cn(
-                        "max-w-[70%] rounded-lg p-3",
+                        "flex items-center gap-1.5 mt-1.5 text-xs",
                         message.direction === "outbound"
-                          ? "bg-primary text-primary-foreground"
-                          : "bg-muted"
+                          ? "text-white/70"
+                          : "text-gray-400"
                       )}
                     >
-                      <p className="text-sm whitespace-pre-wrap">{message.content}</p>
-                      <div
-                        className={cn(
-                          "flex items-center gap-1 mt-1 text-xs",
-                          message.direction === "outbound"
-                            ? "text-primary-foreground/70"
-                            : "text-muted-foreground"
-                        )}
-                      >
-                        <span>{format(new Date(message.createdAt), "h:mm a")}</span>
-                        {message.direction === "outbound" && (
-                          <>
-                            {message.status === "pending" && (
-                              <Clock className="h-3 w-3" />
-                            )}
-                            {message.status === "sent" && (
-                              <Check className="h-3 w-3" />
-                            )}
-                            {message.status === "delivered" && (
-                              <CheckCheck className="h-3 w-3" />
-                            )}
-                            {message.status === "read" && (
-                              <CheckCheck className="h-3 w-3 text-blue-400" />
-                            )}
-                          </>
-                        )}
-                      </div>
+                      <span>{format(new Date(message.createdAt), "h:mm a")}</span>
+                      {message.direction === "outbound" && (
+                        <>
+                          {message.status === "pending" && <Clock className="h-3 w-3" />}
+                          {message.status === "sent" && <Check className="h-3 w-3" />}
+                          {message.status === "delivered" && <CheckCheck className="h-3 w-3" />}
+                          {message.status === "read" && <CheckCheck className="h-3 w-3 text-blue-200" />}
+                        </>
+                      )}
                     </div>
                   </div>
-                ))}
-                <div ref={messagesEndRef} />
-              </div>
-            </ScrollArea>
+                </div>
+              ))}
+              <div ref={messagesEndRef} />
+            </div>
+          </ScrollArea>
 
-            {/* Compose */}
-            <div className="p-4 border-t">
-              <div className="relative max-w-3xl mx-auto">
-                {showQuickReplies && (
-                  <div className="absolute bottom-full left-0 right-0 mb-2 bg-popover border rounded-lg shadow-lg p-2">
-                    <div className="text-xs text-muted-foreground mb-2 px-2">
-                      Quick Replies
-                    </div>
-                    {quickReplies
-                      .filter((qr) =>
-                        qr.shortcut.toLowerCase().includes(newMessage.toLowerCase())
-                      )
-                      .map((qr) => (
-                        <button
-                          key={qr.shortcut}
-                          className="w-full text-left px-2 py-1.5 rounded hover:bg-muted text-sm"
-                          onClick={() => handleQuickReply(qr.content)}
-                        >
-                          <span className="font-mono text-primary">{qr.shortcut}</span>
-                          <span className="text-muted-foreground ml-2 truncate">
-                            {qr.content}
-                          </span>
-                        </button>
-                      ))}
-                    <button
-                      className="absolute top-2 right-2"
-                      onClick={() => setShowQuickReplies(false)}
-                    >
-                      <X className="h-4 w-4 text-muted-foreground" />
+          {/* Compose Area */}
+          <div className="px-6 py-4 border-t border-gray-100">
+            <div className="max-w-2xl mx-auto">
+              <div className="flex items-end gap-3">
+                <div className="flex-1 relative">
+                  <Textarea
+                    placeholder="Type a message..."
+                    value={newMessage}
+                    onChange={(e) => setNewMessage(e.target.value)}
+                    onKeyDown={handleKeyDown}
+                    className="min-h-[48px] max-h-32 resize-none rounded-2xl border-gray-200 bg-gray-50 pr-24 text-sm placeholder:text-gray-400 focus-visible:ring-1 focus-visible:ring-[#3b82f6]"
+                    rows={1}
+                  />
+                  <div className="absolute right-3 bottom-3 flex items-center gap-1">
+                    <button className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors">
+                      <Smile className="h-5 w-5 text-gray-400" />
+                    </button>
+                    <button className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors">
+                      <Paperclip className="h-5 w-5 text-gray-400" />
                     </button>
                   </div>
-                )}
-                <div className="flex items-end gap-2">
-                  <div className="flex-1 relative">
-                    <Textarea
-                      placeholder="Type a message... (/ for quick replies)"
-                      value={newMessage}
-                      onChange={(e) => {
-                        setNewMessage(e.target.value);
-                        if (!e.target.value.startsWith("/")) {
-                          setShowQuickReplies(false);
-                        }
-                      }}
-                      onKeyDown={handleKeyDown}
-                      className="min-h-[44px] max-h-32 resize-none pr-24"
-                      rows={1}
-                    />
-                    <div className="absolute right-2 bottom-2 flex items-center gap-1">
-                      <TooltipProvider>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <Button variant="ghost" size="icon" className="h-7 w-7">
-                              <Smile className="h-4 w-4 text-muted-foreground" />
-                            </Button>
-                          </TooltipTrigger>
-                          <TooltipContent>Emoji</TooltipContent>
-                        </Tooltip>
-                      </TooltipProvider>
-                      <TooltipProvider>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <Button variant="ghost" size="icon" className="h-7 w-7">
-                              <Paperclip className="h-4 w-4 text-muted-foreground" />
-                            </Button>
-                          </TooltipTrigger>
-                          <TooltipContent>Attach File</TooltipContent>
-                        </Tooltip>
-                      </TooltipProvider>
-                    </div>
-                  </div>
-                  <Button
-                    onClick={handleSendMessage}
-                    disabled={!newMessage.trim() || sending}
-                    className="gap-2"
-                  >
-                    {sending ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : (
-                      <Send className="h-4 w-4" />
-                    )}
-                    Send
-                  </Button>
                 </div>
+                <Button
+                  onClick={handleSendMessage}
+                  disabled={!newMessage.trim() || sending}
+                  className="h-12 px-6 rounded-2xl bg-[#3b82f6] hover:bg-[#2563eb] text-white font-medium shadow-sm"
+                >
+                  {sending ? (
+                    <Loader2 className="h-5 w-5 animate-spin" />
+                  ) : (
+                    <Send className="h-5 w-5" />
+                  )}
+                </Button>
               </div>
             </div>
           </div>
-        ) : (
-          <div className="flex-1 flex items-center justify-center bg-muted/30">
-            <div className="text-center">
-              <Mail className="h-16 w-16 mx-auto text-muted-foreground/30" />
-              <h3 className="mt-4 text-lg font-medium">Select a conversation</h3>
-              <p className="text-muted-foreground">
-                Choose a conversation from the list to view messages
-              </p>
+
+        </div>
+      ) : (
+        /* Empty State - Select a Chat */
+        <div className="flex-1 flex flex-col items-center justify-center bg-white relative">
+          <div className="text-center">
+            {/* Chat Icon with Glow */}
+            <div className="relative mx-auto mb-6">
+              <div className="absolute inset-0 bg-[#3b82f6]/10 rounded-full blur-2xl scale-150" />
+              <div className="relative w-24 h-24 rounded-full bg-gradient-to-br from-[#eff6ff] to-white border border-[#dbeafe] flex items-center justify-center">
+                <MessageSquare className="h-10 w-10 text-[#3b82f6]" />
+              </div>
+            </div>
+
+            <h2 className="text-2xl font-semibold text-gray-900 mb-3">
+              Select a Chat
+            </h2>
+            <p className="text-gray-500 max-w-sm mb-8">
+              Choose a chat from the sidebar to view their conversation and manage your potential customers.
+            </p>
+
+            {/* Channel Quick Links */}
+            <div className="flex items-center justify-center gap-2 flex-wrap max-w-md">
+              {channels.slice(0, 4).map((channel) => {
+                const Icon = channel.icon;
+                return (
+                  <button
+                    key={channel.id}
+                    onClick={() => setActiveChannel(channel.id)}
+                    className="flex items-center gap-2 px-4 py-2 rounded-xl border border-gray-200 hover:border-[#3b82f6] hover:bg-[#eff6ff] transition-all duration-200 group"
+                  >
+                    <div className={cn("w-5 h-5 rounded-lg flex items-center justify-center", channel.bgColor)}>
+                      <Icon className="h-3 w-3 text-white" />
+                    </div>
+                    <span className="text-sm font-medium text-gray-600 group-hover:text-[#3b82f6]">
+                      {channel.label}
+                    </span>
+                  </button>
+                );
+              })}
             </div>
           </div>
-        )}
-      </div>
+        </div>
+      )}
     </div>
   );
 }

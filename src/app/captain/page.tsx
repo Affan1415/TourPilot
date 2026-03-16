@@ -15,6 +15,8 @@ import {
   Ship,
   AlertCircle,
   CheckCircle2,
+  Shield,
+  ClipboardCheck,
 } from "lucide-react";
 import { format, isToday, isTomorrow, parseISO, addDays } from "date-fns";
 import { createClient } from "@/lib/supabase/client";
@@ -66,7 +68,7 @@ export default function CaptainDashboard() {
       const today = new Date();
       const endDate = addDays(today, 7);
 
-      const { data: assignedTours } = await supabase
+      const { data: assignedTours, error: toursError } = await supabase
         .from('availability_staff')
         .select(`
           availability_id,
@@ -90,8 +92,12 @@ export default function CaptainDashboard() {
         .eq('staff_id', staffData.id)
         .gte('availabilities.date', format(today, 'yyyy-MM-dd'))
         .lte('availabilities.date', format(endDate, 'yyyy-MM-dd'))
-        .neq('availabilities.status', 'cancelled')
+        .or('status.eq.available,status.eq.full,status.is.null', { referencedTable: 'availabilities' })
         .order('date', { referencedTable: 'availabilities', ascending: true });
+
+      if (toursError) {
+        console.error('Error fetching assigned tours:', toursError);
+      }
 
       if (assignedTours) {
         // Get booking/waiver details for each availability
@@ -301,6 +307,8 @@ export default function CaptainDashboard() {
 }
 
 function TourCard({ tour, showDate = false }: { tour: AssignedTour; showDate?: boolean }) {
+  const isTodayTour = isToday(parseISO(tour.date));
+
   const getWaiverBadge = (status: string) => {
     switch (status) {
       case 'complete':
@@ -348,9 +356,17 @@ function TourCard({ tour, showDate = false }: { tour: AssignedTour; showDate?: b
           </div>
         </div>
 
-        <div className="flex gap-2">
+        <div className="flex flex-col sm:flex-row gap-2">
+          {isTodayTour && (
+            <Link href={`/captain/checklist?availability=${tour.availability_id}`}>
+              <Button variant="outline" className="gap-2 border-green-300 text-green-700 hover:bg-green-50 hover:text-green-800 w-full sm:w-auto">
+                <Shield className="h-4 w-4" />
+                Safety Checklist
+              </Button>
+            </Link>
+          )}
           <Link href={`/captain/manifest?date=${tour.date}&availability=${tour.availability_id}`}>
-            <Button className="gap-2 bg-indigo-600 hover:bg-indigo-700">
+            <Button className="gap-2 bg-indigo-600 hover:bg-indigo-700 w-full sm:w-auto">
               <FileCheck className="h-4 w-4" />
               View Manifest
               <ChevronRight className="h-4 w-4" />

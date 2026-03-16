@@ -25,6 +25,12 @@ import {
   ChevronDown,
   LogOut,
   User,
+  Shield,
+  AlertTriangle,
+  Cloud,
+  MessageSquare,
+  Gauge,
+  Navigation,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/client";
@@ -32,8 +38,13 @@ import type { User as SupabaseUser } from "@supabase/supabase-js";
 
 const navigation = [
   { name: "My Tours", href: "/captain", icon: LayoutDashboard },
-  { name: "Schedule", href: "/captain/schedule", icon: Calendar },
+  { name: "Checklist", href: "/captain/checklist", icon: Shield },
   { name: "Manifest", href: "/captain/manifest", icon: ClipboardList },
+  { name: "Trip Tracker", href: "/captain/trip", icon: Navigation },
+  { name: "Weather", href: "/captain/weather", icon: Cloud },
+  { name: "Messages", href: "/captain/messages", icon: MessageSquare },
+  { name: "Logs", href: "/captain/logs", icon: Gauge },
+  { name: "Emergency", href: "/captain/emergency", icon: AlertTriangle },
 ];
 
 export default function CaptainLayout({

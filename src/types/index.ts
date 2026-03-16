@@ -97,6 +97,11 @@ export interface WaiverTemplate {
   content: string;
   version: number;
   is_active: boolean;
+  location_id: string | null;
+  tour_ids: string[] | null; // Empty array or null = all tours
+  language: string;
+  usage_count: number;
+  signed_count: number;
   created_at: string;
   updated_at: string;
 }
@@ -145,8 +150,6 @@ export interface Boat {
   maintenance_notes: string | null;
   last_maintenance_date: string | null;
   next_maintenance_date: string | null;
-  location_id: string | null;
-  location?: Location;
   assigned_captain_id: string | null;
   assigned_captain?: Staff;
   created_at: string;
@@ -217,6 +220,18 @@ export interface SlotException {
   reason: string | null;
   created_by: string | null;
   created_at: string;
+}
+
+// Slot Boat Assignment (for assigning boats to specific date+slot)
+export interface SlotBoatAssignment {
+  id: string;
+  default_slot_id: string;
+  date: string;
+  boat_id: string;
+  created_by: string | null;
+  created_at: string;
+  boat?: Boat;
+  default_slot?: TourDefaultSlot;
 }
 
 // Location Types
@@ -308,4 +323,96 @@ export interface BookingFormData {
     country_code: string;
   };
   notes?: string;
+}
+
+// Safety Checklist Types
+export interface ChecklistItem {
+  id: string;
+  label: string;
+  required: boolean;
+  requiresPhoto: boolean;
+}
+
+export interface ChecklistTemplate {
+  id: string;
+  name: string;
+  description: string | null;
+  items: ChecklistItem[];
+  tour_id: string | null;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+  tour?: Tour;
+}
+
+export interface CompletedChecklistItem {
+  itemId: string;
+  checked: boolean;
+  photoUrl?: string;
+  note?: string;
+}
+
+export interface ChecklistCompletion {
+  id: string;
+  checklist_template_id: string;
+  availability_id: string;
+  captain_id: string;
+  completed_items: CompletedChecklistItem[];
+  photos: string[];
+  signature_url: string | null;
+  notes: string | null;
+  completed_at: string;
+  created_at: string;
+  template?: ChecklistTemplate;
+  availability?: Availability;
+  captain?: Staff;
+}
+
+export type IncidentType = 'safety' | 'medical' | 'equipment' | 'weather' | 'customer' | 'other';
+export type IncidentSeverity = 'low' | 'medium' | 'high' | 'critical';
+export type IncidentStatus = 'open' | 'investigating' | 'resolved' | 'closed';
+
+export interface IncidentReport {
+  id: string;
+  availability_id: string | null;
+  captain_id: string;
+  incident_type: IncidentType;
+  severity: IncidentSeverity;
+  title: string;
+  description: string;
+  location_lat: number | null;
+  location_lng: number | null;
+  location_description: string | null;
+  media_urls: string[];
+  witnesses: string | null;
+  actions_taken: string | null;
+  follow_up_required: boolean;
+  status: IncidentStatus;
+  resolved_at: string | null;
+  resolved_by: string | null;
+  resolution_notes: string | null;
+  created_at: string;
+  updated_at: string;
+  availability?: Availability;
+  captain?: Staff;
+}
+
+export interface TourLog {
+  id: string;
+  availability_id: string;
+  captain_id: string;
+  actual_departure: string | null;
+  actual_return: string | null;
+  fuel_used: number | null;
+  fuel_unit: string;
+  weather_conditions: string | null;
+  sea_conditions: string | null;
+  guest_count: number | null;
+  notes: string | null;
+  highlights: string | null;
+  issues: string | null;
+  photos: string[];
+  created_at: string;
+  availability?: Availability;
+  captain?: Staff;
 }

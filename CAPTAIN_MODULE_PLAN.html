@@ -1,0 +1,1609 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Captain Module - Implementation Plan</title>
+    <style>
+        :root {
+            --primary: #0ea5e9;
+            --primary-dark: #0284c7;
+            --secondary: #64748b;
+            --success: #22c55e;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+            --bg-dark: #0f172a;
+            --bg-card: #1e293b;
+            --bg-card-hover: #334155;
+            --text-primary: #f1f5f9;
+            --text-secondary: #94a3b8;
+            --border: #334155;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+            background: var(--bg-dark);
+            color: var(--text-primary);
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        header {
+            text-align: center;
+            padding: 3rem 0;
+            border-bottom: 1px solid var(--border);
+            margin-bottom: 3rem;
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            margin-bottom: 0.5rem;
+            background: linear-gradient(135deg, var(--primary), #818cf8);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .subtitle {
+            color: var(--text-secondary);
+            font-size: 1.1rem;
+        }
+
+        .overview-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 3rem;
+        }
+
+        .stat-card {
+            background: var(--bg-card);
+            border-radius: 12px;
+            padding: 1.5rem;
+            border: 1px solid var(--border);
+        }
+
+        .stat-card h3 {
+            color: var(--text-secondary);
+            font-size: 0.875rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 0.5rem;
+        }
+
+        .stat-card .value {
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--primary);
+        }
+
+        .section {
+            margin-bottom: 4rem;
+        }
+
+        .section-header {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            margin-bottom: 2rem;
+            padding-bottom: 1rem;
+            border-bottom: 2px solid var(--border);
+        }
+
+        .section-header h2 {
+            font-size: 1.5rem;
+        }
+
+        .phase-badge {
+            display: inline-flex;
+            align-items: center;
+            padding: 0.25rem 0.75rem;
+            border-radius: 9999px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .phase-1 { background: #22c55e22; color: #22c55e; }
+        .phase-2 { background: #0ea5e922; color: #0ea5e9; }
+        .phase-3 { background: #f59e0b22; color: #f59e0b; }
+        .phase-4 { background: #8b5cf622; color: #8b5cf6; }
+
+        .feature-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 1.5rem;
+        }
+
+        .feature-card {
+            background: var(--bg-card);
+            border-radius: 12px;
+            padding: 1.5rem;
+            border: 1px solid var(--border);
+            transition: all 0.2s;
+        }
+
+        .feature-card:hover {
+            border-color: var(--primary);
+            transform: translateY(-2px);
+        }
+
+        .feature-card h4 {
+            font-size: 1.1rem;
+            margin-bottom: 0.75rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .feature-card p {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+            margin-bottom: 1rem;
+        }
+
+        .feature-card ul {
+            list-style: none;
+            font-size: 0.85rem;
+        }
+
+        .feature-card li {
+            padding: 0.35rem 0;
+            padding-left: 1.5rem;
+            position: relative;
+            color: var(--text-secondary);
+        }
+
+        .feature-card li::before {
+            content: ">";
+            position: absolute;
+            left: 0;
+            color: var(--primary);
+            font-weight: bold;
+        }
+
+        .priority-high { border-left: 4px solid var(--danger); }
+        .priority-medium { border-left: 4px solid var(--warning); }
+        .priority-low { border-left: 4px solid var(--success); }
+
+        .timeline {
+            position: relative;
+            padding-left: 2rem;
+        }
+
+        .timeline::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: 2px;
+            background: var(--border);
+        }
+
+        .timeline-item {
+            position: relative;
+            padding-bottom: 2rem;
+        }
+
+        .timeline-item::before {
+            content: '';
+            position: absolute;
+            left: -2rem;
+            top: 0.5rem;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: var(--primary);
+            border: 3px solid var(--bg-dark);
+        }
+
+        .timeline-item.completed::before {
+            background: var(--success);
+        }
+
+        .iteration-card {
+            background: var(--bg-card);
+            border-radius: 12px;
+            padding: 1.5rem;
+            border: 1px solid var(--border);
+        }
+
+        .iteration-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+
+        .iteration-header h4 {
+            font-size: 1rem;
+        }
+
+        .iteration-status {
+            padding: 0.25rem 0.75rem;
+            border-radius: 9999px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+
+        .status-done { background: #22c55e22; color: #22c55e; }
+        .status-progress { background: #0ea5e922; color: #0ea5e9; }
+        .status-pending { background: #64748b22; color: #64748b; }
+
+        .task-list {
+            list-style: none;
+        }
+
+        .task-list li {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 0.5rem 0;
+            border-bottom: 1px solid var(--border);
+            font-size: 0.9rem;
+        }
+
+        .task-list li:last-child {
+            border-bottom: none;
+        }
+
+        .checkbox {
+            width: 18px;
+            height: 18px;
+            border: 2px solid var(--border);
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .checkbox.checked {
+            background: var(--success);
+            border-color: var(--success);
+        }
+
+        .checkbox.checked::after {
+            content: '✓';
+            color: white;
+            font-size: 12px;
+        }
+
+        .wireframe {
+            background: var(--bg-card);
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            overflow: hidden;
+        }
+
+        .wireframe-header {
+            background: var(--bg-card-hover);
+            padding: 1rem;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .wireframe-content {
+            padding: 1.5rem;
+        }
+
+        .wireframe-nav {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .wireframe-nav-item {
+            padding: 0.5rem 1rem;
+            background: var(--bg-card);
+            border-radius: 8px;
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+        }
+
+        .wireframe-nav-item.active {
+            background: var(--primary);
+            color: white;
+        }
+
+        .mock-card {
+            background: var(--bg-card-hover);
+            border-radius: 8px;
+            padding: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .mock-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.5rem 0;
+        }
+
+        .mock-label {
+            color: var(--text-secondary);
+            font-size: 0.8rem;
+        }
+
+        .mock-value {
+            font-weight: 600;
+        }
+
+        .comparison-table {
+            width: 100%;
+            border-collapse: collapse;
+            background: var(--bg-card);
+            border-radius: 12px;
+            overflow: hidden;
+        }
+
+        .comparison-table th,
+        .comparison-table td {
+            padding: 1rem;
+            text-align: left;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .comparison-table th {
+            background: var(--bg-card-hover);
+            font-weight: 600;
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .comparison-table td {
+            font-size: 0.9rem;
+        }
+
+        .check-icon { color: var(--success); }
+        .cross-icon { color: var(--danger); }
+
+        .api-endpoint {
+            background: var(--bg-card);
+            border-radius: 8px;
+            padding: 1rem;
+            margin-bottom: 1rem;
+            border: 1px solid var(--border);
+        }
+
+        .api-method {
+            display: inline-block;
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            margin-right: 0.5rem;
+        }
+
+        .method-get { background: #22c55e33; color: #22c55e; }
+        .method-post { background: #0ea5e933; color: #0ea5e9; }
+        .method-put { background: #f59e0b33; color: #f59e0b; }
+        .method-delete { background: #ef444433; color: #ef4444; }
+
+        .api-path {
+            font-family: 'Monaco', 'Menlo', monospace;
+            font-size: 0.9rem;
+        }
+
+        .api-desc {
+            color: var(--text-secondary);
+            font-size: 0.85rem;
+            margin-top: 0.5rem;
+        }
+
+        .notes-section {
+            background: linear-gradient(135deg, #0ea5e911, #8b5cf611);
+            border: 1px solid var(--primary);
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin-top: 2rem;
+        }
+
+        .notes-section h4 {
+            color: var(--primary);
+            margin-bottom: 1rem;
+        }
+
+        .notes-section ul {
+            list-style: disc;
+            padding-left: 1.5rem;
+        }
+
+        .notes-section li {
+            margin-bottom: 0.5rem;
+            color: var(--text-secondary);
+        }
+
+        .mobile-preview {
+            max-width: 375px;
+            margin: 0 auto;
+            border: 3px solid var(--border);
+            border-radius: 24px;
+            overflow: hidden;
+            background: var(--bg-dark);
+        }
+
+        .mobile-status-bar {
+            background: var(--bg-card);
+            padding: 0.5rem 1rem;
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.75rem;
+        }
+
+        .mobile-nav {
+            display: flex;
+            justify-content: space-around;
+            background: var(--bg-card);
+            padding: 0.75rem;
+            border-top: 1px solid var(--border);
+        }
+
+        .mobile-nav-item {
+            text-align: center;
+            font-size: 0.7rem;
+            color: var(--text-secondary);
+        }
+
+        .mobile-nav-item.active {
+            color: var(--primary);
+        }
+
+        .grid-2 {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
+        }
+
+        @media (max-width: 768px) {
+            .grid-2 {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .divider {
+            height: 1px;
+            background: var(--border);
+            margin: 3rem 0;
+        }
+
+        .tech-stack {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+            margin-top: 1rem;
+        }
+
+        .tech-badge {
+            background: var(--bg-card-hover);
+            padding: 0.25rem 0.75rem;
+            border-radius: 9999px;
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header>
+            <h1>Captain Module - TourPilot</h1>
+            <p class="subtitle">Comprehensive Implementation Plan & Feature Specification</p>
+            <div class="tech-stack">
+                <span class="tech-badge">Next.js 14</span>
+                <span class="tech-badge">TypeScript</span>
+                <span class="tech-badge">Supabase</span>
+                <span class="tech-badge">Tailwind CSS</span>
+                <span class="tech-badge">React Query</span>
+                <span class="tech-badge">PWA</span>
+            </div>
+        </header>
+
+        <!-- Project Overview Stats -->
+        <div class="overview-grid">
+            <div class="stat-card">
+                <h3>Total Phases</h3>
+                <div class="value">4</div>
+            </div>
+            <div class="stat-card">
+                <h3>Total Iterations</h3>
+                <div class="value">12</div>
+            </div>
+            <div class="stat-card">
+                <h3>Core Features</h3>
+                <div class="value">18</div>
+            </div>
+            <div class="stat-card">
+                <h3>API Endpoints</h3>
+                <div class="value">15</div>
+            </div>
+        </div>
+
+        <!-- Existing Features Status -->
+        <section class="section">
+            <div class="section-header">
+                <h2>Current Implementation Status</h2>
+                <span class="phase-badge phase-1">Partially Complete</span>
+            </div>
+
+            <p style="color: var(--text-secondary); margin-bottom: 1.5rem;">
+                The captain module has basic scaffolding in place. Here's what already exists vs what needs to be built:
+            </p>
+
+            <table class="comparison-table">
+                <thead>
+                    <tr>
+                        <th>Feature</th>
+                        <th>Status</th>
+                        <th>Location</th>
+                        <th>Notes</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>Captain Layout</td>
+                        <td><span class="check-icon">✓ Done</span></td>
+                        <td><code>/captain/layout.tsx</code></td>
+                        <td>Separate simplified UI</td>
+                    </tr>
+                    <tr>
+                        <td>My Tours Page</td>
+                        <td><span class="check-icon">✓ Done</span></td>
+                        <td><code>/captain/page.tsx</code></td>
+                        <td>Shows assigned tours</td>
+                    </tr>
+                    <tr>
+                        <td>Schedule View</td>
+                        <td><span class="check-icon">✓ Done</span></td>
+                        <td><code>/captain/schedule/page.tsx</code></td>
+                        <td>Monthly calendar</td>
+                    </tr>
+                    <tr>
+                        <td>Manifest Page</td>
+                        <td><span class="check-icon">✓ Done</span></td>
+                        <td><code>/captain/manifest/page.tsx</code></td>
+                        <td>Guest check-in</td>
+                    </tr>
+                    <tr>
+                        <td>Captain Login Flow</td>
+                        <td><span class="cross-icon">✗ Needs Work</span></td>
+                        <td><code>/login</code></td>
+                        <td>Needs captain-specific UX</td>
+                    </tr>
+                    <tr>
+                        <td>Mobile Optimization</td>
+                        <td><span class="cross-icon">✗ Pending</span></td>
+                        <td>Global</td>
+                        <td>PWA support needed</td>
+                    </tr>
+                    <tr>
+                        <td>Offline Support</td>
+                        <td><span class="cross-icon">✗ Pending</span></td>
+                        <td>Service Worker</td>
+                        <td>Critical for boats</td>
+                    </tr>
+                    <tr>
+                        <td>Push Notifications</td>
+                        <td><span class="cross-icon">✗ Pending</span></td>
+                        <td>-</td>
+                        <td>For new assignments</td>
+                    </tr>
+                    <tr>
+                        <td>Safety Checklist</td>
+                        <td><span class="cross-icon">✗ Pending</span></td>
+                        <td>-</td>
+                        <td>Pre-departure check</td>
+                    </tr>
+                    <tr>
+                        <td>Incident Reporting</td>
+                        <td><span class="cross-icon">✗ Pending</span></td>
+                        <td>-</td>
+                        <td>Safety compliance</td>
+                    </tr>
+                </tbody>
+            </table>
+        </section>
+
+        <div class="divider"></div>
+
+        <!-- Phase 1: Authentication & Core Access -->
+        <section class="section">
+            <div class="section-header">
+                <h2>Phase 1: Authentication & Core Access</h2>
+                <span class="phase-badge phase-1">Foundation</span>
+            </div>
+
+            <div class="feature-grid">
+                <div class="feature-card priority-high">
+                    <h4>🔐 Captain Login Experience</h4>
+                    <p>Streamlined login flow optimized for captains accessing from mobile devices on the go.</p>
+                    <ul>
+                        <li>Simplified login page with large touch targets</li>
+                        <li>"Remember me" with biometric authentication</li>
+                        <li>Magic link login option (no password needed)</li>
+                        <li>Auto-redirect to captain dashboard after login</li>
+                        <li>QR code login from admin-generated link</li>
+                    </ul>
+                </div>
+
+                <div class="feature-card priority-high">
+                    <h4>🛡️ Role-Based Security</h4>
+                    <p>Ensure captains only access their assigned tours and data.</p>
+                    <ul>
+                        <li>RLS policies for captain-scoped data access</li>
+                        <li>Middleware route protection for /captain/*</li>
+                        <li>API endpoint authorization checks</li>
+                        <li>Session management and token refresh</li>
+                        <li>Audit logging for security compliance</li>
+                    </ul>
+                </div>
+
+                <div class="feature-card priority-medium">
+                    <h4>👤 Captain Profile</h4>
+                    <p>Self-service profile management for captains.</p>
+                    <ul>
+                        <li>View assigned boat information</li>
+                        <li>Update contact information</li>
+                        <li>Emergency contact details</li>
+                        <li>Certification/license info display</li>
+                        <li>Profile photo upload</li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- Phase 1 Iterations -->
+            <div class="timeline" style="margin-top: 2rem;">
+                <div class="timeline-item completed">
+                    <div class="iteration-card">
+                        <div class="iteration-header">
+                            <h4>Iteration 1.1: Basic Auth Flow</h4>
+                            <span class="iteration-status status-done">Partially Done</span>
+                        </div>
+                        <ul class="task-list">
+                            <li><span class="checkbox checked"></span>Captain role detection in middleware</li>
+                            <li><span class="checkbox checked"></span>Route protection for /captain/*</li>
+                            <li><span class="checkbox checked"></span>Basic login redirect flow</li>
+                            <li><span class="checkbox"></span>Captain-optimized login page UI</li>
+                            <li><span class="checkbox"></span>Magic link authentication</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="timeline-item">
+                    <div class="iteration-card">
+                        <div class="iteration-header">
+                            <h4>Iteration 1.2: Enhanced Security</h4>
+                            <span class="iteration-status status-pending">Pending</span>
+                        </div>
+                        <ul class="task-list">
+                            <li><span class="checkbox"></span>Biometric/FaceID login support</li>
+                            <li><span class="checkbox"></span>Remember device functionality</li>
+                            <li><span class="checkbox"></span>Session timeout handling</li>
+                            <li><span class="checkbox"></span>QR code quick login</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="timeline-item">
+                    <div class="iteration-card">
+                        <div class="iteration-header">
+                            <h4>Iteration 1.3: Profile Management</h4>
+                            <span class="iteration-status status-pending">Pending</span>
+                        </div>
+                        <ul class="task-list">
+                            <li><span class="checkbox"></span>Profile page UI</li>
+                            <li><span class="checkbox"></span>Contact info editing</li>
+                            <li><span class="checkbox"></span>Boat assignment display</li>
+                            <li><span class="checkbox"></span>Certification tracking</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <div class="divider"></div>
+
+        <!-- Phase 2: Core Dashboard Features -->
+        <section class="section">
+            <div class="section-header">
+                <h2>Phase 2: Core Dashboard Features</h2>
+                <span class="phase-badge phase-2">Essential</span>
+            </div>
+
+            <div class="feature-grid">
+                <div class="feature-card priority-high">
+                    <h4>📅 My Tours Dashboard</h4>
+                    <p>Central hub showing all assigned tours with quick actions.</p>
+                    <ul>
+                        <li>Today's tours with countdown timers</li>
+                        <li>Tomorrow and upcoming week view</li>
+                        <li>Quick stats (guests, check-ins, waivers)</li>
+                        <li>One-tap navigation to manifest</li>
+                        <li>Tour status indicators (on-time, delayed)</li>
+                        <li>Weather integration for tour locations</li>
+                    </ul>
+                </div>
+
+                <div class="feature-card priority-high">
+                    <h4>📋 Enhanced Manifest</h4>
+                    <p>Complete guest management for each tour.</p>
+                    <ul>
+                        <li>Guest list with all booking details</li>
+                        <li>Swipe-to-check-in functionality</li>
+                        <li>Waiver status with sign-now option</li>
+                        <li>Guest count vs capacity progress</li>
+                        <li>Notes and special requirements</li>
+                        <li>Print/download manifest as PDF</li>
+                        <li>Offline check-in capability</li>
+                    </ul>
+                </div>
+
+                <div class="feature-card priority-high">
+                    <h4>📆 Schedule Calendar</h4>
+                    <p>Monthly/weekly view of all assigned tours.</p>
+                    <ul>
+                        <li>Month view with tour indicators</li>
+                        <li>Week view with time blocks</li>
+                        <li>Day view with full details</li>
+                        <li>Availability indicators</li>
+                        <li>Sync with device calendar</li>
+                        <li>Export schedule to iCal/Google</li>
+                    </ul>
+                </div>
+
+                <div class="feature-card priority-medium">
+                    <h4>🚤 My Boat</h4>
+                    <p>Information about assigned vessel.</p>
+                    <ul>
+                        <li>Boat specifications and capacity</li>
+                        <li>Maintenance schedule display</li>
+                        <li>Equipment checklist</li>
+                        <li>Safety equipment locations</li>
+                        <li>Report maintenance issues</li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- Phase 2 Iterations -->
+            <div class="timeline" style="margin-top: 2rem;">
+                <div class="timeline-item completed">
+                    <div class="iteration-card">
+                        <div class="iteration-header">
+                            <h4>Iteration 2.1: Dashboard Polish</h4>
+                            <span class="iteration-status status-done">Mostly Done</span>
+                        </div>
+                        <ul class="task-list">
+                            <li><span class="checkbox checked"></span>Tours list grouped by date</li>
+                            <li><span class="checkbox checked"></span>Quick stats display</li>
+                            <li><span class="checkbox checked"></span>Tour card with key info</li>
+                            <li><span class="checkbox"></span>Countdown timers for today's tours</li>
+                            <li><span class="checkbox"></span>Weather widget integration</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="timeline-item">
+                    <div class="iteration-card">
+                        <div class="iteration-header">
+                            <h4>Iteration 2.2: Manifest Enhancement</h4>
+                            <span class="iteration-status status-progress">In Progress</span>
+                        </div>
+                        <ul class="task-list">
+                            <li><span class="checkbox checked"></span>Basic guest list display</li>
+                            <li><span class="checkbox checked"></span>Check-in functionality</li>
+                            <li><span class="checkbox checked"></span>Waiver status display</li>
+                            <li><span class="checkbox"></span>Swipe-to-check-in gesture</li>
+                            <li><span class="checkbox"></span>Offline check-in queue</li>
+                            <li><span class="checkbox"></span>PDF manifest generation</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="timeline-item">
+                    <div class="iteration-card">
+                        <div class="iteration-header">
+                            <h4>Iteration 2.3: Calendar Features</h4>
+                            <span class="iteration-status status-pending">Pending</span>
+                        </div>
+                        <ul class="task-list">
+                            <li><span class="checkbox checked"></span>Basic monthly calendar</li>
+                            <li><span class="checkbox"></span>Week view implementation</li>
+                            <li><span class="checkbox"></span>Day detail view</li>
+                            <li><span class="checkbox"></span>iCal export</li>
+                            <li><span class="checkbox"></span>Google Calendar sync</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="timeline-item">
+                    <div class="iteration-card">
+                        <div class="iteration-header">
+                            <h4>Iteration 2.4: Boat Information</h4>
+                            <span class="iteration-status status-pending">Pending</span>
+                        </div>
+                        <ul class="task-list">
+                            <li><span class="checkbox"></span>Boat details page</li>
+                            <li><span class="checkbox"></span>Equipment inventory list</li>
+                            <li><span class="checkbox"></span>Maintenance log view</li>
+                            <li><span class="checkbox"></span>Issue reporting form</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <div class="divider"></div>
+
+        <!-- Phase 3: Operations & Safety -->
+        <section class="section">
+            <div class="section-header">
+                <h2>Phase 3: Operations & Safety</h2>
+                <span class="phase-badge phase-3">Critical</span>
+            </div>
+
+            <div class="feature-grid">
+                <div class="feature-card priority-high">
+                    <h4>✅ Pre-Departure Checklist</h4>
+                    <p>Safety compliance checklist before each tour.</p>
+                    <ul>
+                        <li>Configurable checklist templates</li>
+                        <li>Required items must be checked</li>
+                        <li>Photo evidence upload option</li>
+                        <li>Digital signature confirmation</li>
+                        <li>Automatic admin notification</li>
+                        <li>Compliance history tracking</li>
+                    </ul>
+                </div>
+
+                <div class="feature-card priority-high">
+                    <h4>🚨 Incident Reporting</h4>
+                    <p>Quick incident documentation for safety compliance.</p>
+                    <ul>
+                        <li>One-tap incident type selection</li>
+                        <li>Photo/video evidence capture</li>
+                        <li>Voice-to-text description</li>
+                        <li>GPS location auto-capture</li>
+                        <li>Timestamp and tour association</li>
+                        <li>Immediate admin alert</li>
+                        <li>Offline submission queue</li>
+                    </ul>
+                </div>
+
+                <div class="feature-card priority-medium">
+                    <h4>🗺️ Tour Details & Routes</h4>
+                    <p>Detailed tour information and navigation.</p>
+                    <ul>
+                        <li>Meeting point with map</li>
+                        <li>Route waypoints (if applicable)</li>
+                        <li>Points of interest</li>
+                        <li>Safety zones and restrictions</li>
+                        <li>Emergency contact numbers</li>
+                        <li>Tour script/talking points</li>
+                    </ul>
+                </div>
+
+                <div class="feature-card priority-medium">
+                    <h4>📝 Tour Log</h4>
+                    <p>Post-tour reporting and notes.</p>
+                    <ul>
+                        <li>Actual departure/return times</li>
+                        <li>Fuel usage logging</li>
+                        <li>Weather conditions noted</li>
+                        <li>Guest feedback notes</li>
+                        <li>Equipment issues noted</li>
+                        <li>Photos from the tour</li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- Phase 3 Iterations -->
+            <div class="timeline" style="margin-top: 2rem;">
+                <div class="timeline-item">
+                    <div class="iteration-card">
+                        <div class="iteration-header">
+                            <h4>Iteration 3.1: Safety Checklist</h4>
+                            <span class="iteration-status status-pending">Pending</span>
+                        </div>
+                        <ul class="task-list">
+                            <li><span class="checkbox"></span>Checklist template data model</li>
+                            <li><span class="checkbox"></span>Admin checklist configuration UI</li>
+                            <li><span class="checkbox"></span>Captain checklist completion flow</li>
+                            <li><span class="checkbox"></span>Photo upload for evidence</li>
+                            <li><span class="checkbox"></span>Checklist submission API</li>
+                            <li><span class="checkbox"></span>Compliance dashboard for admin</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="timeline-item">
+                    <div class="iteration-card">
+                        <div class="iteration-header">
+                            <h4>Iteration 3.2: Incident Reporting</h4>
+                            <span class="iteration-status status-pending">Pending</span>
+                        </div>
+                        <ul class="task-list">
+                            <li><span class="checkbox"></span>Incident types configuration</li>
+                            <li><span class="checkbox"></span>Quick report form UI</li>
+                            <li><span class="checkbox"></span>Media capture integration</li>
+                            <li><span class="checkbox"></span>GPS location capture</li>
+                            <li><span class="checkbox"></span>Admin incident dashboard</li>
+                            <li><span class="checkbox"></span>Push notification to admin</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="timeline-item">
+                    <div class="iteration-card">
+                        <div class="iteration-header">
+                            <h4>Iteration 3.3: Tour Information</h4>
+                            <span class="iteration-status status-pending">Pending</span>
+                        </div>
+                        <ul class="task-list">
+                            <li><span class="checkbox"></span>Enhanced tour detail view</li>
+                            <li><span class="checkbox"></span>Meeting point map integration</li>
+                            <li><span class="checkbox"></span>Route display (if configured)</li>
+                            <li><span class="checkbox"></span>Tour script/notes viewer</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="timeline-item">
+                    <div class="iteration-card">
+                        <div class="iteration-header">
+                            <h4>Iteration 3.4: Tour Logging</h4>
+                            <span class="iteration-status status-pending">Pending</span>
+                        </div>
+                        <ul class="task-list">
+                            <li><span class="checkbox"></span>Post-tour log form</li>
+                            <li><span class="checkbox"></span>Time tracking (actual vs scheduled)</li>
+                            <li><span class="checkbox"></span>Fuel/resource logging</li>
+                            <li><span class="checkbox"></span>Photo gallery upload</li>
+                            <li><span class="checkbox"></span>Admin tour history view</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <div class="divider"></div>
+
+        <!-- Phase 4: Communication & Advanced -->
+        <section class="section">
+            <div class="section-header">
+                <h2>Phase 4: Communication & Advanced Features</h2>
+                <span class="phase-badge phase-4">Enhancement</span>
+            </div>
+
+            <div class="feature-grid">
+                <div class="feature-card priority-medium">
+                    <h4>💬 Guest Communication</h4>
+                    <p>Direct communication with tour guests.</p>
+                    <ul>
+                        <li>Send SMS to all guests on tour</li>
+                        <li>Individual guest messaging</li>
+                        <li>Pre-built message templates</li>
+                        <li>Delay/location update notifications</li>
+                        <li>Weather alert broadcasts</li>
+                    </ul>
+                </div>
+
+                <div class="feature-card priority-medium">
+                    <h4>🔔 Push Notifications</h4>
+                    <p>Real-time alerts and updates.</p>
+                    <ul>
+                        <li>New tour assignment alerts</li>
+                        <li>Schedule change notifications</li>
+                        <li>New booking on assigned tour</li>
+                        <li>Cancellation alerts</li>
+                        <li>Admin messages</li>
+                        <li>Weather warnings</li>
+                    </ul>
+                </div>
+
+                <div class="feature-card priority-medium">
+                    <h4>📱 PWA & Offline Mode</h4>
+                    <p>Works without internet - critical for boats.</p>
+                    <ul>
+                        <li>Install as mobile app</li>
+                        <li>Offline manifest access</li>
+                        <li>Offline check-in with sync</li>
+                        <li>Cached tour information</li>
+                        <li>Background sync when online</li>
+                        <li>Data persistence</li>
+                    </ul>
+                </div>
+
+                <div class="feature-card priority-low">
+                    <h4>📊 Captain Stats</h4>
+                    <p>Personal performance metrics.</p>
+                    <ul>
+                        <li>Tours completed this month</li>
+                        <li>Total guests served</li>
+                        <li>On-time performance</li>
+                        <li>Average tour ratings</li>
+                        <li>Comparison to previous periods</li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- Phase 4 Iterations -->
+            <div class="timeline" style="margin-top: 2rem;">
+                <div class="timeline-item">
+                    <div class="iteration-card">
+                        <div class="iteration-header">
+                            <h4>Iteration 4.1: Push Notifications</h4>
+                            <span class="iteration-status status-pending">Pending</span>
+                        </div>
+                        <ul class="task-list">
+                            <li><span class="checkbox"></span>Web Push API integration</li>
+                            <li><span class="checkbox"></span>Notification permission flow</li>
+                            <li><span class="checkbox"></span>Server-side push service</li>
+                            <li><span class="checkbox"></span>Notification preferences UI</li>
+                            <li><span class="checkbox"></span>Admin notification triggers</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="timeline-item">
+                    <div class="iteration-card">
+                        <div class="iteration-header">
+                            <h4>Iteration 4.2: Guest Messaging</h4>
+                            <span class="iteration-status status-pending">Pending</span>
+                        </div>
+                        <ul class="task-list">
+                            <li><span class="checkbox"></span>Message composition UI</li>
+                            <li><span class="checkbox"></span>Template message library</li>
+                            <li><span class="checkbox"></span>Bulk SMS integration</li>
+                            <li><span class="checkbox"></span>Message history tracking</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="timeline-item">
+                    <div class="iteration-card">
+                        <div class="iteration-header">
+                            <h4>Iteration 4.3: PWA & Offline</h4>
+                            <span class="iteration-status status-pending">Pending</span>
+                        </div>
+                        <ul class="task-list">
+                            <li><span class="checkbox"></span>Service worker setup</li>
+                            <li><span class="checkbox"></span>App manifest configuration</li>
+                            <li><span class="checkbox"></span>Offline data caching strategy</li>
+                            <li><span class="checkbox"></span>IndexedDB for offline storage</li>
+                            <li><span class="checkbox"></span>Background sync implementation</li>
+                            <li><span class="checkbox"></span>Conflict resolution for synced data</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="timeline-item">
+                    <div class="iteration-card">
+                        <div class="iteration-header">
+                            <h4>Iteration 4.4: Analytics & Stats</h4>
+                            <span class="iteration-status status-pending">Pending</span>
+                        </div>
+                        <ul class="task-list">
+                            <li><span class="checkbox"></span>Captain stats API</li>
+                            <li><span class="checkbox"></span>Performance dashboard UI</li>
+                            <li><span class="checkbox"></span>Historical comparison charts</li>
+                            <li><span class="checkbox"></span>Export personal reports</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <div class="divider"></div>
+
+        <!-- UI Wireframes -->
+        <section class="section">
+            <div class="section-header">
+                <h2>UI Design Preview</h2>
+            </div>
+
+            <div class="grid-2">
+                <!-- Mobile Dashboard Preview -->
+                <div>
+                    <h3 style="margin-bottom: 1rem; color: var(--text-secondary);">Mobile Dashboard</h3>
+                    <div class="mobile-preview">
+                        <div class="mobile-status-bar">
+                            <span>9:41</span>
+                            <span>100%</span>
+                        </div>
+                        <div style="padding: 1rem;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+                                <div>
+                                    <div style="font-size: 0.8rem; color: var(--text-secondary);">Good morning,</div>
+                                    <div style="font-size: 1.25rem; font-weight: 600;">Captain Mike</div>
+                                </div>
+                                <div style="width: 40px; height: 40px; background: var(--primary); border-radius: 50%;"></div>
+                            </div>
+
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; margin-bottom: 1.5rem;">
+                                <div class="mock-card">
+                                    <div style="font-size: 1.5rem; font-weight: 700; color: var(--primary);">3</div>
+                                    <div style="font-size: 0.75rem; color: var(--text-secondary);">Today's Tours</div>
+                                </div>
+                                <div class="mock-card">
+                                    <div style="font-size: 1.5rem; font-weight: 700; color: var(--success);">24</div>
+                                    <div style="font-size: 0.75rem; color: var(--text-secondary);">Guests Today</div>
+                                </div>
+                            </div>
+
+                            <div style="font-size: 0.9rem; font-weight: 600; margin-bottom: 0.75rem;">Today's Tours</div>
+
+                            <div class="mock-card">
+                                <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                                    <div>
+                                        <div style="font-weight: 600;">Sunset Cruise</div>
+                                        <div style="font-size: 0.8rem; color: var(--text-secondary);">5:00 PM - 7:00 PM</div>
+                                    </div>
+                                    <div style="background: var(--success); padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 0.7rem;">READY</div>
+                                </div>
+                                <div style="display: flex; gap: 1rem; margin-top: 0.75rem; font-size: 0.8rem; color: var(--text-secondary);">
+                                    <span>👥 8/12</span>
+                                    <span>📋 6/8 waivers</span>
+                                </div>
+                            </div>
+
+                            <div class="mock-card">
+                                <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                                    <div>
+                                        <div style="font-weight: 600;">Whale Watching</div>
+                                        <div style="font-size: 0.8rem; color: var(--text-secondary);">2:00 PM - 4:30 PM</div>
+                                    </div>
+                                    <div style="background: var(--warning); padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 0.7rem;">BOARDING</div>
+                                </div>
+                                <div style="display: flex; gap: 1rem; margin-top: 0.75rem; font-size: 0.8rem; color: var(--text-secondary);">
+                                    <span>👥 12/12</span>
+                                    <span>📋 12/12 waivers</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="mobile-nav">
+                            <div class="mobile-nav-item active">
+                                <div style="font-size: 1.25rem;">🏠</div>
+                                <div>Home</div>
+                            </div>
+                            <div class="mobile-nav-item">
+                                <div style="font-size: 1.25rem;">📅</div>
+                                <div>Schedule</div>
+                            </div>
+                            <div class="mobile-nav-item">
+                                <div style="font-size: 1.25rem;">📋</div>
+                                <div>Manifest</div>
+                            </div>
+                            <div class="mobile-nav-item">
+                                <div style="font-size: 1.25rem;">👤</div>
+                                <div>Profile</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Mobile Manifest Preview -->
+                <div>
+                    <h3 style="margin-bottom: 1rem; color: var(--text-secondary);">Mobile Manifest</h3>
+                    <div class="mobile-preview">
+                        <div class="mobile-status-bar">
+                            <span>9:41</span>
+                            <span>100%</span>
+                        </div>
+                        <div style="padding: 1rem;">
+                            <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 1rem;">
+                                <div style="font-size: 1.25rem;">←</div>
+                                <div>
+                                    <div style="font-weight: 600;">Sunset Cruise</div>
+                                    <div style="font-size: 0.8rem; color: var(--text-secondary);">Today, 5:00 PM</div>
+                                </div>
+                            </div>
+
+                            <div style="display: flex; gap: 0.5rem; margin-bottom: 1rem;">
+                                <div style="flex: 1; background: var(--success)22; border-radius: 8px; padding: 0.5rem; text-align: center;">
+                                    <div style="font-weight: 700; color: var(--success);">6</div>
+                                    <div style="font-size: 0.7rem; color: var(--text-secondary);">Checked In</div>
+                                </div>
+                                <div style="flex: 1; background: var(--warning)22; border-radius: 8px; padding: 0.5rem; text-align: center;">
+                                    <div style="font-weight: 700; color: var(--warning);">2</div>
+                                    <div style="font-size: 0.7rem; color: var(--text-secondary);">Pending</div>
+                                </div>
+                                <div style="flex: 1; background: var(--primary)22; border-radius: 8px; padding: 0.5rem; text-align: center;">
+                                    <div style="font-weight: 700; color: var(--primary);">8</div>
+                                    <div style="font-size: 0.7rem; color: var(--text-secondary);">Total</div>
+                                </div>
+                            </div>
+
+                            <div style="font-size: 0.85rem; font-weight: 600; margin-bottom: 0.5rem;">Guests</div>
+
+                            <div style="border: 1px solid var(--border); border-radius: 8px; overflow: hidden;">
+                                <div style="display: flex; align-items: center; padding: 0.75rem; border-bottom: 1px solid var(--border); background: var(--success)11;">
+                                    <div style="width: 24px; height: 24px; background: var(--success); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.7rem; color: white; margin-right: 0.75rem;">✓</div>
+                                    <div style="flex: 1;">
+                                        <div style="font-weight: 500; font-size: 0.9rem;">John Smith</div>
+                                        <div style="font-size: 0.75rem; color: var(--text-secondary);">📄 Waiver signed</div>
+                                    </div>
+                                </div>
+                                <div style="display: flex; align-items: center; padding: 0.75rem; border-bottom: 1px solid var(--border); background: var(--success)11;">
+                                    <div style="width: 24px; height: 24px; background: var(--success); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.7rem; color: white; margin-right: 0.75rem;">✓</div>
+                                    <div style="flex: 1;">
+                                        <div style="font-weight: 500; font-size: 0.9rem;">Sarah Johnson</div>
+                                        <div style="font-size: 0.75rem; color: var(--text-secondary);">📄 Waiver signed</div>
+                                    </div>
+                                </div>
+                                <div style="display: flex; align-items: center; padding: 0.75rem; border-bottom: 1px solid var(--border);">
+                                    <div style="width: 24px; height: 24px; border: 2px solid var(--border); border-radius: 50%; margin-right: 0.75rem;"></div>
+                                    <div style="flex: 1;">
+                                        <div style="font-weight: 500; font-size: 0.9rem;">Mike Davis</div>
+                                        <div style="font-size: 0.75rem; color: var(--warning);">⚠️ Waiver pending</div>
+                                    </div>
+                                    <div style="font-size: 0.7rem; background: var(--primary); padding: 0.25rem 0.5rem; border-radius: 4px;">CHECK IN</div>
+                                </div>
+                                <div style="display: flex; align-items: center; padding: 0.75rem;">
+                                    <div style="width: 24px; height: 24px; border: 2px solid var(--border); border-radius: 50%; margin-right: 0.75rem;"></div>
+                                    <div style="flex: 1;">
+                                        <div style="font-weight: 500; font-size: 0.9rem;">Emily Wilson</div>
+                                        <div style="font-size: 0.75rem; color: var(--text-secondary);">📄 Waiver signed</div>
+                                    </div>
+                                    <div style="font-size: 0.7rem; background: var(--primary); padding: 0.25rem 0.5rem; border-radius: 4px;">CHECK IN</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="mobile-nav">
+                            <div class="mobile-nav-item">
+                                <div style="font-size: 1.25rem;">🏠</div>
+                                <div>Home</div>
+                            </div>
+                            <div class="mobile-nav-item">
+                                <div style="font-size: 1.25rem;">📅</div>
+                                <div>Schedule</div>
+                            </div>
+                            <div class="mobile-nav-item active">
+                                <div style="font-size: 1.25rem;">📋</div>
+                                <div>Manifest</div>
+                            </div>
+                            <div class="mobile-nav-item">
+                                <div style="font-size: 1.25rem;">👤</div>
+                                <div>Profile</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <div class="divider"></div>
+
+        <!-- API Endpoints -->
+        <section class="section">
+            <div class="section-header">
+                <h2>API Endpoints</h2>
+            </div>
+
+            <div class="grid-2">
+                <div>
+                    <h3 style="margin-bottom: 1rem; font-size: 1.1rem;">Authentication & Profile</h3>
+
+                    <div class="api-endpoint">
+                        <span class="api-method method-post">POST</span>
+                        <span class="api-path">/api/captain/auth/login</span>
+                        <p class="api-desc">Captain login with magic link support</p>
+                    </div>
+
+                    <div class="api-endpoint">
+                        <span class="api-method method-get">GET</span>
+                        <span class="api-path">/api/captain/profile</span>
+                        <p class="api-desc">Get captain profile and boat assignment</p>
+                    </div>
+
+                    <div class="api-endpoint">
+                        <span class="api-method method-put">PUT</span>
+                        <span class="api-path">/api/captain/profile</span>
+                        <p class="api-desc">Update captain profile information</p>
+                    </div>
+
+                    <h3 style="margin: 1.5rem 0 1rem; font-size: 1.1rem;">Tours & Schedule</h3>
+
+                    <div class="api-endpoint">
+                        <span class="api-method method-get">GET</span>
+                        <span class="api-path">/api/captain/tours</span>
+                        <p class="api-desc">Get assigned tours with filters (date range)</p>
+                    </div>
+
+                    <div class="api-endpoint">
+                        <span class="api-method method-get">GET</span>
+                        <span class="api-path">/api/captain/tours/:id</span>
+                        <p class="api-desc">Get tour details including route, notes</p>
+                    </div>
+
+                    <div class="api-endpoint">
+                        <span class="api-method method-get">GET</span>
+                        <span class="api-path">/api/captain/schedule</span>
+                        <p class="api-desc">Get monthly schedule for calendar view</p>
+                    </div>
+                </div>
+
+                <div>
+                    <h3 style="margin-bottom: 1rem; font-size: 1.1rem;">Manifest & Check-in</h3>
+
+                    <div class="api-endpoint">
+                        <span class="api-method method-get">GET</span>
+                        <span class="api-path">/api/captain/tours/:id/manifest</span>
+                        <p class="api-desc">Get guest manifest for a tour</p>
+                    </div>
+
+                    <div class="api-endpoint">
+                        <span class="api-method method-post">POST</span>
+                        <span class="api-path">/api/captain/guests/:id/checkin</span>
+                        <p class="api-desc">Check in a guest</p>
+                    </div>
+
+                    <div class="api-endpoint">
+                        <span class="api-method method-post">POST</span>
+                        <span class="api-path">/api/captain/tours/:id/checkin-all</span>
+                        <p class="api-desc">Bulk check-in all guests</p>
+                    </div>
+
+                    <h3 style="margin: 1.5rem 0 1rem; font-size: 1.1rem;">Safety & Operations</h3>
+
+                    <div class="api-endpoint">
+                        <span class="api-method method-get">GET</span>
+                        <span class="api-path">/api/captain/checklists/:tourId</span>
+                        <p class="api-desc">Get pre-departure checklist for tour</p>
+                    </div>
+
+                    <div class="api-endpoint">
+                        <span class="api-method method-post">POST</span>
+                        <span class="api-path">/api/captain/checklists/:tourId</span>
+                        <p class="api-desc">Submit completed checklist</p>
+                    </div>
+
+                    <div class="api-endpoint">
+                        <span class="api-method method-post">POST</span>
+                        <span class="api-path">/api/captain/incidents</span>
+                        <p class="api-desc">Report an incident</p>
+                    </div>
+
+                    <div class="api-endpoint">
+                        <span class="api-method method-post">POST</span>
+                        <span class="api-path">/api/captain/tours/:id/log</span>
+                        <p class="api-desc">Submit post-tour log</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <div class="divider"></div>
+
+        <!-- Database Schema Changes -->
+        <section class="section">
+            <div class="section-header">
+                <h2>Database Schema Additions</h2>
+            </div>
+
+            <div class="feature-grid">
+                <div class="feature-card">
+                    <h4>📋 safety_checklists</h4>
+                    <p>Pre-departure checklist templates</p>
+                    <ul>
+                        <li>id (UUID)</li>
+                        <li>name (VARCHAR)</li>
+                        <li>tour_type_id (UUID, optional)</li>
+                        <li>items (JSONB array)</li>
+                        <li>is_active (BOOLEAN)</li>
+                        <li>created_at (TIMESTAMPTZ)</li>
+                    </ul>
+                </div>
+
+                <div class="feature-card">
+                    <h4>✅ checklist_completions</h4>
+                    <p>Completed checklists by captains</p>
+                    <ul>
+                        <li>id (UUID)</li>
+                        <li>checklist_id (UUID)</li>
+                        <li>availability_id (UUID)</li>
+                        <li>captain_id (UUID)</li>
+                        <li>completed_items (JSONB)</li>
+                        <li>photos (TEXT[])</li>
+                        <li>signature (TEXT)</li>
+                        <li>completed_at (TIMESTAMPTZ)</li>
+                    </ul>
+                </div>
+
+                <div class="feature-card">
+                    <h4>🚨 incidents</h4>
+                    <p>Incident reports</p>
+                    <ul>
+                        <li>id (UUID)</li>
+                        <li>availability_id (UUID)</li>
+                        <li>captain_id (UUID)</li>
+                        <li>incident_type (VARCHAR)</li>
+                        <li>description (TEXT)</li>
+                        <li>location (GEOGRAPHY)</li>
+                        <li>media_urls (TEXT[])</li>
+                        <li>severity (VARCHAR)</li>
+                        <li>status (VARCHAR)</li>
+                        <li>created_at (TIMESTAMPTZ)</li>
+                    </ul>
+                </div>
+
+                <div class="feature-card">
+                    <h4>📝 tour_logs</h4>
+                    <p>Post-tour completion logs</p>
+                    <ul>
+                        <li>id (UUID)</li>
+                        <li>availability_id (UUID)</li>
+                        <li>captain_id (UUID)</li>
+                        <li>actual_departure (TIMESTAMPTZ)</li>
+                        <li>actual_return (TIMESTAMPTZ)</li>
+                        <li>fuel_used (DECIMAL)</li>
+                        <li>weather_conditions (VARCHAR)</li>
+                        <li>notes (TEXT)</li>
+                        <li>photos (TEXT[])</li>
+                        <li>created_at (TIMESTAMPTZ)</li>
+                    </ul>
+                </div>
+
+                <div class="feature-card">
+                    <h4>🔔 captain_notifications</h4>
+                    <p>Push notification subscriptions</p>
+                    <ul>
+                        <li>id (UUID)</li>
+                        <li>captain_id (UUID)</li>
+                        <li>endpoint (TEXT)</li>
+                        <li>p256dh_key (TEXT)</li>
+                        <li>auth_key (TEXT)</li>
+                        <li>preferences (JSONB)</li>
+                        <li>created_at (TIMESTAMPTZ)</li>
+                    </ul>
+                </div>
+
+                <div class="feature-card">
+                    <h4>📤 offline_sync_queue</h4>
+                    <p>Offline actions pending sync</p>
+                    <ul>
+                        <li>id (UUID)</li>
+                        <li>captain_id (UUID)</li>
+                        <li>action_type (VARCHAR)</li>
+                        <li>payload (JSONB)</li>
+                        <li>created_at (TIMESTAMPTZ)</li>
+                        <li>synced_at (TIMESTAMPTZ)</li>
+                        <li>status (VARCHAR)</li>
+                    </ul>
+                </div>
+            </div>
+        </section>
+
+        <div class="divider"></div>
+
+        <!-- Admin Integration -->
+        <section class="section">
+            <div class="section-header">
+                <h2>Admin Dashboard Integration</h2>
+            </div>
+
+            <p style="color: var(--text-secondary); margin-bottom: 1.5rem;">
+                Features that need to be added to the admin dashboard to support captain functionality:
+            </p>
+
+            <div class="feature-grid">
+                <div class="feature-card priority-high">
+                    <h4>👨‍✈️ Captain Assignment UI</h4>
+                    <p>Assign captains to tours from admin</p>
+                    <ul>
+                        <li>Drag-drop captain to tour slot</li>
+                        <li>View captain availability</li>
+                        <li>Bulk assignment tools</li>
+                        <li>Conflict detection</li>
+                    </ul>
+                </div>
+
+                <div class="feature-card priority-medium">
+                    <h4>📊 Compliance Dashboard</h4>
+                    <p>Monitor captain safety compliance</p>
+                    <ul>
+                        <li>Checklist completion rates</li>
+                        <li>Missing checklists alerts</li>
+                        <li>Incident report queue</li>
+                        <li>Tour log review</li>
+                    </ul>
+                </div>
+
+                <div class="feature-card priority-medium">
+                    <h4>📋 Checklist Builder</h4>
+                    <p>Create and manage checklist templates</p>
+                    <ul>
+                        <li>Add/edit checklist items</li>
+                        <li>Required vs optional items</li>
+                        <li>Photo requirement toggle</li>
+                        <li>Assign to tour types</li>
+                    </ul>
+                </div>
+
+                <div class="feature-card priority-low">
+                    <h4>📈 Captain Analytics</h4>
+                    <p>Performance insights for captains</p>
+                    <ul>
+                        <li>Tours per captain</li>
+                        <li>On-time performance</li>
+                        <li>Guest satisfaction</li>
+                        <li>Compliance scores</li>
+                    </ul>
+                </div>
+            </div>
+        </section>
+
+        <!-- Implementation Notes -->
+        <div class="notes-section">
+            <h4>Key Implementation Notes</h4>
+            <ul>
+                <li><strong>Mobile-First Design:</strong> All captain UI must be designed mobile-first as captains primarily use phones on boats</li>
+                <li><strong>Offline Capability:</strong> Critical for boat tours where cellular signal may be unavailable - implement IndexedDB + Service Worker</li>
+                <li><strong>Large Touch Targets:</strong> All interactive elements should be at least 44x44px for easy tapping on moving boats</li>
+                <li><strong>Battery Efficiency:</strong> Minimize background processes to preserve battery life during long tours</li>
+                <li><strong>Quick Actions:</strong> Check-in should be achievable in 2 taps maximum</li>
+                <li><strong>Data Sync:</strong> Implement optimistic UI updates with background sync and conflict resolution</li>
+                <li><strong>Push Notifications:</strong> Use Firebase Cloud Messaging for cross-platform push support</li>
+                <li><strong>Security:</strong> All captain APIs must verify availability_staff assignment before allowing access</li>
+                <li><strong>RLS Policies:</strong> Implement row-level security to ensure captains only see their assigned data</li>
+            </ul>
+        </div>
+
+        <!-- Priority Summary -->
+        <section class="section" style="margin-top: 3rem;">
+            <div class="section-header">
+                <h2>Implementation Priority</h2>
+            </div>
+
+            <table class="comparison-table">
+                <thead>
+                    <tr>
+                        <th>Priority</th>
+                        <th>Features</th>
+                        <th>Rationale</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><span style="color: var(--danger); font-weight: 600;">P0 - Critical</span></td>
+                        <td>Login flow, Manifest check-in, Today's tours view</td>
+                        <td>Core functionality captains need immediately</td>
+                    </tr>
+                    <tr>
+                        <td><span style="color: var(--warning); font-weight: 600;">P1 - High</span></td>
+                        <td>Pre-departure checklist, Offline support, Push notifications</td>
+                        <td>Safety compliance and reliability</td>
+                    </tr>
+                    <tr>
+                        <td><span style="color: var(--primary); font-weight: 600;">P2 - Medium</span></td>
+                        <td>Incident reporting, Tour logging, Calendar sync</td>
+                        <td>Operations efficiency</td>
+                    </tr>
+                    <tr>
+                        <td><span style="color: var(--success); font-weight: 600;">P3 - Low</span></td>
+                        <td>Stats dashboard, Guest messaging, Advanced profile</td>
+                        <td>Nice-to-have enhancements</td>
+                    </tr>
+                </tbody>
+            </table>
+        </section>
+
+        <!-- Footer -->
+        <footer style="text-align: center; padding: 3rem 0; color: var(--text-secondary); border-top: 1px solid var(--border); margin-top: 3rem;">
+            <p>Captain Module Implementation Plan - TourPilot</p>
+            <p style="font-size: 0.85rem; margin-top: 0.5rem;">Generated for phased development approach</p>
+        </footer>
+    </div>
+</body>
+</html>

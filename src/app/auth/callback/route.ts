@@ -30,18 +30,40 @@ export async function GET(request: Request) {
             return NextResponse.redirect(new URL("/login?error=no_admin_access", requestUrl.origin));
           }
         } else if (loginType === "captain") {
-          // Verify user is captain
-          const { data: staffData } = await supabase
+          // Verify user is captain - first try by user_id
+          let staffData = null;
+          const { data: staffByUserId } = await supabase
             .from('staff')
-            .select('role, is_active')
+            .select('id, role, is_active')
             .eq('user_id', data.user.id)
             .single();
+
+          staffData = staffByUserId;
+
+          // If not found by user_id, try to link by email (first-time magic link login)
+          if (!staffData && data.user.email) {
+            const adminClient = createAdminClient();
+            const { data: staffByEmail } = await adminClient
+              .from('staff')
+              .select('id, role, is_active, user_id')
+              .eq('email', data.user.email.toLowerCase())
+              .single();
+
+            if (staffByEmail && !staffByEmail.user_id && staffByEmail.role === 'captain' && staffByEmail.is_active) {
+              // Link the staff record to this user
+              await adminClient
+                .from('staff')
+                .update({ user_id: data.user.id })
+                .eq('id', staffByEmail.id);
+              staffData = staffByEmail;
+            }
+          }
 
           if (staffData && staffData.is_active && staffData.role === 'captain') {
             return NextResponse.redirect(new URL("/captain", requestUrl.origin));
           } else {
             await supabase.auth.signOut();
-            return NextResponse.redirect(new URL("/login?error=no_captain_access", requestUrl.origin));
+            return NextResponse.redirect(new URL("/captain-login?error=no_captain_access", requestUrl.origin));
           }
         } else if (loginType === "customer") {
           // Handle customer login - create or link customer record using admin client (bypasses RLS)

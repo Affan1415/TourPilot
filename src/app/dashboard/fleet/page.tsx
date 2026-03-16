@@ -30,7 +30,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Ship,
   Plus,
@@ -45,11 +44,7 @@ import {
   XCircle,
   Loader2,
   Anchor,
-  MapPin,
-  Waves,
   GripVertical,
-  LayoutGrid,
-  List,
   Sparkles,
   UserCircle,
   X,
@@ -57,7 +52,7 @@ import {
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";
-import type { Boat, BoatStatus, Location, Staff } from "@/types";
+import type { Boat, BoatStatus, Staff } from "@/types";
 
 const statusConfig: Record<BoatStatus, { label: string; color: string; bgColor: string; icon: React.ReactNode }> = {
   active: {
@@ -92,14 +87,6 @@ const boatTypes = [
   { value: "other", label: "Other", emoji: "🚢" },
 ];
 
-const locationColors = [
-  { bg: "from-sky-400/20 to-blue-500/20", border: "border-sky-300", accent: "bg-sky-500" },
-  { bg: "from-emerald-400/20 to-teal-500/20", border: "border-emerald-300", accent: "bg-emerald-500" },
-  { bg: "from-violet-400/20 to-purple-500/20", border: "border-violet-300", accent: "bg-violet-500" },
-  { bg: "from-amber-400/20 to-orange-500/20", border: "border-amber-300", accent: "bg-amber-500" },
-  { bg: "from-rose-400/20 to-pink-500/20", border: "border-rose-300", accent: "bg-rose-500" },
-];
-
 interface BoatFormData {
   name: string;
   registration_number: string;
@@ -109,7 +96,6 @@ interface BoatFormData {
   features: string;
   status: BoatStatus;
   maintenance_notes: string;
-  location_id: string;
   assigned_captain_id: string;
 }
 
@@ -122,14 +108,12 @@ const defaultFormData: BoatFormData = {
   features: "",
   status: "active",
   maintenance_notes: "",
-  location_id: "",
   assigned_captain_id: "",
 };
 
 export default function FleetPage() {
   const [loading, setLoading] = useState(true);
   const [boats, setBoats] = useState<Boat[]>([]);
-  const [locations, setLocations] = useState<Location[]>([]);
   const [captains, setCaptains] = useState<Staff[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
@@ -138,10 +122,7 @@ export default function FleetPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState<BoatFormData>(defaultFormData);
   const [editingBoat, setEditingBoat] = useState<Boat | null>(null);
-  const [viewMode, setViewMode] = useState<"marina" | "captains">("marina");
-  const [draggedBoat, setDraggedBoat] = useState<Boat | null>(null);
   const [draggedCaptain, setDraggedCaptain] = useState<Staff | null>(null);
-  const [dragOverLocation, setDragOverLocation] = useState<string | null>(null);
   const [dragOverBoat, setDragOverBoat] = useState<string | null>(null);
 
   useEffect(() => {
@@ -152,40 +133,31 @@ export default function FleetPage() {
     try {
       const supabase = createClient();
 
-      // Try with captain join first, fallback to without if column doesn't exist
+      // Fetch boats with captain
       let boatsResult = await supabase
         .from("boats")
-        .select("*, location:locations(*), assigned_captain:staff(*)")
+        .select("*, assigned_captain:staff(*)")
         .order("created_at", { ascending: false });
 
       // If the assigned_captain column doesn't exist, fetch without it
       if (boatsResult.error?.code === "42703") {
         boatsResult = await supabase
           .from("boats")
-          .select("*, location:locations(*)")
+          .select("*")
           .order("created_at", { ascending: false });
       }
 
-      const [locationsResult, captainsResult] = await Promise.all([
-        supabase
-          .from("locations")
-          .select("*")
-          .eq("is_active", true)
-          .order("name"),
-        supabase
-          .from("staff")
-          .select("*")
-          .in("role", ["captain", "guide"])
-          .eq("is_active", true)
-          .order("name"),
-      ]);
+      const captainsResult = await supabase
+        .from("staff")
+        .select("*")
+        .in("role", ["captain", "guide"])
+        .eq("is_active", true)
+        .order("name");
 
       if (boatsResult.error) throw boatsResult.error;
-      if (locationsResult.error) throw locationsResult.error;
       if (captainsResult.error) throw captainsResult.error;
 
       setBoats(boatsResult.data || []);
-      setLocations(locationsResult.data || []);
       setCaptains(captainsResult.data || []);
     } catch (error) {
       console.error("Error fetching data:", error);
@@ -212,26 +184,9 @@ export default function FleetPage() {
       .reduce((sum, b) => sum + b.capacity, 0),
   };
 
-  // Boat drag handlers (for location assignment)
-  const handleBoatDragStart = (e: React.DragEvent, boat: Boat) => {
-    setDraggedBoat(boat);
-    setDraggedCaptain(null);
-    e.dataTransfer.effectAllowed = "move";
-    setTimeout(() => {
-      (e.target as HTMLElement).style.opacity = "0.5";
-    }, 0);
-  };
-
-  const handleBoatDragEnd = (e: React.DragEvent) => {
-    (e.target as HTMLElement).style.opacity = "1";
-    setDraggedBoat(null);
-    setDragOverLocation(null);
-  };
-
   // Captain drag handlers
   const handleCaptainDragStart = (e: React.DragEvent, captain: Staff) => {
     setDraggedCaptain(captain);
-    setDraggedBoat(null);
     e.dataTransfer.effectAllowed = "move";
     setTimeout(() => {
       (e.target as HTMLElement).style.opacity = "0.5";
@@ -244,13 +199,6 @@ export default function FleetPage() {
     setDragOverBoat(null);
   };
 
-  const handleDragOverLocation = (e: React.DragEvent, locationId: string | null) => {
-    if (!draggedBoat) return;
-    e.preventDefault();
-    e.dataTransfer.dropEffect = "move";
-    setDragOverLocation(locationId);
-  };
-
   const handleDragOverBoat = (e: React.DragEvent, boatId: string) => {
     if (!draggedCaptain) return;
     e.preventDefault();
@@ -258,53 +206,8 @@ export default function FleetPage() {
     setDragOverBoat(boatId);
   };
 
-  const handleDragLeaveLocation = () => {
-    setDragOverLocation(null);
-  };
-
   const handleDragLeaveBoat = () => {
     setDragOverBoat(null);
-  };
-
-  const handleDropOnLocation = async (e: React.DragEvent, locationId: string | null) => {
-    e.preventDefault();
-    setDragOverLocation(null);
-
-    if (!draggedBoat) return;
-    if (draggedBoat.location_id === locationId) {
-      setDraggedBoat(null);
-      return;
-    }
-
-    try {
-      const supabase = createClient();
-      const { data: updatedBoat, error } = await supabase
-        .from("boats")
-        .update({ location_id: locationId })
-        .eq("id", draggedBoat.id)
-        .select("*, location:locations(*), assigned_captain:staff(*)")
-        .single();
-
-      if (error) throw error;
-
-      setBoats((prev) =>
-        prev.map((b) => (b.id === draggedBoat.id ? updatedBoat : b))
-      );
-
-      const locationName = locationId
-        ? locations.find((l) => l.id === locationId)?.name
-        : "Unassigned";
-
-      toast.success("Boat moved!", {
-        description: `${draggedBoat.name} → ${locationName}`,
-        icon: <Ship className="h-4 w-4" />,
-      });
-    } catch (error: any) {
-      console.error("Error moving boat:", error);
-      toast.error("Failed to move boat");
-    }
-
-    setDraggedBoat(null);
   };
 
   const handleDropCaptainOnBoat = async (e: React.DragEvent, boatId: string) => {
@@ -338,11 +241,10 @@ export default function FleetPage() {
         .from("boats")
         .update({ assigned_captain_id: draggedCaptain.id })
         .eq("id", boatId)
-        .select("*, location:locations(*), assigned_captain:staff(*)")
+        .select("*, assigned_captain:staff(*)")
         .single();
 
       if (error) {
-        // Handle unique constraint violation
         if (error.code === "23505") {
           toast.error("Captain already assigned", {
             description: `${draggedCaptain.name} can only be assigned to one boat.`,
@@ -376,7 +278,7 @@ export default function FleetPage() {
         .from("boats")
         .update({ assigned_captain_id: null })
         .eq("id", boat.id)
-        .select("*, location:locations(*), assigned_captain:staff(*)")
+        .select("*, assigned_captain:staff(*)")
         .single();
 
       if (error) throw error;
@@ -417,10 +319,9 @@ export default function FleetPage() {
           features: featuresArray,
           status: formData.status,
           maintenance_notes: formData.maintenance_notes || null,
-          location_id: formData.location_id || null,
           assigned_captain_id: formData.assigned_captain_id || null,
         })
-        .select("*, location:locations(*), assigned_captain:staff(*)")
+        .select("*, assigned_captain:staff(*)")
         .single();
 
       if (error) throw error;
@@ -451,7 +352,6 @@ export default function FleetPage() {
       features: boat.features?.join(", ") || "",
       status: boat.status,
       maintenance_notes: boat.maintenance_notes || "",
-      location_id: boat.location_id || "",
       assigned_captain_id: boat.assigned_captain_id || "",
     });
     setIsEditDialogOpen(true);
@@ -479,11 +379,10 @@ export default function FleetPage() {
           features: featuresArray,
           status: formData.status,
           maintenance_notes: formData.maintenance_notes || null,
-          location_id: formData.location_id || null,
           assigned_captain_id: formData.assigned_captain_id || null,
         })
         .eq("id", editingBoat.id)
-        .select("*, location:locations(*), assigned_captain:staff(*)")
+        .select("*, assigned_captain:staff(*)")
         .single();
 
       if (error) throw error;
@@ -562,50 +461,34 @@ export default function FleetPage() {
       .slice(0, 2);
   };
 
-  // Boat card component for drag and drop
-  const BoatCard = ({ boat, compact = false, showCaptainDrop = false }: { boat: Boat; compact?: boolean; showCaptainDrop?: boolean }) => {
+  // Boat card component
+  const BoatCard = ({ boat }: { boat: Boat }) => {
     const isDropTarget = dragOverBoat === boat.id;
 
     return (
       <div
-        draggable={!showCaptainDrop}
-        onDragStart={(e) => !showCaptainDrop && handleBoatDragStart(e, boat)}
-        onDragEnd={handleBoatDragEnd}
-        onDragOver={(e) => showCaptainDrop && handleDragOverBoat(e, boat.id)}
+        onDragOver={(e) => handleDragOverBoat(e, boat.id)}
         onDragLeave={handleDragLeaveBoat}
-        onDrop={(e) => showCaptainDrop && handleDropCaptainOnBoat(e, boat.id)}
+        onDrop={(e) => handleDropCaptainOnBoat(e, boat.id)}
         className={cn(
-          "group relative bg-white rounded-xl border-2 shadow-sm transition-all duration-200",
-          showCaptainDrop ? "cursor-default" : "cursor-grab active:cursor-grabbing",
-          "hover:shadow-md hover:scale-[1.02]",
-          draggedBoat?.id === boat.id && "opacity-50 scale-95",
-          isDropTarget ? "border-violet-500 bg-violet-50 scale-[1.02]" : "border-transparent hover:border-primary/30",
-          compact ? "p-3" : "p-4"
+          "group relative bg-white rounded-xl border-2 shadow-sm transition-all duration-200 p-4",
+          "hover:shadow-md",
+          isDropTarget ? "border-violet-500 bg-violet-50 scale-[1.02]" : "border-transparent hover:border-primary/30"
         )}
       >
-        {/* Drag handle indicator */}
-        {!showCaptainDrop && (
-          <div className="absolute left-2 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-40 transition-opacity">
-            <GripVertical className="h-4 w-4 text-muted-foreground" />
-          </div>
-        )}
-
-        <div className={cn("flex items-start gap-3", compact && "items-center")}>
+        <div className="flex items-start gap-3">
           {/* Boat emoji/icon */}
-          <div className={cn(
-            "flex items-center justify-center rounded-xl bg-gradient-to-br from-sky-100 to-blue-100 text-2xl shrink-0",
-            compact ? "h-10 w-10" : "h-14 w-14"
-          )}>
+          <div className="flex items-center justify-center rounded-xl bg-gradient-to-br from-sky-100 to-blue-100 text-2xl shrink-0 h-14 w-14">
             {getBoatEmoji(boat.boat_type)}
           </div>
 
           <div className="flex-1 min-w-0">
             <div className="flex items-start justify-between gap-2">
               <div>
-                <h3 className={cn("font-semibold truncate", compact ? "text-sm" : "text-base")}>
+                <h3 className="font-semibold truncate text-base">
                   {boat.name}
                 </h3>
-                {!compact && boat.registration_number && (
+                {boat.registration_number && (
                   <p className="text-xs text-muted-foreground font-mono">
                     {boat.registration_number}
                   </p>
@@ -651,7 +534,7 @@ export default function FleetPage() {
             </div>
 
             {/* Info row */}
-            <div className={cn("flex items-center gap-2 mt-1.5 flex-wrap", compact && "mt-1")}>
+            <div className="flex items-center gap-2 mt-1.5 flex-wrap">
               <Badge
                 variant="secondary"
                 className={cn(
@@ -670,41 +553,39 @@ export default function FleetPage() {
             </div>
 
             {/* Captain badge */}
-            {showCaptainDrop && (
-              <div className="mt-2">
-                {boat.assigned_captain ? (
-                  <div className="flex items-center gap-2 bg-gradient-to-r from-violet-50 to-purple-50 rounded-lg p-2 border border-violet-200">
-                    <Avatar className="h-6 w-6">
-                      <AvatarImage src={boat.assigned_captain.avatar_url || undefined} />
-                      <AvatarFallback className="text-[10px] bg-violet-200 text-violet-700">
-                        {getCaptainInitials(boat.assigned_captain.name)}
-                      </AvatarFallback>
-                    </Avatar>
-                    <span className="text-xs font-medium text-violet-700 flex-1">
-                      {boat.assigned_captain.name}
-                    </span>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-5 w-5 hover:bg-violet-200"
-                      onClick={() => handleRemoveCaptain(boat)}
-                    >
-                      <X className="h-3 w-3 text-violet-600" />
-                    </Button>
-                  </div>
-                ) : (
-                  <div className={cn(
-                    "flex items-center justify-center gap-2 rounded-lg p-2 border-2 border-dashed transition-colors",
-                    isDropTarget ? "border-violet-500 bg-violet-100" : "border-muted-foreground/20"
-                  )}>
-                    <UserCircle className="h-4 w-4 text-muted-foreground" />
-                    <span className="text-xs text-muted-foreground">
-                      {isDropTarget ? "Drop captain here!" : "Drag captain here"}
-                    </span>
-                  </div>
-                )}
-              </div>
-            )}
+            <div className="mt-2">
+              {boat.assigned_captain ? (
+                <div className="flex items-center gap-2 bg-gradient-to-r from-violet-50 to-purple-50 rounded-lg p-2 border border-violet-200">
+                  <Avatar className="h-6 w-6">
+                    <AvatarImage src={boat.assigned_captain.avatar_url || undefined} />
+                    <AvatarFallback className="text-[10px] bg-violet-200 text-violet-700">
+                      {getCaptainInitials(boat.assigned_captain.name)}
+                    </AvatarFallback>
+                  </Avatar>
+                  <span className="text-xs font-medium text-violet-700 flex-1">
+                    {boat.assigned_captain.name}
+                  </span>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-5 w-5 hover:bg-violet-200"
+                    onClick={() => handleRemoveCaptain(boat)}
+                  >
+                    <X className="h-3 w-3 text-violet-600" />
+                  </Button>
+                </div>
+              ) : (
+                <div className={cn(
+                  "flex items-center justify-center gap-2 rounded-lg p-2 border-2 border-dashed transition-colors",
+                  isDropTarget ? "border-violet-500 bg-violet-100" : "border-muted-foreground/20"
+                )}>
+                  <UserCircle className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-xs text-muted-foreground">
+                    {isDropTarget ? "Drop captain here!" : "Drag captain here"}
+                  </span>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </div>
@@ -768,85 +649,6 @@ export default function FleetPage() {
             <GripVertical className="h-3 w-3 text-muted-foreground" />
           </div>
         )}
-      </div>
-    );
-  };
-
-  // Location drop zone component
-  const LocationZone = ({ location, index }: { location: Location | null; index: number }) => {
-    const colorScheme = locationColors[index % locationColors.length];
-    const locationId = location?.id || null;
-    const boatsInLocation = filteredBoats.filter((b) =>
-      location ? b.location_id === location.id : !b.location_id
-    );
-    const isOver = dragOverLocation === (location?.id || "unassigned");
-
-    return (
-      <div
-        onDragOver={(e) => handleDragOverLocation(e, locationId)}
-        onDragLeave={handleDragLeaveLocation}
-        onDrop={(e) => handleDropOnLocation(e, locationId)}
-        className={cn(
-          "relative rounded-2xl border-2 border-dashed transition-all duration-300 overflow-hidden",
-          location ? colorScheme.border : "border-slate-300",
-          isOver && "border-primary border-solid scale-[1.01] shadow-lg",
-          !isOver && "hover:border-opacity-70"
-        )}
-      >
-        {/* Background gradient */}
-        <div className={cn(
-          "absolute inset-0 bg-gradient-to-br opacity-50 transition-opacity",
-          location ? colorScheme.bg : "from-slate-100 to-slate-200",
-          isOver && "opacity-80"
-        )} />
-
-        {/* Water wave animation when dragging over */}
-        {isOver && (
-          <div className="absolute inset-0 overflow-hidden">
-            <div className="absolute bottom-0 left-0 right-0 h-8 bg-gradient-to-t from-primary/10 to-transparent animate-pulse" />
-          </div>
-        )}
-
-        <div className="relative p-4">
-          {/* Header */}
-          <div className="flex items-center gap-3 mb-4">
-            <div className={cn(
-              "h-10 w-10 rounded-xl flex items-center justify-center text-white shadow-sm",
-              location ? colorScheme.accent : "bg-slate-400"
-            )}>
-              {location ? <MapPin className="h-5 w-5" /> : <Waves className="h-5 w-5" />}
-            </div>
-            <div>
-              <h3 className="font-semibold text-base">
-                {location?.name || "Unassigned Boats"}
-              </h3>
-              <p className="text-xs text-muted-foreground">
-                {location?.city ? `${location.city}, ${location.state}` : "No location set"}
-                {" · "}
-                <span className="font-medium">{boatsInLocation.length} boats</span>
-              </p>
-            </div>
-          </div>
-
-          {/* Boats grid */}
-          {boatsInLocation.length === 0 ? (
-            <div className={cn(
-              "py-8 text-center rounded-xl border-2 border-dashed transition-colors",
-              isOver ? "border-primary bg-primary/5" : "border-muted-foreground/20"
-            )}>
-              <Ship className="h-8 w-8 text-muted-foreground/40 mx-auto mb-2" />
-              <p className="text-sm text-muted-foreground">
-                {isOver ? "Drop boat here!" : "Drag boats here"}
-              </p>
-            </div>
-          ) : (
-            <div className="grid gap-2">
-              {boatsInLocation.map((boat) => (
-                <BoatCard key={boat.id} boat={boat} compact />
-              ))}
-            </div>
-          )}
-        </div>
       </div>
     );
   };
@@ -924,51 +726,27 @@ export default function FleetPage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
-        <div className="grid gap-2">
-          <Label htmlFor="location">Home Location</Label>
-          <Select
-            value={formData.location_id || "none"}
-            onValueChange={(value) => setFormData({ ...formData, location_id: value === "none" ? "" : value })}
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="Select location" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="none">🌊 No location</SelectItem>
-              {locations.map((location) => (
-                <SelectItem key={location.id} value={location.id}>
-                  <span className="flex items-center gap-2">
-                    <MapPin className="h-3 w-3" />
-                    {location.name}
-                  </span>
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-        <div className="grid gap-2">
-          <Label htmlFor="captain">Assigned Captain</Label>
-          <Select
-            value={formData.assigned_captain_id || "none"}
-            onValueChange={(value) => setFormData({ ...formData, assigned_captain_id: value === "none" ? "" : value })}
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="Select captain" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="none">👤 No captain</SelectItem>
-              {captains.map((captain) => (
-                <SelectItem key={captain.id} value={captain.id}>
-                  <span className="flex items-center gap-2">
-                    <UserCircle className="h-3 w-3" />
-                    {captain.name}
-                  </span>
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
+      <div className="grid gap-2">
+        <Label htmlFor="captain">Assigned Captain</Label>
+        <Select
+          value={formData.assigned_captain_id || "none"}
+          onValueChange={(value) => setFormData({ ...formData, assigned_captain_id: value === "none" ? "" : value })}
+        >
+          <SelectTrigger>
+            <SelectValue placeholder="Select captain" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="none">👤 No captain</SelectItem>
+            {captains.map((captain) => (
+              <SelectItem key={captain.id} value={captain.id}>
+                <span className="flex items-center gap-2">
+                  <UserCircle className="h-3 w-3" />
+                  {captain.name}
+                </span>
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
 
       <div className="grid gap-2">
@@ -1017,7 +795,7 @@ export default function FleetPage() {
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {[1, 2, 3].map((i) => (
-              <div key={i} className="h-64 bg-muted rounded-2xl" />
+              <div key={i} className="h-48 bg-muted rounded-2xl" />
             ))}
           </div>
         </div>
@@ -1035,41 +813,17 @@ export default function FleetPage() {
             Fleet Management
           </h1>
           <p className="text-muted-foreground">
-            Drag boats to locations or captains to boats
+            Manage your boats and assign captains
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
-          {/* View toggle */}
-          <div className="flex items-center border rounded-lg p-1 bg-muted/30">
-            <Button
-              variant={viewMode === "marina" ? "default" : "ghost"}
-              size="sm"
-              onClick={() => setViewMode("marina")}
-              className="gap-1.5"
-            >
-              <LayoutGrid className="h-4 w-4" />
-              Locations
-            </Button>
-            <Button
-              variant={viewMode === "captains" ? "default" : "ghost"}
-              size="sm"
-              onClick={() => setViewMode("captains")}
-              className="gap-1.5"
-            >
-              <UserCircle className="h-4 w-4" />
-              Captains
-            </Button>
-          </div>
-
-          <Button
-            className="gap-2 gradient-primary border-0"
-            onClick={() => setIsAddDialogOpen(true)}
-          >
-            <Plus className="h-4 w-4" />
-            Add Boat
-          </Button>
-        </div>
+        <Button
+          className="gap-2 gradient-primary border-0"
+          onClick={() => setIsAddDialogOpen(true)}
+        >
+          <Plus className="h-4 w-4" />
+          Add Boat
+        </Button>
       </div>
 
       {/* Stats */}
@@ -1163,26 +917,7 @@ export default function FleetPage() {
             </Button>
           </div>
         </Card>
-      ) : viewMode === "marina" ? (
-        /* Marina View - Drag boats to locations */
-        <div className="space-y-4">
-          <p className="text-sm text-muted-foreground flex items-center gap-2">
-            <GripVertical className="h-4 w-4" />
-            Drag boats between locations to reassign them
-          </p>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {/* Unassigned boats zone */}
-            <LocationZone location={null} index={-1} />
-
-            {/* Location zones */}
-            {locations.map((location, index) => (
-              <LocationZone key={location.id} location={location} index={index} />
-            ))}
-          </div>
-        </div>
       ) : (
-        /* Captains View - Drag captains to boats */
         <div className="space-y-4">
           <p className="text-sm text-muted-foreground flex items-center gap-2">
             <GripVertical className="h-4 w-4" />
@@ -1221,7 +956,7 @@ export default function FleetPage() {
             <div className="lg:col-span-3">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {filteredBoats.map((boat) => (
-                  <BoatCard key={boat.id} boat={boat} showCaptainDrop />
+                  <BoatCard key={boat.id} boat={boat} />
                 ))}
               </div>
             </div>

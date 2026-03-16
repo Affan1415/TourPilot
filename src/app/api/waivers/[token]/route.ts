@@ -17,12 +17,23 @@ export async function GET(
 
     const supabase = createAdminClient();
 
-    // Check if token is a booking reference (starts with BK) or a waiver UUID
-    const isBookingReference = token.startsWith('BK');
+    // Check if token is a booking reference (starts with BK or TP) or a UUID
+    const isBookingReference = token.startsWith('BK') || token.startsWith('TP-');
 
-    if (isBookingReference) {
-      // Fetch booking by reference
-      const { data: booking, error: bookingError } = await supabase
+    // Check if this is a booking UUID (try to fetch booking first)
+    let isBookingUUID = false;
+    if (!isBookingReference) {
+      const { data: bookingCheck } = await supabase
+        .from('bookings')
+        .select('id')
+        .eq('id', token)
+        .single();
+      isBookingUUID = !!bookingCheck;
+    }
+
+    if (isBookingReference || isBookingUUID) {
+      // Fetch booking by reference or UUID
+      const query = supabase
         .from('bookings')
         .select(`
           id,
@@ -35,9 +46,12 @@ export async function GET(
               name
             )
           )
-        `)
-        .eq('booking_reference', token)
-        .single();
+        `);
+
+      // Query by reference or by UUID
+      const { data: booking, error: bookingError } = isBookingUUID
+        ? await query.eq('id', token).single()
+        : await query.eq('booking_reference', token).single();
 
       if (bookingError || !booking) {
         console.error('Error fetching booking:', bookingError);

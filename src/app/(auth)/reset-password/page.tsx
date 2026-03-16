@@ -38,7 +38,7 @@ export default function ResetPasswordPage() {
 
     try {
       const supabase = createClient();
-      const { error } = await supabase.auth.updateUser({
+      const { error, data: userData } = await supabase.auth.updateUser({
         password,
       });
 
@@ -47,9 +47,34 @@ export default function ResetPasswordPage() {
         return;
       }
 
+      // Determine redirect based on user role
+      let redirectPath = "/login";
+
+      if (userData.user) {
+        const { data: staffData } = await supabase
+          .from('staff')
+          .select('role, is_active')
+          .eq('user_id', userData.user.id)
+          .single();
+
+        if (staffData && staffData.is_active) {
+          redirectPath = staffData.role === 'captain' ? "/captain" : "/dashboard";
+        } else {
+          const { data: customerData } = await supabase
+            .from('customers')
+            .select('id')
+            .eq('user_id', userData.user.id)
+            .single();
+
+          if (customerData) {
+            redirectPath = "/account";
+          }
+        }
+      }
+
       setSuccess(true);
       setTimeout(() => {
-        router.push("/dashboard");
+        router.push(redirectPath);
       }, 2000);
     } catch (err) {
       setError("An unexpected error occurred");

@@ -28,6 +28,7 @@ import {
   X,
   Bell,
   Search,
+  Shield,
   ChevronDown,
   LogOut,
   User,
@@ -92,6 +93,8 @@ const navigationGroups: NavGroup[] = [
       { name: "Fleet", href: "/dashboard/fleet", icon: Anchor },
       { name: "Locations", href: "/dashboard/locations", icon: Globe },
       { name: "Staff", href: "/dashboard/staff", icon: UserCog },
+      { name: "Checklists", href: "/dashboard/checklists", icon: ClipboardList },
+      { name: "Compliance", href: "/dashboard/compliance", icon: Shield },
     ],
   },
   {

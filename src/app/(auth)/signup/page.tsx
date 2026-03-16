@@ -14,7 +14,8 @@ import { createClient } from "@/lib/supabase/client";
 
 export default function SignupPage() {
   const router = useRouter();
-  const [fullName, setFullName] = useState("");
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -24,20 +25,22 @@ export default function SignupPage() {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
 
+  const passwordsMatch = password === confirmPassword && password.length > 0;
+
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError(null);
 
     // Validation
-    if (password !== confirmPassword) {
-      setError("Passwords do not match");
+    if (password.length < 6) {
+      setError("Password must be at least 6 characters");
       setLoading(false);
       return;
     }
 
-    if (password.length < 8) {
-      setError("Password must be at least 8 characters");
+    if (!passwordsMatch) {
+      setError("Passwords do not match");
       setLoading(false);
       return;
     }
@@ -50,19 +53,20 @@ export default function SignupPage() {
 
     try {
       const supabase = createClient();
-      const { error } = await supabase.auth.signUp({
+      const { data, error: signUpError } = await supabase.auth.signUp({
         email,
         password,
         options: {
           data: {
-            full_name: fullName,
+            first_name: firstName,
+            last_name: lastName,
           },
-          emailRedirectTo: `${window.location.origin}/auth/callback`,
+          emailRedirectTo: `${window.location.origin}/auth/callback?type=customer`,
         },
       });
 
-      if (error) {
-        setError(error.message);
+      if (signUpError) {
+        setError(signUpError.message);
         return;
       }
 
@@ -79,7 +83,7 @@ export default function SignupPage() {
     await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
-        redirectTo: `${window.location.origin}/auth/callback`,
+        redirectTo: `${window.location.origin}/auth/callback?type=customer`,
       },
     });
   };
@@ -121,9 +125,12 @@ export default function SignupPage() {
 
         <Card className="p-8">
           <div className="text-center mb-6">
-            <h1 className="text-2xl font-bold">Create an account</h1>
+            <div className="h-14 w-14 rounded-xl mx-auto mb-3 flex items-center justify-center bg-green-100">
+              <User className="h-7 w-7 text-green-600" />
+            </div>
+            <h1 className="text-2xl font-bold">Create an Account</h1>
             <p className="text-muted-foreground mt-1">
-              Start managing your tours today
+              Sign up to book tours and manage your bookings
             </p>
           </div>
 
@@ -135,17 +142,26 @@ export default function SignupPage() {
           )}
 
           <form onSubmit={handleSignup} className="space-y-4">
-            <div className="grid gap-2">
-              <Label htmlFor="fullName">Full Name</Label>
-              <div className="relative">
-                <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <div className="grid grid-cols-2 gap-4">
+              <div className="grid gap-2">
+                <Label htmlFor="firstName">First Name</Label>
                 <Input
-                  id="fullName"
+                  id="firstName"
                   type="text"
-                  placeholder="John Smith"
-                  value={fullName}
-                  onChange={(e) => setFullName(e.target.value)}
-                  className="pl-10"
+                  placeholder="John"
+                  value={firstName}
+                  onChange={(e) => setFirstName(e.target.value)}
+                  required
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="lastName">Last Name</Label>
+                <Input
+                  id="lastName"
+                  type="text"
+                  placeholder="Smith"
+                  value={lastName}
+                  onChange={(e) => setLastName(e.target.value)}
                   required
                 />
               </div>
@@ -174,7 +190,7 @@ export default function SignupPage() {
                 <Input
                   id="password"
                   type={showPassword ? "text" : "password"}
-                  placeholder="At least 8 characters"
+                  placeholder="Create a password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   className="pl-10 pr-10"
@@ -192,6 +208,7 @@ export default function SignupPage() {
                   )}
                 </button>
               </div>
+
             </div>
 
             <div className="grid gap-2">
@@ -208,6 +225,9 @@ export default function SignupPage() {
                   required
                 />
               </div>
+              {confirmPassword.length > 0 && !passwordsMatch && (
+                <p className="text-xs text-destructive">Passwords do not match</p>
+              )}
             </div>
 
             <div className="flex items-start space-x-2">
@@ -233,10 +253,10 @@ export default function SignupPage() {
 
             <Button
               type="submit"
-              className="w-full gradient-primary border-0"
-              disabled={loading}
+              className="w-full bg-green-600 hover:bg-green-700 border-0"
+              disabled={loading || !passwordsMatch || !agreeTerms}
             >
-              {loading ? "Creating account..." : "Create account"}
+              {loading ? "Creating account..." : "Create Account"}
             </Button>
           </form>
 

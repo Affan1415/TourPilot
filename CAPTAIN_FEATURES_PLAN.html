@@ -1,0 +1,1032 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Captain Module - Extended Features Plan</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            background: linear-gradient(135deg, #1e1b4b 0%, #312e81 50%, #1e1b4b 100%);
+            min-height: 100vh;
+            padding: 40px 20px;
+            color: #e2e8f0;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 50px;
+        }
+
+        h1 {
+            font-size: 3rem;
+            background: linear-gradient(135deg, #818cf8, #c084fc, #f472b6);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 10px;
+        }
+
+        .subtitle {
+            font-size: 1.2rem;
+            color: #a5b4fc;
+        }
+
+        .status-legend {
+            display: flex;
+            justify-content: center;
+            gap: 30px;
+            margin-top: 30px;
+            flex-wrap: wrap;
+        }
+
+        .status-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.9rem;
+        }
+
+        .status-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+        }
+
+        .status-dot.done { background: #10b981; }
+        .status-dot.priority { background: #f59e0b; }
+        .status-dot.planned { background: #6366f1; }
+        .status-dot.future { background: #64748b; }
+
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(420px, 1fr));
+            gap: 30px;
+            margin-top: 40px;
+        }
+
+        .feature-card {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 30px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            transition: all 0.3s ease;
+        }
+
+        .feature-card:hover {
+            transform: translateY(-5px);
+            border-color: rgba(129, 140, 248, 0.5);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+        }
+
+        .feature-card.done {
+            border-left: 4px solid #10b981;
+        }
+
+        .feature-card.priority {
+            border-left: 4px solid #f59e0b;
+        }
+
+        .feature-card.planned {
+            border-left: 4px solid #6366f1;
+        }
+
+        .feature-card.future {
+            border-left: 4px solid #64748b;
+        }
+
+        .feature-header {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .feature-icon {
+            width: 50px;
+            height: 50px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+        }
+
+        .feature-card.done .feature-icon { background: rgba(16, 185, 129, 0.2); }
+        .feature-card.priority .feature-icon { background: rgba(245, 158, 11, 0.2); }
+        .feature-card.planned .feature-icon { background: rgba(99, 102, 241, 0.2); }
+        .feature-card.future .feature-icon { background: rgba(100, 116, 139, 0.2); }
+
+        .feature-title {
+            font-size: 1.3rem;
+            font-weight: 600;
+            color: #f1f5f9;
+        }
+
+        .feature-badge {
+            font-size: 0.7rem;
+            padding: 4px 10px;
+            border-radius: 20px;
+            text-transform: uppercase;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+        }
+
+        .badge-done { background: rgba(16, 185, 129, 0.2); color: #34d399; }
+        .badge-priority { background: rgba(245, 158, 11, 0.2); color: #fbbf24; }
+        .badge-planned { background: rgba(99, 102, 241, 0.2); color: #a5b4fc; }
+        .badge-future { background: rgba(100, 116, 139, 0.2); color: #94a3b8; }
+
+        .feature-description {
+            color: #94a3b8;
+            line-height: 1.6;
+            margin-bottom: 20px;
+        }
+
+        .feature-list {
+            list-style: none;
+        }
+
+        .feature-list li {
+            padding: 10px 0;
+            padding-left: 28px;
+            position: relative;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            color: #cbd5e1;
+            font-size: 0.95rem;
+        }
+
+        .feature-list li:last-child {
+            border-bottom: none;
+        }
+
+        .feature-list li::before {
+            content: "→";
+            position: absolute;
+            left: 0;
+            color: #818cf8;
+            font-weight: bold;
+        }
+
+        .feature-list li.sub {
+            padding-left: 48px;
+            font-size: 0.85rem;
+            color: #94a3b8;
+        }
+
+        .feature-list li.sub::before {
+            left: 28px;
+            content: "•";
+            color: #6366f1;
+        }
+
+        .tech-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 20px;
+        }
+
+        .tech-tag {
+            font-size: 0.75rem;
+            padding: 4px 12px;
+            background: rgba(99, 102, 241, 0.15);
+            border-radius: 20px;
+            color: #a5b4fc;
+            border: 1px solid rgba(99, 102, 241, 0.3);
+        }
+
+        /* Section Headers */
+        .section-header {
+            grid-column: 1 / -1;
+            text-align: center;
+            padding: 30px 0 10px;
+        }
+
+        .section-header h2 {
+            font-size: 1.8rem;
+            color: #e2e8f0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 15px;
+        }
+
+        .section-header h2::before,
+        .section-header h2::after {
+            content: "";
+            height: 2px;
+            width: 60px;
+            background: linear-gradient(90deg, transparent, #6366f1, transparent);
+        }
+
+        /* Priority Matrix */
+        .priority-matrix {
+            grid-column: 1 / -1;
+            background: rgba(255, 255, 255, 0.03);
+            border-radius: 20px;
+            padding: 30px;
+            margin-top: 20px;
+        }
+
+        .matrix-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 20px;
+            margin-top: 20px;
+        }
+
+        .matrix-item {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 12px;
+            padding: 20px;
+            text-align: center;
+        }
+
+        .matrix-item h4 {
+            color: #f1f5f9;
+            margin-bottom: 10px;
+        }
+
+        .matrix-item p {
+            color: #94a3b8;
+            font-size: 0.9rem;
+        }
+
+        .matrix-item.p1 { border-top: 3px solid #ef4444; }
+        .matrix-item.p2 { border-top: 3px solid #f59e0b; }
+        .matrix-item.p3 { border-top: 3px solid #6366f1; }
+        .matrix-item.p4 { border-top: 3px solid #64748b; }
+
+        /* Workflow Diagram */
+        .workflow-section {
+            grid-column: 1 / -1;
+            margin-top: 30px;
+        }
+
+        .workflow-diagram {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 20px;
+            padding: 30px;
+            background: rgba(255, 255, 255, 0.03);
+            border-radius: 20px;
+            margin-top: 20px;
+        }
+
+        .workflow-step {
+            flex: 1;
+            min-width: 150px;
+            text-align: center;
+            padding: 20px;
+            background: rgba(99, 102, 241, 0.1);
+            border-radius: 12px;
+            position: relative;
+        }
+
+        .workflow-step::after {
+            content: "→";
+            position: absolute;
+            right: -25px;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 1.5rem;
+            color: #6366f1;
+        }
+
+        .workflow-step:last-child::after {
+            display: none;
+        }
+
+        .workflow-step .step-icon {
+            font-size: 2rem;
+            margin-bottom: 10px;
+        }
+
+        .workflow-step h4 {
+            color: #f1f5f9;
+            font-size: 0.95rem;
+        }
+
+        .workflow-step p {
+            color: #94a3b8;
+            font-size: 0.8rem;
+            margin-top: 5px;
+        }
+
+        /* Database Schema Preview */
+        .schema-preview {
+            grid-column: 1 / -1;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 12px;
+            padding: 25px;
+            margin-top: 30px;
+            font-family: 'Fira Code', 'Monaco', monospace;
+        }
+
+        .schema-preview h3 {
+            color: #a5b4fc;
+            margin-bottom: 15px;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        }
+
+        .schema-code {
+            color: #e2e8f0;
+            font-size: 0.85rem;
+            line-height: 1.6;
+            white-space: pre;
+            overflow-x: auto;
+        }
+
+        .schema-code .keyword { color: #c084fc; }
+        .schema-code .type { color: #34d399; }
+        .schema-code .comment { color: #64748b; }
+        .schema-code .string { color: #fbbf24; }
+
+        @media (max-width: 900px) {
+            .features-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .matrix-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+
+            h1 {
+                font-size: 2rem;
+            }
+
+            .workflow-diagram {
+                flex-direction: column;
+            }
+
+            .workflow-step::after {
+                content: "↓";
+                right: 50%;
+                top: auto;
+                bottom: -25px;
+                transform: translateX(50%);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>⚓ Captain Module - Extended Features</h1>
+            <p class="subtitle">Comprehensive feature roadmap for TourPilot Captain experience</p>
+
+            <div class="status-legend">
+                <div class="status-item">
+                    <span class="status-dot done"></span>
+                    <span>Completed</span>
+                </div>
+                <div class="status-item">
+                    <span class="status-dot priority"></span>
+                    <span>High Priority</span>
+                </div>
+                <div class="status-item">
+                    <span class="status-dot planned"></span>
+                    <span>Planned</span>
+                </div>
+                <div class="status-item">
+                    <span class="status-dot future"></span>
+                    <span>Future</span>
+                </div>
+            </div>
+        </header>
+
+        <div class="features-grid">
+
+            <!-- COMPLETED FEATURES -->
+            <div class="section-header">
+                <h2>✅ Completed Features</h2>
+            </div>
+
+            <div class="feature-card done">
+                <div class="feature-header">
+                    <div class="feature-icon">🔐</div>
+                    <div>
+                        <div class="feature-title">Captain Authentication</div>
+                        <span class="feature-badge badge-done">Done</span>
+                    </div>
+                </div>
+                <p class="feature-description">Secure login system for captains with role-based access control.</p>
+                <ul class="feature-list">
+                    <li>Email/password authentication</li>
+                    <li>Dedicated captain login option</li>
+                    <li>Role verification (captain, admin, manager)</li>
+                    <li>Automatic redirect to captain dashboard</li>
+                </ul>
+                <div class="tech-tags">
+                    <span class="tech-tag">Supabase Auth</span>
+                    <span class="tech-tag">RLS Policies</span>
+                </div>
+            </div>
+
+            <div class="feature-card done">
+                <div class="feature-header">
+                    <div class="feature-icon">📋</div>
+                    <div>
+                        <div class="feature-title">Tour Dashboard</div>
+                        <span class="feature-badge badge-done">Done</span>
+                    </div>
+                </div>
+                <p class="feature-description">Overview of assigned tours with quick stats and navigation.</p>
+                <ul class="feature-list">
+                    <li>Today's tours with guest counts</li>
+                    <li>Tomorrow and upcoming tours view</li>
+                    <li>Quick stats (tours, guests, check-ins)</li>
+                    <li>Waiver completion status badges</li>
+                    <li>Direct links to manifest and checklist</li>
+                </ul>
+                <div class="tech-tags">
+                    <span class="tech-tag">Real-time Data</span>
+                    <span class="tech-tag">Responsive UI</span>
+                </div>
+            </div>
+
+            <div class="feature-card done">
+                <div class="feature-header">
+                    <div class="feature-icon">📝</div>
+                    <div>
+                        <div class="feature-title">Guest Manifest</div>
+                        <span class="feature-badge badge-done">Done</span>
+                    </div>
+                </div>
+                <p class="feature-description">Complete passenger list with check-in and waiver management.</p>
+                <ul class="feature-list">
+                    <li>Full guest list with booking details</li>
+                    <li>One-tap check-in functionality</li>
+                    <li>Waiver status per guest</li>
+                    <li>On-spot waiver signing with signature pad</li>
+                    <li>Booking notes visibility</li>
+                </ul>
+                <div class="tech-tags">
+                    <span class="tech-tag">Canvas Signature</span>
+                    <span class="tech-tag">Optimistic UI</span>
+                </div>
+            </div>
+
+            <div class="feature-card done">
+                <div class="feature-header">
+                    <div class="feature-icon">✅</div>
+                    <div>
+                        <div class="feature-title">Safety Checklist</div>
+                        <span class="feature-badge badge-done">Done</span>
+                    </div>
+                </div>
+                <p class="feature-description">Pre-departure safety verification system.</p>
+                <ul class="feature-list">
+                    <li>Configurable checklist templates</li>
+                    <li>Required vs optional items</li>
+                    <li>Progress tracking</li>
+                    <li>Completion confirmation flow</li>
+                    <li>Historical compliance records</li>
+                </ul>
+                <div class="tech-tags">
+                    <span class="tech-tag">Compliance</span>
+                    <span class="tech-tag">Audit Trail</span>
+                </div>
+            </div>
+
+            <!-- HIGH PRIORITY FEATURES -->
+            <div class="section-header">
+                <h2>🔥 High Priority Features</h2>
+            </div>
+
+            <div class="feature-card priority">
+                <div class="feature-header">
+                    <div class="feature-icon">📱</div>
+                    <div>
+                        <div class="feature-title">PWA & Offline Mode</div>
+                        <span class="feature-badge badge-priority">Priority</span>
+                    </div>
+                </div>
+                <p class="feature-description">Progressive Web App with offline capabilities for use at sea.</p>
+                <ul class="feature-list">
+                    <li>Install as native app on iOS/Android</li>
+                    <li>Offline manifest access</li>
+                    <li class="sub">Cache today's tour data locally</li>
+                    <li class="sub">IndexedDB for guest list storage</li>
+                    <li>Offline check-in with sync</li>
+                    <li class="sub">Queue check-ins when offline</li>
+                    <li class="sub">Auto-sync when connection returns</li>
+                    <li>Push notifications for tour reminders</li>
+                    <li>Background sync for data updates</li>
+                </ul>
+                <div class="tech-tags">
+                    <span class="tech-tag">Service Worker</span>
+                    <span class="tech-tag">IndexedDB</span>
+                    <span class="tech-tag">Web Push</span>
+                    <span class="tech-tag">Workbox</span>
+                </div>
+            </div>
+
+            <div class="feature-card priority">
+                <div class="feature-header">
+                    <div class="feature-icon">🚨</div>
+                    <div>
+                        <div class="feature-title">Emergency Protocols</div>
+                        <span class="feature-badge badge-priority">Priority</span>
+                    </div>
+                </div>
+                <p class="feature-description">Quick access to emergency procedures and contacts.</p>
+                <ul class="feature-list">
+                    <li>One-tap emergency button (always visible)</li>
+                    <li>Emergency contact list</li>
+                    <li class="sub">Coast Guard</li>
+                    <li class="sub">Port Authority</li>
+                    <li class="sub">Company emergency line</li>
+                    <li>Emergency procedures quick reference</li>
+                    <li class="sub">Man overboard protocol</li>
+                    <li class="sub">Fire emergency steps</li>
+                    <li class="sub">Medical emergency guide</li>
+                    <li>Incident report filing</li>
+                    <li>GPS location sharing</li>
+                </ul>
+                <div class="tech-tags">
+                    <span class="tech-tag">Geolocation API</span>
+                    <span class="tech-tag">Quick Actions</span>
+                    <span class="tech-tag">Offline Access</span>
+                </div>
+            </div>
+
+            <div class="feature-card priority">
+                <div class="feature-header">
+                    <div class="feature-icon">🌤️</div>
+                    <div>
+                        <div class="feature-title">Weather Integration</div>
+                        <span class="feature-badge badge-priority">Priority</span>
+                    </div>
+                </div>
+                <p class="feature-description">Real-time weather data and marine conditions.</p>
+                <ul class="feature-list">
+                    <li>Current weather conditions</li>
+                    <li>Marine forecast (wind, waves, tides)</li>
+                    <li>Weather alerts and warnings</li>
+                    <li>Go/No-Go recommendation system</li>
+                    <li class="sub">Wind speed thresholds</li>
+                    <li class="sub">Wave height limits</li>
+                    <li class="sub">Visibility requirements</li>
+                    <li>Hourly forecast for tour duration</li>
+                    <li>Sunrise/sunset times</li>
+                </ul>
+                <div class="tech-tags">
+                    <span class="tech-tag">OpenWeather API</span>
+                    <span class="tech-tag">Marine Weather</span>
+                    <span class="tech-tag">Auto-refresh</span>
+                </div>
+            </div>
+
+            <div class="feature-card priority">
+                <div class="feature-header">
+                    <div class="feature-icon">💬</div>
+                    <div>
+                        <div class="feature-title">Real-time Communication</div>
+                        <span class="feature-badge badge-priority">Priority</span>
+                    </div>
+                </div>
+                <p class="feature-description">Direct messaging with office and dispatch.</p>
+                <ul class="feature-list">
+                    <li>Chat with dispatch/office</li>
+                    <li>Broadcast messages from admin</li>
+                    <li>Tour-specific announcements</li>
+                    <li>Quick status updates</li>
+                    <li class="sub">"Departed" notification</li>
+                    <li class="sub">"Returning" ETA</li>
+                    <li class="sub">"Docked" confirmation</li>
+                    <li>Photo sharing capability</li>
+                    <li>Voice memo support</li>
+                </ul>
+                <div class="tech-tags">
+                    <span class="tech-tag">Supabase Realtime</span>
+                    <span class="tech-tag">WebSocket</span>
+                    <span class="tech-tag">Push Notifications</span>
+                </div>
+            </div>
+
+            <!-- PLANNED FEATURES -->
+            <div class="section-header">
+                <h2>📅 Planned Features</h2>
+            </div>
+
+            <div class="feature-card planned">
+                <div class="feature-header">
+                    <div class="feature-icon">⛽</div>
+                    <div>
+                        <div class="feature-title">Fuel & Maintenance Logs</div>
+                        <span class="feature-badge badge-planned">Planned</span>
+                    </div>
+                </div>
+                <p class="feature-description">Track boat operations and maintenance needs.</p>
+                <ul class="feature-list">
+                    <li>Pre-trip fuel level logging</li>
+                    <li>Post-trip fuel consumption</li>
+                    <li>Engine hours tracking</li>
+                    <li>Maintenance issue reporting</li>
+                    <li class="sub">Photo documentation</li>
+                    <li class="sub">Severity rating</li>
+                    <li class="sub">Auto-notify maintenance team</li>
+                    <li>Equipment inventory check</li>
+                    <li>Scheduled maintenance reminders</li>
+                </ul>
+                <div class="tech-tags">
+                    <span class="tech-tag">Asset Management</span>
+                    <span class="tech-tag">Photo Upload</span>
+                    <span class="tech-tag">Notifications</span>
+                </div>
+            </div>
+
+            <div class="feature-card planned">
+                <div class="feature-header">
+                    <div class="feature-icon">🗺️</div>
+                    <div>
+                        <div class="feature-title">GPS Tracking & Routes</div>
+                        <span class="feature-badge badge-planned">Planned</span>
+                    </div>
+                </div>
+                <p class="feature-description">Navigation assistance and trip recording.</p>
+                <ul class="feature-list">
+                    <li>Live GPS position tracking</li>
+                    <li>Predefined tour routes</li>
+                    <li>Points of interest markers</li>
+                    <li>Trip recording (start/end)</li>
+                    <li>Route deviation alerts</li>
+                    <li>Speed monitoring</li>
+                    <li>No-go zone warnings</li>
+                    <li>Historical trip playback</li>
+                </ul>
+                <div class="tech-tags">
+                    <span class="tech-tag">Mapbox</span>
+                    <span class="tech-tag">Geolocation</span>
+                    <span class="tech-tag">PostGIS</span>
+                </div>
+            </div>
+
+            <div class="feature-card planned">
+                <div class="feature-header">
+                    <div class="feature-icon">📸</div>
+                    <div>
+                        <div class="feature-title">Tour Photo Capture</div>
+                        <span class="feature-badge badge-planned">Planned</span>
+                    </div>
+                </div>
+                <p class="feature-description">Capture and share tour photos with guests.</p>
+                <ul class="feature-list">
+                    <li>In-app camera for tour photos</li>
+                    <li>Auto-associate photos with booking</li>
+                    <li>Wildlife sighting documentation</li>
+                    <li>Guest photo gallery</li>
+                    <li class="sub">Share link via email</li>
+                    <li class="sub">Download option for guests</li>
+                    <li>Photo quality optimization</li>
+                    <li>Batch upload when on WiFi</li>
+                </ul>
+                <div class="tech-tags">
+                    <span class="tech-tag">Supabase Storage</span>
+                    <span class="tech-tag">Image Optimization</span>
+                    <span class="tech-tag">MediaDevices API</span>
+                </div>
+            </div>
+
+            <div class="feature-card planned">
+                <div class="feature-header">
+                    <div class="feature-icon">🎤</div>
+                    <div>
+                        <div class="feature-title">Tour Commentary Guide</div>
+                        <span class="feature-badge badge-planned">Planned</span>
+                    </div>
+                </div>
+                <p class="feature-description">Digital guide with talking points and facts.</p>
+                <ul class="feature-list">
+                    <li>Location-based talking points</li>
+                    <li>Wildlife identification guide</li>
+                    <li>Historical facts database</li>
+                    <li>Seasonal information updates</li>
+                    <li>Custom notes per location</li>
+                    <li>Audio playback option</li>
+                    <li>Multi-language support</li>
+                </ul>
+                <div class="tech-tags">
+                    <span class="tech-tag">CMS Integration</span>
+                    <span class="tech-tag">Location Triggers</span>
+                    <span class="tech-tag">i18n</span>
+                </div>
+            </div>
+
+            <div class="feature-card planned">
+                <div class="feature-header">
+                    <div class="feature-icon">⏱️</div>
+                    <div>
+                        <div class="feature-title">Time & Attendance</div>
+                        <span class="feature-badge badge-planned">Planned</span>
+                    </div>
+                </div>
+                <p class="feature-description">Digital clock-in system for captains.</p>
+                <ul class="feature-list">
+                    <li>Digital clock-in/clock-out</li>
+                    <li>GPS-verified attendance</li>
+                    <li>Break time tracking</li>
+                    <li>Hours worked summary</li>
+                    <li>Overtime calculations</li>
+                    <li>Schedule vs actual comparison</li>
+                    <li>Export for payroll</li>
+                </ul>
+                <div class="tech-tags">
+                    <span class="tech-tag">Geofencing</span>
+                    <span class="tech-tag">Time Tracking</span>
+                    <span class="tech-tag">Reports</span>
+                </div>
+            </div>
+
+            <div class="feature-card planned">
+                <div class="feature-header">
+                    <div class="feature-icon">💵</div>
+                    <div>
+                        <div class="feature-title">Tips & Gratuity Tracking</div>
+                        <span class="feature-badge badge-planned">Planned</span>
+                    </div>
+                </div>
+                <p class="feature-description">Track and manage tips received.</p>
+                <ul class="feature-list">
+                    <li>Cash tip recording</li>
+                    <li>Digital tip integration</li>
+                    <li>Daily/weekly tip summary</li>
+                    <li>Tip pooling calculations</li>
+                    <li>Per-tour tip tracking</li>
+                    <li>Anonymous guest feedback link</li>
+                </ul>
+                <div class="tech-tags">
+                    <span class="tech-tag">Financial Tracking</span>
+                    <span class="tech-tag">Reports</span>
+                </div>
+            </div>
+
+            <!-- FUTURE FEATURES -->
+            <div class="section-header">
+                <h2>🔮 Future Enhancements</h2>
+            </div>
+
+            <div class="feature-card future">
+                <div class="feature-header">
+                    <div class="feature-icon">🤖</div>
+                    <div>
+                        <div class="feature-title">AI Trip Assistant</div>
+                        <span class="feature-badge badge-future">Future</span>
+                    </div>
+                </div>
+                <p class="feature-description">AI-powered assistance for captains.</p>
+                <ul class="feature-list">
+                    <li>Voice commands for hands-free operation</li>
+                    <li>Smart weather recommendations</li>
+                    <li>Predictive maintenance alerts</li>
+                    <li>Guest preference insights</li>
+                    <li>Optimal route suggestions</li>
+                    <li>Natural language trip logging</li>
+                </ul>
+                <div class="tech-tags">
+                    <span class="tech-tag">Claude AI</span>
+                    <span class="tech-tag">Voice Recognition</span>
+                    <span class="tech-tag">ML Predictions</span>
+                </div>
+            </div>
+
+            <div class="feature-card future">
+                <div class="feature-header">
+                    <div class="feature-icon">⌚</div>
+                    <div>
+                        <div class="feature-title">Smartwatch Companion</div>
+                        <span class="feature-badge badge-future">Future</span>
+                    </div>
+                </div>
+                <p class="feature-description">Apple Watch / WearOS companion app.</p>
+                <ul class="feature-list">
+                    <li>Quick check-in from wrist</li>
+                    <li>Guest count glance</li>
+                    <li>Emergency SOS button</li>
+                    <li>Weather at a glance</li>
+                    <li>Time to next tour</li>
+                    <li>Haptic notifications</li>
+                </ul>
+                <div class="tech-tags">
+                    <span class="tech-tag">WatchOS</span>
+                    <span class="tech-tag">WearOS</span>
+                    <span class="tech-tag">Complications</span>
+                </div>
+            </div>
+
+            <div class="feature-card future">
+                <div class="feature-header">
+                    <div class="feature-icon">🎮</div>
+                    <div>
+                        <div class="feature-title">Gamification & Rewards</div>
+                        <span class="feature-badge badge-future">Future</span>
+                    </div>
+                </div>
+                <p class="feature-description">Achievement system to motivate excellence.</p>
+                <ul class="feature-list">
+                    <li>Tour completion badges</li>
+                    <li>Perfect safety record streak</li>
+                    <li>Guest rating achievements</li>
+                    <li>Monthly leaderboards</li>
+                    <li>Milestone rewards</li>
+                    <li>Team challenges</li>
+                </ul>
+                <div class="tech-tags">
+                    <span class="tech-tag">Achievements</span>
+                    <span class="tech-tag">Leaderboards</span>
+                    <span class="tech-tag">Rewards</span>
+                </div>
+            </div>
+
+            <div class="feature-card future">
+                <div class="feature-header">
+                    <div class="feature-icon">📊</div>
+                    <div>
+                        <div class="feature-title">Captain Analytics</div>
+                        <span class="feature-badge badge-future">Future</span>
+                    </div>
+                </div>
+                <p class="feature-description">Personal performance insights and trends.</p>
+                <ul class="feature-list">
+                    <li>Tours completed this month/year</li>
+                    <li>Guest satisfaction trends</li>
+                    <li>Punctuality metrics</li>
+                    <li>Safety compliance score</li>
+                    <li>Tip trends analysis</li>
+                    <li>Peer comparison (anonymous)</li>
+                </ul>
+                <div class="tech-tags">
+                    <span class="tech-tag">Charts</span>
+                    <span class="tech-tag">Insights</span>
+                    <span class="tech-tag">KPIs</span>
+                </div>
+            </div>
+
+            <!-- CAPTAIN WORKFLOW -->
+            <div class="workflow-section">
+                <h2 style="text-align: center; margin-bottom: 20px;">⚓ Ideal Captain Workflow</h2>
+                <div class="workflow-diagram">
+                    <div class="workflow-step">
+                        <div class="step-icon">🌅</div>
+                        <h4>Clock In</h4>
+                        <p>Start shift & check schedule</p>
+                    </div>
+                    <div class="workflow-step">
+                        <div class="step-icon">🌤️</div>
+                        <h4>Weather Check</h4>
+                        <p>Review conditions & alerts</p>
+                    </div>
+                    <div class="workflow-step">
+                        <div class="step-icon">✅</div>
+                        <h4>Safety Checklist</h4>
+                        <p>Complete pre-departure checks</p>
+                    </div>
+                    <div class="workflow-step">
+                        <div class="step-icon">📋</div>
+                        <h4>Review Manifest</h4>
+                        <p>Check bookings & notes</p>
+                    </div>
+                    <div class="workflow-step">
+                        <div class="step-icon">👥</div>
+                        <h4>Check-in Guests</h4>
+                        <p>Verify waivers & board</p>
+                    </div>
+                    <div class="workflow-step">
+                        <div class="step-icon">🚢</div>
+                        <h4>Conduct Tour</h4>
+                        <p>Navigate & entertain</p>
+                    </div>
+                    <div class="workflow-step">
+                        <div class="step-icon">📝</div>
+                        <h4>Post-Trip Log</h4>
+                        <p>Fuel, issues, notes</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- PRIORITY MATRIX -->
+            <div class="priority-matrix">
+                <h3 style="text-align: center; margin-bottom: 20px;">📌 Implementation Priority Matrix</h3>
+                <div class="matrix-grid">
+                    <div class="matrix-item p1">
+                        <h4>P1 - Critical</h4>
+                        <p>PWA/Offline Mode<br>Emergency Protocols<br>Weather Integration</p>
+                    </div>
+                    <div class="matrix-item p2">
+                        <h4>P2 - Important</h4>
+                        <p>Real-time Chat<br>Fuel Logs<br>GPS Tracking</p>
+                    </div>
+                    <div class="matrix-item p3">
+                        <h4>P3 - Nice to Have</h4>
+                        <p>Photo Capture<br>Commentary Guide<br>Time Tracking</p>
+                    </div>
+                    <div class="matrix-item p4">
+                        <h4>P4 - Future</h4>
+                        <p>AI Assistant<br>Smartwatch<br>Gamification</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- DATABASE SCHEMA -->
+            <div class="schema-preview">
+                <h3>🗄️ New Database Tables Required</h3>
+                <div class="schema-code">
+<span class="comment">-- Emergency Contacts</span>
+<span class="keyword">CREATE TABLE</span> emergency_contacts (
+    id <span class="type">UUID PRIMARY KEY</span>,
+    name <span class="type">TEXT NOT NULL</span>,
+    phone <span class="type">TEXT NOT NULL</span>,
+    type <span class="type">VARCHAR(50)</span>,  <span class="comment">-- coast_guard, port_authority, company, hospital</span>
+    priority <span class="type">INTEGER</span>,
+    is_active <span class="type">BOOLEAN DEFAULT true</span>
+);
+
+<span class="comment">-- Incident Reports</span>
+<span class="keyword">CREATE TABLE</span> incident_reports (
+    id <span class="type">UUID PRIMARY KEY</span>,
+    captain_id <span class="type">UUID REFERENCES</span> staff(id),
+    availability_id <span class="type">UUID REFERENCES</span> availabilities(id),
+    incident_type <span class="type">VARCHAR(50)</span>,  <span class="comment">-- medical, equipment, weather, other</span>
+    severity <span class="type">VARCHAR(20)</span>,  <span class="comment">-- low, medium, high, critical</span>
+    description <span class="type">TEXT</span>,
+    location_lat <span class="type">DECIMAL</span>,
+    location_lng <span class="type">DECIMAL</span>,
+    photos <span class="type">JSONB</span>,
+    reported_at <span class="type">TIMESTAMPTZ DEFAULT NOW()</span>
+);
+
+<span class="comment">-- Fuel Logs</span>
+<span class="keyword">CREATE TABLE</span> fuel_logs (
+    id <span class="type">UUID PRIMARY KEY</span>,
+    boat_id <span class="type">UUID REFERENCES</span> boats(id),
+    captain_id <span class="type">UUID REFERENCES</span> staff(id),
+    availability_id <span class="type">UUID REFERENCES</span> availabilities(id),
+    fuel_level_start <span class="type">DECIMAL</span>,
+    fuel_level_end <span class="type">DECIMAL</span>,
+    engine_hours_start <span class="type">DECIMAL</span>,
+    engine_hours_end <span class="type">DECIMAL</span>,
+    notes <span class="type">TEXT</span>,
+    created_at <span class="type">TIMESTAMPTZ DEFAULT NOW()</span>
+);
+
+<span class="comment">-- Maintenance Issues</span>
+<span class="keyword">CREATE TABLE</span> maintenance_issues (
+    id <span class="type">UUID PRIMARY KEY</span>,
+    boat_id <span class="type">UUID REFERENCES</span> boats(id),
+    reported_by <span class="type">UUID REFERENCES</span> staff(id),
+    title <span class="type">TEXT NOT NULL</span>,
+    description <span class="type">TEXT</span>,
+    severity <span class="type">VARCHAR(20)</span>,
+    photos <span class="type">JSONB</span>,
+    status <span class="type">VARCHAR(20) DEFAULT 'open'</span>,  <span class="comment">-- open, in_progress, resolved</span>
+    reported_at <span class="type">TIMESTAMPTZ DEFAULT NOW()</span>,
+    resolved_at <span class="type">TIMESTAMPTZ</span>
+);
+
+<span class="comment">-- Trip Logs (GPS Tracking)</span>
+<span class="keyword">CREATE TABLE</span> trip_logs (
+    id <span class="type">UUID PRIMARY KEY</span>,
+    availability_id <span class="type">UUID REFERENCES</span> availabilities(id),
+    captain_id <span class="type">UUID REFERENCES</span> staff(id),
+    started_at <span class="type">TIMESTAMPTZ</span>,
+    ended_at <span class="type">TIMESTAMPTZ</span>,
+    route_data <span class="type">JSONB</span>,  <span class="comment">-- Array of {lat, lng, timestamp}</span>
+    distance_nm <span class="type">DECIMAL</span>,
+    max_speed_knots <span class="type">DECIMAL</span>,
+    avg_speed_knots <span class="type">DECIMAL</span>
+);
+
+<span class="comment">-- Captain Time Tracking</span>
+<span class="keyword">CREATE TABLE</span> time_entries (
+    id <span class="type">UUID PRIMARY KEY</span>,
+    captain_id <span class="type">UUID REFERENCES</span> staff(id),
+    clock_in <span class="type">TIMESTAMPTZ NOT NULL</span>,
+    clock_out <span class="type">TIMESTAMPTZ</span>,
+    location_in <span class="type">POINT</span>,
+    location_out <span class="type">POINT</span>,
+    breaks <span class="type">JSONB</span>,  <span class="comment">-- Array of {start, end}</span>
+    total_hours <span class="type">DECIMAL</span>
+);
+                </div>
+            </div>
+
+        </div>
+    </div>
+</body>
+</html>

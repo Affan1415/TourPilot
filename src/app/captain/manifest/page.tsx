@@ -1,12 +1,11 @@
 "use client";
 
-import { useState, useEffect, Suspense } from "react";
+import { useState, useEffect, Suspense, useCallback } from "react";
 import { useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Calendar } from "@/components/ui/calendar";
 import {
   Popover,
@@ -25,8 +24,14 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Separator } from "@/components/ui/separator";
 import {
   Calendar as CalendarIcon,
@@ -43,15 +48,23 @@ import {
   Download,
   RefreshCw,
   Send,
-  UserPlus,
   Loader2,
   ChevronDown,
   Anchor,
+  MoreVertical,
+  UserCheck,
+  UserX,
+  Mail,
+  FileDown,
+  Info,
 } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/client";
+import { SwipeableGuestCard } from "@/components/captain/swipeable-guest-card";
+import { SignaturePad } from "@/components/captain/signature-pad";
+import { printManifest, downloadManifestPDF } from "@/lib/pdf/manifest-pdf";
 
 interface Guest {
   id: string;
@@ -103,13 +116,20 @@ function CaptainManifestContent() {
   const [refreshing, setRefreshing] = useState(false);
   const [sendingWaiver, setSendingWaiver] = useState<string | null>(null);
   const [staffId, setStaffId] = useState<string | null>(null);
+  const [selectedGuest, setSelectedGuest] = useState<{
+    guest: Guest;
+    booking: Booking;
+    tourId: string;
+  } | null>(null);
+  const [bulkActionLoading, setBulkActionLoading] = useState(false);
+  const [showSignaturePad, setShowSignaturePad] = useState(false);
+  const [savingSignature, setSavingSignature] = useState(false);
 
   const fetchManifest = async () => {
     setLoading(true);
     try {
       const supabase = createClient();
 
-      // Get current user's staff ID
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
@@ -127,7 +147,6 @@ function CaptainManifestContent() {
       setStaffId(staffData.id);
       const dateStr = format(selectedDate, 'yyyy-MM-dd');
 
-      // Fetch only assigned availabilities for this captain
       const { data: assignments } = await supabase
         .from('availability_staff')
         .select(`
@@ -158,13 +177,11 @@ function CaptainManifestContent() {
         return;
       }
 
-      // Build manifest for each assigned tour
       const manifest: ManifestTour[] = await Promise.all(
         assignments.map(async (assignment: any) => {
           const availability = assignment.availabilities;
           const tour = availability.tours;
 
-          // Fetch bookings with guests and waivers
           const { data: bookings } = await supabase
             .from('bookings')
             .select(`
@@ -227,7 +244,6 @@ function CaptainManifestContent() {
 
       setManifestData(manifest);
 
-      // Auto-select if only one tour or if specific availability requested
       if (initialAvailability && manifest.some(m => m.availabilityId === initialAvailability)) {
         setSelectedTour(initialAvailability);
       } else if (manifest.length === 1) {
@@ -253,7 +269,14 @@ function CaptainManifestContent() {
   };
 
   const handlePrint = () => {
-    window.print();
+    const dateStr = format(selectedDate, "EEEE, MMMM d, yyyy");
+    printManifest(filteredManifest, dateStr);
+  };
+
+  const handleDownloadPDF = () => {
+    const dateStr = format(selectedDate, "EEEE, MMMM d, yyyy");
+    downloadManifestPDF(filteredManifest, dateStr);
+    toast.success("Opening print dialog - select 'Save as PDF'");
   };
 
   const exportManifest = () => {
@@ -285,7 +308,7 @@ function CaptainManifestContent() {
     link.download = `captain-manifest-${dateStr}.csv`;
     link.click();
     URL.revokeObjectURL(link.href);
-    toast.success("Manifest exported");
+    toast.success("Manifest exported as CSV");
   };
 
   const sendWaiverToGuest = async (guestId: string, bookingId: string) => {
@@ -314,6 +337,62 @@ function CaptainManifestContent() {
     window.open(`/waiver/${bookingId}?guest=${guestId}`, '_blank');
   };
 
+  const handleSignatureCapture = async (signatureDataUrl: string) => {
+    if (!selectedGuest) return;
+
+    setSavingSignature(true);
+    try {
+      const response = await fetch('/api/waivers/sign-on-spot', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          guestId: selectedGuest.guest.id,
+          bookingId: selectedGuest.booking.bookingId,
+          signatureDataUrl,
+          captainId: staffId,
+        }),
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || 'Failed to save signature');
+      }
+
+      // Update local state
+      setManifestData((prev) =>
+        prev.map((t) => {
+          if (t.id !== selectedGuest.tourId) return t;
+          return {
+            ...t,
+            bookings: t.bookings.map((b) => {
+              if (b.id !== selectedGuest.booking.id) return b;
+              return {
+                ...b,
+                guests: b.guests.map((g) => {
+                  if (g.id !== selectedGuest.guest.id) return g;
+                  return { ...g, waiverSigned: true };
+                }),
+              };
+            }),
+          };
+        })
+      );
+
+      // Update selected guest state
+      setSelectedGuest(prev => prev ? {
+        ...prev,
+        guest: { ...prev.guest, waiverSigned: true }
+      } : null);
+
+      setShowSignaturePad(false);
+      toast.success("Waiver signed successfully!");
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to save signature');
+    } finally {
+      setSavingSignature(false);
+    }
+  };
+
   const filteredManifest = manifestData
     .filter((tour) => selectedTour === "all" || tour.availabilityId === selectedTour)
     .map((tour) => ({
@@ -331,7 +410,7 @@ function CaptainManifestContent() {
     }))
     .filter((tour) => tour.bookings.length > 0 || searchQuery === "");
 
-  const toggleGuestCheckIn = async (tourId: string, bookingId: string, guestId: string) => {
+  const toggleGuestCheckIn = useCallback(async (tourId: string, bookingId: string, guestId: string) => {
     const tour = manifestData.find(t => t.id === tourId);
     const booking = tour?.bookings.find(b => b.id === bookingId);
     const guest = booking?.guests.find(g => g.id === guestId);
@@ -359,6 +438,14 @@ function CaptainManifestContent() {
         };
       })
     );
+
+    // Also update selectedGuest if open
+    if (selectedGuest?.guest.id === guestId) {
+      setSelectedGuest(prev => prev ? {
+        ...prev,
+        guest: { ...prev.guest, checkedIn: newCheckedIn }
+      } : null);
+    }
 
     try {
       const supabase = createClient();
@@ -388,7 +475,62 @@ function CaptainManifestContent() {
           };
         })
       );
+
+      if (selectedGuest?.guest.id === guestId) {
+        setSelectedGuest(prev => prev ? {
+          ...prev,
+          guest: { ...prev.guest, checkedIn: !newCheckedIn }
+        } : null);
+      }
+
       toast.error("Failed to update check-in");
+    }
+  }, [manifestData, selectedGuest]);
+
+  const bulkCheckIn = async (tourId: string, checkIn: boolean) => {
+    const tour = manifestData.find(t => t.id === tourId);
+    if (!tour) return;
+
+    setBulkActionLoading(true);
+
+    const guestIds = tour.bookings.flatMap(b =>
+      b.guests.filter(g => g.checkedIn !== checkIn).map(g => g.id)
+    );
+
+    if (guestIds.length === 0) {
+      toast.info(checkIn ? "All guests already checked in" : "No guests to uncheck");
+      setBulkActionLoading(false);
+      return;
+    }
+
+    // Optimistic update
+    setManifestData((prev) =>
+      prev.map((t) => {
+        if (t.id !== tourId) return t;
+        return {
+          ...t,
+          bookings: t.bookings.map((b) => ({
+            ...b,
+            guests: b.guests.map((g) => ({ ...g, checkedIn: checkIn })),
+          })),
+        };
+      })
+    );
+
+    try {
+      const supabase = createClient();
+      await supabase
+        .from('booking_guests')
+        .update({ checked_in: checkIn })
+        .in('id', guestIds);
+
+      toast.success(checkIn ? `${guestIds.length} guests checked in` : `${guestIds.length} check-ins removed`);
+    } catch (error) {
+      // Revert
+      await fetchManifest();
+      toast.error("Failed to update check-ins");
+    } finally {
+      setBulkActionLoading(false);
     }
   };
 
@@ -401,7 +543,7 @@ function CaptainManifestContent() {
 
   if (loading) {
     return (
-      <div className="h-full flex flex-col p-6">
+      <div className="h-full flex flex-col p-4 md:p-6">
         <div className="animate-pulse space-y-6">
           <div className="h-8 bg-muted rounded w-48" />
           <div className="flex gap-4">
@@ -418,19 +560,19 @@ function CaptainManifestContent() {
   return (
     <div className="h-full flex flex-col">
       {/* Header */}
-      <div className="p-6 border-b bg-card">
+      <div className="p-4 md:p-6 border-b bg-card">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-bold flex items-center gap-2">
-              <Anchor className="h-6 w-6 text-indigo-600" />
+            <h1 className="text-xl md:text-2xl font-bold flex items-center gap-2">
+              <Anchor className="h-5 w-5 md:h-6 md:w-6 text-indigo-600" />
               My Manifest
             </h1>
-            <p className="text-muted-foreground">
-              Check-in guests for your assigned tours
+            <p className="text-sm text-muted-foreground">
+              Swipe right on guests to check them in
             </p>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
             <Button variant="outline" size="icon" onClick={handleRefresh} disabled={refreshing}>
               {refreshing ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
@@ -438,25 +580,43 @@ function CaptainManifestContent() {
                 <RefreshCw className="h-4 w-4" />
               )}
             </Button>
-            <Button variant="outline" className="gap-2" onClick={handlePrint}>
-              <Printer className="h-4 w-4" />
-              Print
-            </Button>
-            <Button variant="outline" className="gap-2" onClick={exportManifest}>
-              <Download className="h-4 w-4" />
-              Export
-            </Button>
+
+            {/* Actions dropdown for mobile */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" className="gap-2">
+                  <Download className="h-4 w-4" />
+                  <span className="hidden sm:inline">Export</span>
+                  <ChevronDown className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={handlePrint}>
+                  <Printer className="h-4 w-4 mr-2" />
+                  Print Manifest
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={handleDownloadPDF}>
+                  <FileDown className="h-4 w-4 mr-2" />
+                  Save as PDF
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={exportManifest}>
+                  <Download className="h-4 w-4 mr-2" />
+                  Export CSV
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </div>
 
         {/* Filters */}
-        <div className="flex flex-col md:flex-row gap-4 mt-6">
+        <div className="flex flex-col sm:flex-row gap-3 mt-4">
           {/* Date Picker */}
           <Popover>
             <PopoverTrigger asChild>
-              <Button variant="outline" className="w-[200px] justify-start gap-2">
+              <Button variant="outline" className="w-full sm:w-[200px] justify-start gap-2">
                 <CalendarIcon className="h-4 w-4" />
-                {format(selectedDate, "EEEE, MMM d")}
+                {format(selectedDate, "EEE, MMM d")}
                 <ChevronDown className="h-4 w-4 ml-auto" />
               </Button>
             </PopoverTrigger>
@@ -472,7 +632,7 @@ function CaptainManifestContent() {
           {/* Tour Filter */}
           {manifestData.length > 1 && (
             <Select value={selectedTour} onValueChange={setSelectedTour}>
-              <SelectTrigger className="w-[200px]">
+              <SelectTrigger className="w-full sm:w-[200px]">
                 <Ship className="h-4 w-4 mr-2" />
                 <SelectValue placeholder="All Tours" />
               </SelectTrigger>
@@ -488,7 +648,7 @@ function CaptainManifestContent() {
           )}
 
           {/* Search */}
-          <div className="relative flex-1 max-w-sm">
+          <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
               placeholder="Search guests..."
@@ -501,12 +661,12 @@ function CaptainManifestContent() {
       </div>
 
       {/* Manifest Content */}
-      <div className="flex-1 overflow-auto p-6">
+      <div className="flex-1 overflow-auto p-4 md:p-6">
         <div className="space-y-6">
           {manifestData.length === 0 ? (
-            <Card className="p-12">
+            <Card className="p-8 md:p-12">
               <div className="text-center">
-                <Anchor className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
+                <Anchor className="h-12 w-12 md:h-16 md:w-16 text-muted-foreground mx-auto mb-4" />
                 <p className="text-lg font-medium mb-2">No Tours Assigned</p>
                 <p className="text-muted-foreground mb-4">
                   You don&apos;t have any tours assigned for {format(selectedDate, "MMMM d, yyyy")}
@@ -531,43 +691,84 @@ function CaptainManifestContent() {
               return (
                 <Card key={tour.availabilityId} className="overflow-hidden">
                   {/* Tour Header */}
-                  <CardHeader className="bg-gradient-to-r from-indigo-500/10 to-indigo-500/5 border-b">
-                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                      <div className="flex items-center gap-4">
-                        <div className="h-14 w-14 rounded-xl bg-indigo-100 flex items-center justify-center">
-                          <Ship className="h-7 w-7 text-indigo-600" />
-                        </div>
-                        <div>
-                          <CardTitle className="text-xl">{tour.name}</CardTitle>
-                          <div className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground mt-1">
-                            <span className="flex items-center gap-1">
-                              <Clock className="h-4 w-4" />
-                              {tour.time} - {tour.endTime}
-                            </span>
-                            <span className="flex items-center gap-1">
-                              <MapPin className="h-4 w-4" />
-                              {tour.meetingPoint}
-                            </span>
+                  <CardHeader className="bg-gradient-to-r from-indigo-500/10 to-indigo-500/5 border-b p-4">
+                    <div className="flex flex-col gap-4">
+                      <div className="flex items-start justify-between">
+                        <div className="flex items-center gap-3">
+                          <div className="h-12 w-12 rounded-xl bg-indigo-100 flex items-center justify-center flex-shrink-0">
+                            <Ship className="h-6 w-6 text-indigo-600" />
+                          </div>
+                          <div>
+                            <CardTitle className="text-lg">{tour.name}</CardTitle>
+                            <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground mt-1">
+                              <span className="flex items-center gap-1">
+                                <Clock className="h-3 w-3" />
+                                {tour.time} - {tour.endTime}
+                              </span>
+                              <span className="flex items-center gap-1">
+                                <MapPin className="h-3 w-3" />
+                                {tour.meetingPoint}
+                              </span>
+                            </div>
                           </div>
                         </div>
+
+                        {/* Bulk actions */}
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon" disabled={bulkActionLoading}>
+                              {bulkActionLoading ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                              ) : (
+                                <MoreVertical className="h-4 w-4" />
+                              )}
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={() => bulkCheckIn(tour.id, true)}>
+                              <UserCheck className="h-4 w-4 mr-2" />
+                              Check In All
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => bulkCheckIn(tour.id, false)}>
+                              <UserX className="h-4 w-4 mr-2" />
+                              Uncheck All
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
                       </div>
 
-                      <div className="flex items-center gap-6">
-                        <div className="text-center">
-                          <p className="text-2xl font-bold text-indigo-600">{checkedInGuests}/{totalGuests}</p>
-                          <p className="text-xs text-muted-foreground">Checked In</p>
+                      {/* Stats */}
+                      <div className="flex items-center gap-4 text-sm">
+                        <div className="flex items-center gap-2">
+                          <div className="h-8 w-8 rounded-lg bg-green-100 flex items-center justify-center">
+                            <UserCheck className="h-4 w-4 text-green-600" />
+                          </div>
+                          <div>
+                            <p className="font-semibold text-green-600">{checkedInGuests}/{totalGuests}</p>
+                            <p className="text-xs text-muted-foreground">Checked In</p>
+                          </div>
                         </div>
-                        <Separator orientation="vertical" className="h-12" />
-                        <div className="text-center">
-                          <p className="text-2xl font-bold">{totalGuests}/{tour.capacity}</p>
-                          <p className="text-xs text-muted-foreground">Capacity</p>
+                        <Separator orientation="vertical" className="h-8" />
+                        <div className="flex items-center gap-2">
+                          <div className="h-8 w-8 rounded-lg bg-blue-100 flex items-center justify-center">
+                            <Users className="h-4 w-4 text-blue-600" />
+                          </div>
+                          <div>
+                            <p className="font-semibold">{totalGuests}/{tour.capacity}</p>
+                            <p className="text-xs text-muted-foreground">Capacity</p>
+                          </div>
                         </div>
                         {pendingWaivers > 0 && (
                           <>
-                            <Separator orientation="vertical" className="h-12" />
-                            <div className="text-center">
-                              <p className="text-2xl font-bold text-orange-600">{pendingWaivers}</p>
-                              <p className="text-xs text-muted-foreground">Pending Waivers</p>
+                            <Separator orientation="vertical" className="h-8" />
+                            <div className="flex items-center gap-2">
+                              <div className="h-8 w-8 rounded-lg bg-orange-100 flex items-center justify-center">
+                                <AlertCircle className="h-4 w-4 text-orange-600" />
+                              </div>
+                              <div>
+                                <p className="font-semibold text-orange-600">{pendingWaivers}</p>
+                                <p className="text-xs text-muted-foreground">Pending</p>
+                              </div>
                             </div>
                           </>
                         )}
@@ -588,13 +789,13 @@ function CaptainManifestContent() {
                           const checkedIn = booking.guests.filter((g) => g.checkedIn).length;
 
                           return (
-                            <div key={booking.id} className="p-4 hover:bg-muted/30 transition-colors">
-                              <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-                                {/* Booking Info */}
-                                <div className="flex items-start gap-4">
+                            <div key={booking.id} className="p-4">
+                              {/* Booking header */}
+                              <div className="flex items-start justify-between mb-3">
+                                <div className="flex items-start gap-3">
                                   <div
                                     className={cn(
-                                      "h-12 w-12 rounded-xl flex items-center justify-center",
+                                      "h-10 w-10 rounded-lg flex items-center justify-center flex-shrink-0",
                                       waiverStatus === "all_signed"
                                         ? "bg-green-100"
                                         : waiverStatus === "partial"
@@ -603,11 +804,11 @@ function CaptainManifestContent() {
                                     )}
                                   >
                                     {waiverStatus === "all_signed" ? (
-                                      <CheckCircle2 className="h-6 w-6 text-green-600" />
+                                      <CheckCircle2 className="h-5 w-5 text-green-600" />
                                     ) : (
                                       <AlertCircle
                                         className={cn(
-                                          "h-6 w-6",
+                                          "h-5 w-5",
                                           waiverStatus === "partial" ? "text-orange-600" : "text-red-600"
                                         )}
                                       />
@@ -615,7 +816,7 @@ function CaptainManifestContent() {
                                   </div>
 
                                   <div>
-                                    <div className="flex items-center gap-2 mb-1">
+                                    <div className="flex items-center gap-2 flex-wrap">
                                       <p className="font-semibold">
                                         {booking.customer.firstName} {booking.customer.lastName}
                                       </p>
@@ -624,7 +825,7 @@ function CaptainManifestContent() {
                                       </Badge>
                                     </div>
 
-                                    <div className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
+                                    <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground mt-1">
                                       <span className="flex items-center gap-1">
                                         <Users className="h-3 w-3" />
                                         {booking.guests.length} guests ({checkedIn} in)
@@ -641,136 +842,25 @@ function CaptainManifestContent() {
                                     </div>
 
                                     {booking.notes && (
-                                      <p className="text-sm text-indigo-600 mt-1">
-                                        Note: {booking.notes}
+                                      <p className="text-sm text-indigo-600 mt-1 flex items-center gap-1">
+                                        <Info className="h-3 w-3" />
+                                        {booking.notes}
                                       </p>
                                     )}
                                   </div>
                                 </div>
+                              </div>
 
-                                {/* Guest Check-in */}
-                                <div className="flex flex-wrap gap-2">
-                                  {booking.guests.map((guest) => (
-                                    <Dialog key={guest.id}>
-                                      <DialogTrigger asChild>
-                                        <button
-                                          className={cn(
-                                            "flex items-center gap-2 px-3 py-2 rounded-lg border transition-all",
-                                            guest.checkedIn
-                                              ? "bg-green-50 border-green-300 text-green-800"
-                                              : guest.waiverSigned
-                                              ? "bg-white border-gray-200 hover:border-indigo-300"
-                                              : "bg-red-50 border-red-200 text-red-800"
-                                          )}
-                                        >
-                                          <Checkbox
-                                            checked={guest.checkedIn}
-                                            onCheckedChange={() =>
-                                              toggleGuestCheckIn(tour.id, booking.id, guest.id)
-                                            }
-                                            onClick={(e) => e.stopPropagation()}
-                                            className={cn(
-                                              guest.checkedIn && "bg-green-600 border-green-600"
-                                            )}
-                                          />
-                                          <span className="text-sm font-medium">
-                                            {guest.firstName} {guest.lastName[0]}.
-                                          </span>
-                                          {!guest.waiverSigned && (
-                                            <AlertCircle className="h-4 w-4 text-red-600" />
-                                          )}
-                                        </button>
-                                      </DialogTrigger>
-                                      <DialogContent>
-                                        <DialogHeader>
-                                          <DialogTitle>
-                                            {guest.firstName} {guest.lastName}
-                                          </DialogTitle>
-                                        </DialogHeader>
-                                        <div className="space-y-4">
-                                          <div className="grid grid-cols-2 gap-4">
-                                            <div className="p-4 bg-muted rounded-lg">
-                                              <p className="text-sm text-muted-foreground">Waiver</p>
-                                              <Badge
-                                                className={cn(
-                                                  "mt-1",
-                                                  guest.waiverSigned
-                                                    ? "bg-green-100 text-green-800"
-                                                    : "bg-red-100 text-red-800"
-                                                )}
-                                              >
-                                                {guest.waiverSigned ? "Signed" : "Not Signed"}
-                                              </Badge>
-                                            </div>
-                                            <div className="p-4 bg-muted rounded-lg">
-                                              <p className="text-sm text-muted-foreground">Check-in</p>
-                                              <Badge
-                                                className={cn(
-                                                  "mt-1",
-                                                  guest.checkedIn
-                                                    ? "bg-green-100 text-green-800"
-                                                    : "bg-gray-100 text-gray-800"
-                                                )}
-                                              >
-                                                {guest.checkedIn ? "Checked In" : "Not Checked In"}
-                                              </Badge>
-                                            </div>
-                                          </div>
-
-                                          {guest.email && (
-                                            <div className="text-sm text-muted-foreground">
-                                              Email: {guest.email}
-                                            </div>
-                                          )}
-
-                                          {!guest.waiverSigned && (
-                                            <div className="p-4 bg-orange-50 border border-orange-200 rounded-lg">
-                                              <p className="text-sm text-orange-800 mb-3">
-                                                Waiver not signed yet
-                                              </p>
-                                              <div className="flex gap-2">
-                                                <Button
-                                                  size="sm"
-                                                  variant="outline"
-                                                  className="gap-2"
-                                                  onClick={() => sendWaiverToGuest(guest.id, booking.bookingId)}
-                                                  disabled={sendingWaiver === guest.id}
-                                                >
-                                                  {sendingWaiver === guest.id ? (
-                                                    <Loader2 className="h-4 w-4 animate-spin" />
-                                                  ) : (
-                                                    <Send className="h-4 w-4" />
-                                                  )}
-                                                  Send Link
-                                                </Button>
-                                                <Button
-                                                  size="sm"
-                                                  className="gap-2 bg-indigo-600 hover:bg-indigo-700"
-                                                  onClick={() => openSignOnDevice(guest.id, booking.bookingId)}
-                                                >
-                                                  <FileText className="h-4 w-4" />
-                                                  Sign Here
-                                                </Button>
-                                              </div>
-                                            </div>
-                                          )}
-
-                                          <Button
-                                            className={cn(
-                                              "w-full",
-                                              guest.checkedIn
-                                                ? "bg-gray-500 hover:bg-gray-600"
-                                                : "bg-indigo-600 hover:bg-indigo-700"
-                                            )}
-                                            onClick={() => toggleGuestCheckIn(tour.id, booking.id, guest.id)}
-                                          >
-                                            {guest.checkedIn ? "Undo Check-in" : "Check In Guest"}
-                                          </Button>
-                                        </div>
-                                      </DialogContent>
-                                    </Dialog>
-                                  ))}
-                                </div>
+                              {/* Guest list - swipeable on mobile */}
+                              <div className="space-y-2 ml-0 md:ml-13">
+                                {booking.guests.map((guest) => (
+                                  <SwipeableGuestCard
+                                    key={guest.id}
+                                    guest={guest}
+                                    onCheckIn={() => toggleGuestCheckIn(tour.id, booking.id, guest.id)}
+                                    onTap={() => setSelectedGuest({ guest, booking, tourId: tour.id })}
+                                  />
+                                ))}
                               </div>
                             </div>
                           );
@@ -784,6 +874,151 @@ function CaptainManifestContent() {
           )}
         </div>
       </div>
+
+      {/* Guest detail dialog */}
+      <Dialog open={!!selectedGuest} onOpenChange={(open) => {
+        if (!open) {
+          setSelectedGuest(null);
+          setShowSignaturePad(false);
+        }
+      }}>
+        <DialogContent className="sm:max-w-md">
+          {selectedGuest && (
+            <>
+              <DialogHeader>
+                <DialogTitle className="flex items-center gap-2">
+                  <div className={cn(
+                    "h-10 w-10 rounded-full flex items-center justify-center",
+                    selectedGuest.guest.checkedIn
+                      ? "bg-green-100"
+                      : "bg-slate-100"
+                  )}>
+                    {selectedGuest.guest.checkedIn ? (
+                      <CheckCircle2 className="h-5 w-5 text-green-600" />
+                    ) : (
+                      <Users className="h-5 w-5 text-slate-600" />
+                    )}
+                  </div>
+                  {selectedGuest.guest.firstName} {selectedGuest.guest.lastName}
+                </DialogTitle>
+              </DialogHeader>
+
+              {showSignaturePad ? (
+                <SignaturePad
+                  guestName={`${selectedGuest.guest.firstName} ${selectedGuest.guest.lastName}`}
+                  onSave={handleSignatureCapture}
+                  onCancel={() => setShowSignaturePad(false)}
+                  saving={savingSignature}
+                />
+              ) : (
+                <div className="space-y-4">
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="p-3 bg-muted rounded-lg">
+                      <p className="text-xs text-muted-foreground mb-1">Waiver</p>
+                      <Badge
+                        className={cn(
+                          selectedGuest.guest.waiverSigned
+                            ? "bg-green-100 text-green-800"
+                            : "bg-red-100 text-red-800"
+                        )}
+                      >
+                        {selectedGuest.guest.waiverSigned ? "Signed" : "Not Signed"}
+                      </Badge>
+                    </div>
+                    <div className="p-3 bg-muted rounded-lg">
+                      <p className="text-xs text-muted-foreground mb-1">Status</p>
+                      <Badge
+                        className={cn(
+                          selectedGuest.guest.checkedIn
+                            ? "bg-green-100 text-green-800"
+                            : "bg-slate-100 text-slate-800"
+                        )}
+                      >
+                        {selectedGuest.guest.checkedIn ? "Checked In" : "Not Checked In"}
+                      </Badge>
+                    </div>
+                  </div>
+
+                  {selectedGuest.guest.email && (
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <Mail className="h-4 w-4" />
+                      {selectedGuest.guest.email}
+                    </div>
+                  )}
+
+                  {!selectedGuest.guest.waiverSigned && (
+                    <div className="p-4 bg-orange-50 dark:bg-orange-950/30 border border-orange-200 dark:border-orange-800 rounded-lg">
+                      <p className="text-sm text-orange-800 dark:text-orange-200 mb-3 flex items-center gap-2">
+                        <AlertCircle className="h-4 w-4" />
+                        Waiver not signed yet
+                      </p>
+                      <div className="flex flex-col gap-2">
+                        <Button
+                          size="sm"
+                          className="w-full gap-2 bg-indigo-600 hover:bg-indigo-700"
+                          onClick={() => setShowSignaturePad(true)}
+                        >
+                          <FileText className="h-4 w-4" />
+                          Sign Waiver Now
+                        </Button>
+                        <div className="flex gap-2">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="flex-1 gap-2"
+                            onClick={() => sendWaiverToGuest(selectedGuest.guest.id, selectedGuest.booking.bookingId)}
+                            disabled={sendingWaiver === selectedGuest.guest.id}
+                          >
+                            {sendingWaiver === selectedGuest.guest.id ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                              <Send className="h-4 w-4" />
+                            )}
+                            Email Link
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="flex-1 gap-2"
+                            onClick={() => openSignOnDevice(selectedGuest.guest.id, selectedGuest.booking.bookingId)}
+                          >
+                            <FileText className="h-4 w-4" />
+                            Open Form
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  <Button
+                    className={cn(
+                      "w-full h-12 text-base",
+                      selectedGuest.guest.checkedIn
+                        ? "bg-slate-600 hover:bg-slate-700"
+                        : "bg-green-600 hover:bg-green-700"
+                    )}
+                    onClick={() => {
+                      toggleGuestCheckIn(selectedGuest.tourId, selectedGuest.booking.id, selectedGuest.guest.id);
+                    }}
+                  >
+                    {selectedGuest.guest.checkedIn ? (
+                      <>
+                        <UserX className="h-5 w-5 mr-2" />
+                        Undo Check-in
+                      </>
+                    ) : (
+                      <>
+                        <UserCheck className="h-5 w-5 mr-2" />
+                        Check In Guest
+                      </>
+                    )}
+                  </Button>
+                </div>
+              )}
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
@@ -791,7 +1026,7 @@ function CaptainManifestContent() {
 export default function CaptainManifestPage() {
   return (
     <Suspense fallback={
-      <div className="h-full flex flex-col p-6">
+      <div className="h-full flex flex-col p-4 md:p-6">
         <div className="animate-pulse space-y-6">
           <div className="h-8 bg-muted rounded w-48" />
           <div className="flex gap-4">

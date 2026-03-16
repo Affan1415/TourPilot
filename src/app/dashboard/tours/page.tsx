@@ -1063,6 +1063,10 @@ export default function ToursPage() {
                             <Calendar className="h-4 w-4 mr-2" />
                             Manage Availability
                           </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => router.push(`/dashboard/tours/assign-boats`)} className="rounded-lg">
+                            <Anchor className="h-4 w-4 mr-2" />
+                            Assign Boats
+                          </DropdownMenuItem>
                           <DropdownMenuItem onClick={() => router.push(`/dashboard/tours/assign-staff?tour=${tour.id}`)} className="rounded-lg">
                             <Users className="h-4 w-4 mr-2" />
                             Assign Staff

@@ -1,0 +1,59 @@
+{
+  "name": "TourPilot Captain",
+  "short_name": "Captain",
+  "description": "Captain dashboard for managing tours, check-ins, and safety compliance",
+  "start_url": "/captain",
+  "scope": "/captain",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#1e1b4b",
+  "theme_color": "#4f46e5",
+  "icons": [
+    {
+      "src": "/icons/captain-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icons/captain-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "/screenshots/captain-dashboard.png",
+      "sizes": "1080x1920",
+      "type": "image/png",
+      "form_factor": "narrow"
+    }
+  ],
+  "categories": ["business", "productivity"],
+  "shortcuts": [
+    {
+      "name": "My Tours",
+      "short_name": "Tours",
+      "description": "View assigned tours",
+      "url": "/captain",
+      "icons": [{ "src": "/icons/tours-96.png", "sizes": "96x96" }]
+    },
+    {
+      "name": "Safety Checklist",
+      "short_name": "Checklist",
+      "description": "Complete pre-departure checklist",
+      "url": "/captain/checklist",
+      "icons": [{ "src": "/icons/checklist-96.png", "sizes": "96x96" }]
+    },
+    {
+      "name": "Emergency",
+      "short_name": "SOS",
+      "description": "Emergency contacts and protocols",
+      "url": "/captain/emergency",
+      "icons": [{ "src": "/icons/emergency-96.png", "sizes": "96x96" }]
+    }
+  ],
+  "related_applications": [],
+  "prefer_related_applications": false
+}
