@@ -77,6 +77,7 @@ const roleConfig: Record<string, { label: string; color: string }> = {
   location_manager: { label: "Location Manager", color: "bg-amber-100 text-amber-800" },
   captain: { label: "Captain", color: "bg-blue-100 text-blue-800" },
   front_desk: { label: "Front Desk", color: "bg-emerald-100 text-emerald-800" },
+  affiliate: { label: "Affiliate", color: "bg-teal-100 text-teal-800" },
   // Legacy roles for backwards compatibility
   manager: { label: "Manager", color: "bg-amber-100 text-amber-800" },
   guide: { label: "Guide", color: "bg-purple-100 text-purple-800" },
@@ -379,6 +380,7 @@ export default function StaffPage() {
                     <SelectItem value="location_manager">Location Manager</SelectItem>
                     <SelectItem value="front_desk">Front Desk</SelectItem>
                     <SelectItem value="captain">Captain</SelectItem>
+                    <SelectItem value="affiliate">Affiliate</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -454,6 +456,7 @@ export default function StaffPage() {
                         <SelectItem value="location_manager">Location Manager</SelectItem>
                         <SelectItem value="front_desk">Front Desk</SelectItem>
                         <SelectItem value="captain">Captain</SelectItem>
+                        <SelectItem value="affiliate">Affiliate</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -536,6 +539,7 @@ export default function StaffPage() {
             <SelectItem value="location_manager">Location Manager</SelectItem>
             <SelectItem value="front_desk">Front Desk</SelectItem>
             <SelectItem value="captain">Captain</SelectItem>
+            <SelectItem value="affiliate">Affiliate</SelectItem>
           </SelectContent>
         </Select>
       </div>

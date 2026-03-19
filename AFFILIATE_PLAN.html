@@ -1,0 +1,802 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Affiliate System Implementation Plan</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            color: #e0e0e0;
+            line-height: 1.6;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 40px 20px;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 50px;
+            padding: 40px;
+            background: linear-gradient(135deg, #0f3460 0%, #533483 100%);
+            border-radius: 20px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            color: #fff;
+            margin-bottom: 10px;
+        }
+
+        .subtitle {
+            color: #a0a0a0;
+            font-size: 1.1rem;
+        }
+
+        .section {
+            background: rgba(255,255,255,0.05);
+            border-radius: 16px;
+            padding: 30px;
+            margin-bottom: 30px;
+            border: 1px solid rgba(255,255,255,0.1);
+            backdrop-filter: blur(10px);
+        }
+
+        h2 {
+            color: #00d9ff;
+            font-size: 1.5rem;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #00d9ff;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        h2 .icon {
+            font-size: 1.3rem;
+        }
+
+        h3 {
+            color: #ff6b6b;
+            font-size: 1.2rem;
+            margin: 20px 0 15px 0;
+        }
+
+        h4 {
+            color: #ffd93d;
+            font-size: 1rem;
+            margin: 15px 0 10px 0;
+        }
+
+        p {
+            margin-bottom: 15px;
+            color: #c0c0c0;
+        }
+
+        .feature-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+
+        .feature-card {
+            background: linear-gradient(135deg, rgba(0,217,255,0.1) 0%, rgba(83,52,131,0.1) 100%);
+            border: 1px solid rgba(0,217,255,0.3);
+            border-radius: 12px;
+            padding: 20px;
+            transition: transform 0.3s, box-shadow 0.3s;
+        }
+
+        .feature-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 30px rgba(0,217,255,0.2);
+        }
+
+        .feature-card h4 {
+            margin-top: 0;
+        }
+
+        .feature-card p {
+            font-size: 0.9rem;
+            margin-bottom: 0;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 15px 0;
+            font-size: 0.9rem;
+        }
+
+        th, td {
+            padding: 12px 15px;
+            text-align: left;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+
+        th {
+            background: rgba(0,217,255,0.2);
+            color: #00d9ff;
+            font-weight: 600;
+        }
+
+        tr:hover {
+            background: rgba(255,255,255,0.05);
+        }
+
+        code {
+            background: rgba(0,0,0,0.4);
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-family: 'Monaco', 'Consolas', monospace;
+            font-size: 0.85rem;
+            color: #6ee7b7;
+        }
+
+        pre {
+            background: #0d1117;
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 8px;
+            padding: 20px;
+            overflow-x: auto;
+            margin: 15px 0;
+        }
+
+        pre code {
+            background: none;
+            padding: 0;
+            color: #e0e0e0;
+        }
+
+        .sql-keyword { color: #ff79c6; }
+        .sql-type { color: #8be9fd; }
+        .sql-string { color: #f1fa8c; }
+        .sql-comment { color: #6272a4; }
+
+        .badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .badge-new { background: #22c55e; color: #000; }
+        .badge-modify { background: #f59e0b; color: #000; }
+        .badge-api { background: #8b5cf6; color: #fff; }
+
+        .file-list {
+            list-style: none;
+            padding: 0;
+        }
+
+        .file-list li {
+            padding: 10px 15px;
+            background: rgba(0,0,0,0.2);
+            margin: 8px 0;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-family: monospace;
+            font-size: 0.9rem;
+        }
+
+        .file-list li:hover {
+            background: rgba(0,0,0,0.4);
+        }
+
+        .wireframe {
+            background: #1a1a2e;
+            border: 2px solid #333;
+            border-radius: 12px;
+            padding: 20px;
+            font-family: monospace;
+            font-size: 0.85rem;
+            white-space: pre;
+            overflow-x: auto;
+            color: #888;
+            line-height: 1.4;
+        }
+
+        .steps {
+            counter-reset: step;
+            list-style: none;
+            padding: 0;
+        }
+
+        .steps li {
+            counter-increment: step;
+            padding: 15px 15px 15px 60px;
+            position: relative;
+            background: rgba(0,0,0,0.2);
+            margin: 10px 0;
+            border-radius: 8px;
+            border-left: 3px solid #00d9ff;
+        }
+
+        .steps li::before {
+            content: counter(step);
+            position: absolute;
+            left: 15px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 30px;
+            height: 30px;
+            background: #00d9ff;
+            color: #000;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+        }
+
+        .two-column {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+        }
+
+        @media (max-width: 768px) {
+            .two-column {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .highlight-box {
+            background: linear-gradient(135deg, rgba(255,107,107,0.1) 0%, rgba(255,217,61,0.1) 100%);
+            border: 1px solid rgba(255,107,107,0.3);
+            border-radius: 12px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+
+        .role-badge {
+            display: inline-block;
+            padding: 6px 14px;
+            border-radius: 6px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            margin: 3px;
+        }
+
+        .role-admin { background: #dc2626; color: #fff; }
+        .role-manager { background: #2563eb; color: #fff; }
+        .role-affiliate { background: #059669; color: #fff; }
+        .role-captain { background: #7c3aed; color: #fff; }
+        .role-frontdesk { background: #d97706; color: #fff; }
+
+        .toc {
+            background: rgba(0,0,0,0.3);
+            border-radius: 12px;
+            padding: 25px;
+            margin-bottom: 30px;
+        }
+
+        .toc h3 {
+            color: #fff;
+            margin-top: 0;
+            margin-bottom: 15px;
+        }
+
+        .toc ul {
+            list-style: none;
+            padding: 0;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 8px;
+        }
+
+        .toc a {
+            color: #00d9ff;
+            text-decoration: none;
+            padding: 8px 12px;
+            display: block;
+            border-radius: 6px;
+            transition: background 0.2s;
+        }
+
+        .toc a:hover {
+            background: rgba(0,217,255,0.1);
+        }
+
+        .approval-section {
+            background: linear-gradient(135deg, #059669 0%, #10b981 100%);
+            border-radius: 16px;
+            padding: 30px;
+            text-align: center;
+            margin-top: 40px;
+        }
+
+        .approval-section h2 {
+            color: #fff;
+            border: none;
+            justify-content: center;
+        }
+
+        .approval-section p {
+            color: #d1fae5;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Affiliate System Implementation Plan</h1>
+            <p class="subtitle">Complete affiliate program with QR codes, earnings tracking, and admin management</p>
+        </header>
+
+        <nav class="toc">
+            <h3>Table of Contents</h3>
+            <ul>
+                <li><a href="#overview">Overview</a></li>
+                <li><a href="#features">Key Features</a></li>
+                <li><a href="#roles">Role System</a></li>
+                <li><a href="#database">Database Schema</a></li>
+                <li><a href="#pages">New Pages</a></li>
+                <li><a href="#api">API Routes</a></li>
+                <li><a href="#files">Files Summary</a></li>
+                <li><a href="#wireframes">UI Wireframes</a></li>
+                <li><a href="#steps">Implementation Steps</a></li>
+            </ul>
+        </nav>
+
+        <!-- Overview Section -->
+        <section class="section" id="overview">
+            <h2><span class="icon">📋</span> Overview</h2>
+            <p>This plan outlines the implementation of a complete affiliate system for your booking application. Each location will have its own affiliates who can promote the business, track their referrals, and earn commissions on successful bookings.</p>
+
+            <div class="highlight-box">
+                <h4>What This System Does</h4>
+                <ul style="margin-left: 20px; color: #c0c0c0;">
+                    <li>Affiliates can log in and view their unique QR code</li>
+                    <li>QR codes can be printed for physical distribution</li>
+                    <li>Customers scanning the QR code get a discount</li>
+                    <li>Affiliates earn commission on each booking</li>
+                    <li>Admins and Location Managers can manage affiliates and view earnings</li>
+                </ul>
+            </div>
+        </section>
+
+        <!-- Key Features Section -->
+        <section class="section" id="features">
+            <h2><span class="icon">✨</span> Key Features</h2>
+            <div class="feature-grid">
+                <div class="feature-card">
+                    <h4>🔐 Affiliate Login</h4>
+                    <p>New login option for affiliates with dedicated dashboard access</p>
+                </div>
+                <div class="feature-card">
+                    <h4>📱 QR Code Display</h4>
+                    <p>Unique QR code per affiliate with location branding</p>
+                </div>
+                <div class="feature-card">
+                    <h4>🖨️ Print Option</h4>
+                    <p>Print-optimized QR code layout for physical marketing</p>
+                </div>
+                <div class="feature-card">
+                    <h4>💰 Earnings Tracking</h4>
+                    <p>Real-time commission tracking and payout history</p>
+                </div>
+                <div class="feature-card">
+                    <h4>📊 Admin Dashboard</h4>
+                    <p>View all affiliates, their performance, and manage discounts</p>
+                </div>
+                <div class="feature-card">
+                    <h4>🏷️ Discount Management</h4>
+                    <p>Set affiliate-specific discount rates per location</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Role System Section -->
+        <section class="section" id="roles">
+            <h2><span class="icon">👥</span> Role System Updates</h2>
+            <p>Adding a new <code>affiliate</code> role to the existing role hierarchy:</p>
+
+            <div style="margin: 20px 0;">
+                <span class="role-badge role-admin">Admin</span>
+                <span class="role-badge role-manager">Location Manager</span>
+                <span class="role-badge role-affiliate">Affiliate (NEW)</span>
+                <span class="role-badge role-captain">Captain</span>
+                <span class="role-badge role-frontdesk">Front Desk</span>
+            </div>
+
+            <h4>Permission Matrix</h4>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Action</th>
+                        <th>Admin</th>
+                        <th>Location Manager</th>
+                        <th>Affiliate</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>View all affiliates</td>
+                        <td>✅</td>
+                        <td>✅ (own location)</td>
+                        <td>❌</td>
+                    </tr>
+                    <tr>
+                        <td>Create/Edit affiliates</td>
+                        <td>✅</td>
+                        <td>✅ (own location)</td>
+                        <td>❌</td>
+                    </tr>
+                    <tr>
+                        <td>Set discount rates</td>
+                        <td>✅</td>
+                        <td>✅</td>
+                        <td>❌</td>
+                    </tr>
+                    <tr>
+                        <td>View own QR code</td>
+                        <td>❌</td>
+                        <td>❌</td>
+                        <td>✅</td>
+                    </tr>
+                    <tr>
+                        <td>View own earnings</td>
+                        <td>❌</td>
+                        <td>❌</td>
+                        <td>✅</td>
+                    </tr>
+                    <tr>
+                        <td>View affiliate earnings</td>
+                        <td>✅</td>
+                        <td>✅ (own location)</td>
+                        <td>❌</td>
+                    </tr>
+                </tbody>
+            </table>
+        </section>
+
+        <!-- Database Schema Section -->
+        <section class="section" id="database">
+            <h2><span class="icon">🗄️</span> Database Schema</h2>
+
+            <h3>1. Update Staff Role</h3>
+            <p>Add <code>'affiliate'</code> to the existing role check constraint in the staff table.</p>
+
+            <h3>2. New Table: <code>affiliate_profiles</code></h3>
+            <pre><code><span class="sql-keyword">CREATE TABLE</span> affiliate_profiles (
+  id <span class="sql-type">UUID</span> <span class="sql-keyword">PRIMARY KEY DEFAULT</span> gen_random_uuid(),
+  staff_id <span class="sql-type">UUID</span> <span class="sql-keyword">NOT NULL REFERENCES</span> staff(id) <span class="sql-keyword">ON DELETE CASCADE</span>,
+  location_id <span class="sql-type">UUID</span> <span class="sql-keyword">NOT NULL REFERENCES</span> locations(id),
+  affiliate_code <span class="sql-type">VARCHAR(20)</span> <span class="sql-keyword">UNIQUE NOT NULL</span>,  <span class="sql-comment">-- e.g., "LOC1-AFF123"</span>
+  commission_type <span class="sql-type">VARCHAR(20)</span> <span class="sql-keyword">DEFAULT</span> <span class="sql-string">'percentage'</span>,  <span class="sql-comment">-- 'percentage' or 'fixed'</span>
+  commission_rate <span class="sql-type">DECIMAL(10, 2)</span> <span class="sql-keyword">DEFAULT</span> 10.00,  <span class="sql-comment">-- 10% or $10</span>
+  discount_type <span class="sql-type">VARCHAR(20)</span> <span class="sql-keyword">DEFAULT</span> <span class="sql-string">'percentage'</span>,
+  discount_value <span class="sql-type">DECIMAL(10, 2)</span> <span class="sql-keyword">DEFAULT</span> 5.00,  <span class="sql-comment">-- customer discount</span>
+  total_earnings <span class="sql-type">DECIMAL(10, 2)</span> <span class="sql-keyword">DEFAULT</span> 0,
+  total_bookings <span class="sql-type">INTEGER</span> <span class="sql-keyword">DEFAULT</span> 0,
+  is_active <span class="sql-type">BOOLEAN</span> <span class="sql-keyword">DEFAULT</span> true,
+  created_at <span class="sql-type">TIMESTAMPTZ</span> <span class="sql-keyword">DEFAULT</span> NOW(),
+  updated_at <span class="sql-type">TIMESTAMPTZ</span> <span class="sql-keyword">DEFAULT</span> NOW()
+);</code></pre>
+
+            <h3>3. New Table: <code>affiliate_referrals</code></h3>
+            <pre><code><span class="sql-keyword">CREATE TABLE</span> affiliate_referrals (
+  id <span class="sql-type">UUID</span> <span class="sql-keyword">PRIMARY KEY DEFAULT</span> gen_random_uuid(),
+  affiliate_id <span class="sql-type">UUID</span> <span class="sql-keyword">NOT NULL REFERENCES</span> affiliate_profiles(id),
+  booking_id <span class="sql-type">UUID</span> <span class="sql-keyword">REFERENCES</span> bookings(id),
+  customer_id <span class="sql-type">UUID</span> <span class="sql-keyword">REFERENCES</span> customers(id),
+  booking_amount <span class="sql-type">DECIMAL(10, 2)</span>,
+  discount_given <span class="sql-type">DECIMAL(10, 2)</span>,
+  commission_amount <span class="sql-type">DECIMAL(10, 2)</span>,
+  status <span class="sql-type">VARCHAR(20)</span> <span class="sql-keyword">DEFAULT</span> <span class="sql-string">'pending'</span>,  <span class="sql-comment">-- pending, confirmed, paid, cancelled</span>
+  created_at <span class="sql-type">TIMESTAMPTZ</span> <span class="sql-keyword">DEFAULT</span> NOW()
+);</code></pre>
+
+            <h3>Entity Relationship</h3>
+            <div class="wireframe">
+┌─────────────┐      ┌───────────────────┐      ┌─────────────┐
+│   staff     │      │ affiliate_profiles │      │  locations  │
+├─────────────┤      ├───────────────────┤      ├─────────────┤
+│ id          │◄────►│ staff_id          │      │ id          │
+│ user_id     │      │ location_id       │◄────►│ name        │
+│ role        │      │ affiliate_code    │      │ slug        │
+│ location_id │      │ commission_rate   │      └─────────────┘
+└─────────────┘      │ discount_value    │
+                     └───────────────────┘
+                              │
+                              ▼
+                     ┌───────────────────┐      ┌─────────────┐
+                     │ affiliate_referrals│      │  bookings   │
+                     ├───────────────────┤      ├─────────────┤
+                     │ affiliate_id      │      │ id          │
+                     │ booking_id        │◄────►│ customer_id │
+                     │ commission_amount │      │ total_price │
+                     │ status            │      └─────────────┘
+                     └───────────────────┘
+            </div>
+        </section>
+
+        <!-- New Pages Section -->
+        <section class="section" id="pages">
+            <h2><span class="icon">📄</span> New Pages</h2>
+
+            <div class="two-column">
+                <div>
+                    <h3>Affiliate Dashboard Pages</h3>
+                    <p>Pages visible to affiliates when they log in:</p>
+                    <ul class="file-list">
+                        <li><span class="badge badge-new">NEW</span> /dashboard/affiliate/</li>
+                        <li><span class="badge badge-new">NEW</span> /dashboard/affiliate/qr-code/</li>
+                        <li><span class="badge badge-new">NEW</span> /dashboard/affiliate/referrals/</li>
+                        <li><span class="badge badge-new">NEW</span> /dashboard/affiliate/earnings/</li>
+                    </ul>
+                </div>
+                <div>
+                    <h3>Admin Management Pages</h3>
+                    <p>Pages for admins/managers to manage affiliates:</p>
+                    <ul class="file-list">
+                        <li><span class="badge badge-new">NEW</span> /dashboard/affiliates/</li>
+                        <li><span class="badge badge-new">NEW</span> /dashboard/affiliates/[id]/</li>
+                    </ul>
+                </div>
+            </div>
+        </section>
+
+        <!-- API Routes Section -->
+        <section class="section" id="api">
+            <h2><span class="icon">🔌</span> API Routes</h2>
+
+            <table>
+                <thead>
+                    <tr>
+                        <th>Route</th>
+                        <th>Method</th>
+                        <th>Purpose</th>
+                        <th>Access</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><code>/api/affiliates</code></td>
+                        <td><span class="badge badge-api">GET</span></td>
+                        <td>List all affiliates</td>
+                        <td>Admin, Manager</td>
+                    </tr>
+                    <tr>
+                        <td><code>/api/affiliates</code></td>
+                        <td><span class="badge badge-api">POST</span></td>
+                        <td>Create new affiliate</td>
+                        <td>Admin, Manager</td>
+                    </tr>
+                    <tr>
+                        <td><code>/api/affiliates/[id]</code></td>
+                        <td><span class="badge badge-api">GET</span></td>
+                        <td>Get affiliate details</td>
+                        <td>Admin, Manager</td>
+                    </tr>
+                    <tr>
+                        <td><code>/api/affiliates/[id]</code></td>
+                        <td><span class="badge badge-api">PATCH</span></td>
+                        <td>Update affiliate settings</td>
+                        <td>Admin, Manager</td>
+                    </tr>
+                    <tr>
+                        <td><code>/api/affiliates/[id]</code></td>
+                        <td><span class="badge badge-api">DELETE</span></td>
+                        <td>Deactivate affiliate</td>
+                        <td>Admin, Manager</td>
+                    </tr>
+                    <tr>
+                        <td><code>/api/affiliates/me</code></td>
+                        <td><span class="badge badge-api">GET</span></td>
+                        <td>Get current affiliate's data</td>
+                        <td>Affiliate</td>
+                    </tr>
+                    <tr>
+                        <td><code>/api/affiliates/me/referrals</code></td>
+                        <td><span class="badge badge-api">GET</span></td>
+                        <td>Get referral history</td>
+                        <td>Affiliate</td>
+                    </tr>
+                    <tr>
+                        <td><code>/api/affiliates/me/earnings</code></td>
+                        <td><span class="badge badge-api">GET</span></td>
+                        <td>Get earnings summary</td>
+                        <td>Affiliate</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <h3>Booking API Update</h3>
+            <p>The existing <code>/api/bookings</code> POST endpoint will be updated to:</p>
+            <ul style="margin-left: 20px; color: #c0c0c0;">
+                <li>Accept <code>affiliate_code</code> parameter</li>
+                <li>Validate affiliate and apply discount</li>
+                <li>Create referral record with commission calculation</li>
+                <li>Update affiliate's total earnings and booking count</li>
+            </ul>
+        </section>
+
+        <!-- Files Summary Section -->
+        <section class="section" id="files">
+            <h2><span class="icon">📁</span> Files Summary</h2>
+
+            <div class="two-column">
+                <div>
+                    <h3>New Files (17 files)</h3>
+                    <ul class="file-list">
+                        <li><span class="badge badge-new">NEW</span> migrations/20260319_affiliates.sql</li>
+                        <li><span class="badge badge-new">NEW</span> app/dashboard/affiliate/page.tsx</li>
+                        <li><span class="badge badge-new">NEW</span> app/dashboard/affiliate/qr-code/page.tsx</li>
+                        <li><span class="badge badge-new">NEW</span> app/dashboard/affiliate/referrals/page.tsx</li>
+                        <li><span class="badge badge-new">NEW</span> app/dashboard/affiliate/earnings/page.tsx</li>
+                        <li><span class="badge badge-new">NEW</span> app/dashboard/affiliates/page.tsx</li>
+                        <li><span class="badge badge-new">NEW</span> app/dashboard/affiliates/[id]/page.tsx</li>
+                        <li><span class="badge badge-new">NEW</span> components/affiliate/AffiliateQRCode.tsx</li>
+                        <li><span class="badge badge-new">NEW</span> components/affiliate/AffiliateStats.tsx</li>
+                        <li><span class="badge badge-new">NEW</span> components/affiliate/AffiliateTable.tsx</li>
+                        <li><span class="badge badge-new">NEW</span> api/affiliates/route.ts</li>
+                        <li><span class="badge badge-new">NEW</span> api/affiliates/[id]/route.ts</li>
+                        <li><span class="badge badge-new">NEW</span> api/affiliates/me/route.ts</li>
+                        <li><span class="badge badge-new">NEW</span> api/affiliates/me/referrals/route.ts</li>
+                        <li><span class="badge badge-new">NEW</span> api/affiliates/me/earnings/route.ts</li>
+                        <li><span class="badge badge-new">NEW</span> api/affiliates/validate/route.ts</li>
+                    </ul>
+                </div>
+                <div>
+                    <h3>Modified Files (6 files)</h3>
+                    <ul class="file-list">
+                        <li><span class="badge badge-modify">MODIFY</span> lib/auth/roles.ts</li>
+                        <li><span class="badge badge-modify">MODIFY</span> app/(auth)/login/page.tsx</li>
+                        <li><span class="badge badge-modify">MODIFY</span> middleware.ts</li>
+                        <li><span class="badge badge-modify">MODIFY</span> app/dashboard/layout.tsx</li>
+                        <li><span class="badge badge-modify">MODIFY</span> app/dashboard/staff/page.tsx</li>
+                        <li><span class="badge badge-modify">MODIFY</span> api/bookings/route.ts</li>
+                    </ul>
+
+                    <h3 style="margin-top: 30px;">NPM Package</h3>
+                    <ul class="file-list">
+                        <li><span class="badge badge-new">INSTALL</span> qrcode.react</li>
+                    </ul>
+                </div>
+            </div>
+        </section>
+
+        <!-- UI Wireframes Section -->
+        <section class="section" id="wireframes">
+            <h2><span class="icon">🎨</span> UI Wireframes</h2>
+
+            <h3>Affiliate Dashboard</h3>
+            <div class="wireframe">
+┌────────────────────────────────────────────────────────────────────┐
+│  Welcome back, John!                                               │
+├────────────────────────────────────────────────────────────────────┤
+│                                                                    │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐             │
+│  │ Total Earned │  │  This Month  │  │   Pending    │             │
+│  │   $1,234     │  │    $234      │  │    $50       │             │
+│  │  ▲ 12%       │  │   ▲ 8%       │  │  2 bookings  │             │
+│  └──────────────┘  └──────────────┘  └──────────────┘             │
+│                                                                    │
+│  ┌─────────────────────────────────────────────────────────────┐  │
+│  │                                                             │  │
+│  │                    ┌─────────────┐                          │  │
+│  │                    │ ▓▓▓▓▓▓▓▓▓▓▓ │                          │  │
+│  │                    │ ▓         ▓ │   Your Referral Code     │  │
+│  │                    │ ▓  QR     ▓ │                          │  │
+│  │                    │ ▓  CODE   ▓ │   LOC1-AFF123            │  │
+│  │                    │ ▓         ▓ │                          │  │
+│  │                    │ ▓▓▓▓▓▓▓▓▓▓▓ │   [🖨️ Print] [📥 Download]│  │
+│  │                    └─────────────┘                          │  │
+│  │                                                             │  │
+│  │         Customers get 5% off when using your code!          │  │
+│  │                                                             │  │
+│  └─────────────────────────────────────────────────────────────┘  │
+│                                                                    │
+│  Recent Referrals                                                  │
+│  ┌──────────────────────────────────────────────────────────────┐ │
+│  │ Date       │ Customer    │ Booking   │ Commission │ Status  │ │
+│  ├──────────────────────────────────────────────────────────────┤ │
+│  │ Mar 18     │ Jane D.     │ $150.00   │ $15.00     │ ✓ Paid  │ │
+│  │ Mar 15     │ Mike S.     │ $200.00   │ $20.00     │ ⏳Pending│ │
+│  │ Mar 10     │ Sarah L.    │ $175.00   │ $17.50     │ ✓ Paid  │ │
+│  └──────────────────────────────────────────────────────────────┘ │
+│                                                                    │
+└────────────────────────────────────────────────────────────────────┘
+            </div>
+
+            <h3 style="margin-top: 30px;">QR Code Print Layout</h3>
+            <div class="wireframe">
+┌────────────────────────────────────────┐
+│                                        │
+│           [Location Logo]              │
+│                                        │
+│         ┌─────────────────┐            │
+│         │ ▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓ │            │
+│         │ ▓             ▓ │            │
+│         │ ▓             ▓ │            │
+│         │ ▓   QR CODE   ▓ │            │
+│         │ ▓             ▓ │            │
+│         │ ▓             ▓ │            │
+│         │ ▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓ │            │
+│         └─────────────────┘            │
+│                                        │
+│        Scan for 5% Discount!           │
+│                                        │
+│          Code: LOC1-AFF123             │
+│                                        │
+│     Book your adventure today at       │
+│        www.yourdomain.com              │
+│                                        │
+└────────────────────────────────────────┘
+            </div>
+
+            <h3 style="margin-top: 30px;">Admin Affiliates Management</h3>
+            <div class="wireframe">
+┌────────────────────────────────────────────────────────────────────┐
+│  Affiliates                                        [+ Add Affiliate]│
+├────────────────────────────────────────────────────────────────────┤
+│                                                                    │
+│  [Filter by Location ▼]  [Search affiliates...]                    │
+│                                                                    │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐             │
+│  │   Total      │  │    Active    │  │ Total Paid   │             │
+│  │     12       │  │      10      │  │   $5,432     │             │
+│  │  affiliates  │  │  affiliates  │  │  this month  │             │
+│  └──────────────┘  └──────────────┘  └──────────────┘             │
+│                                                                    │
+│  ┌──────────────────────────────────────────────────────────────┐ │
+│  │ Name      │ Location │ Code      │ Referrals │ Earnings │ ⋮ │ │
+│  ├──────────────────────────────────────────────────────────────┤ │
+│  │ John Doe  │ NYC      │ NYC-JD01  │    45     │ $1,234   │ ⋮ │ │
+│  │ Jane S.   │ LA       │ LA-JS02   │    32     │ $876     │ ⋮ │ │
+│  │ Mike R.   │ NYC      │ NYC-MR03  │    28     │ $654     │ ⋮ │ │
+│  │ Sarah L.  │ Chicago  │ CHI-SL04  │    21     │ $432     │ ⋮ │ │
+│  └──────────────────────────────────────────────────────────────┘ │
+│                                                                    │
+└────────────────────────────────────────────────────────────────────┘
+            </div>
+        </section>
+
+        <!-- Implementation Steps Section -->
+        <section class="section" id="steps">
+            <h2><span class="icon">📝</span> Implementation Steps</h2>
+
+            <ol class="steps">
+                <li><strong>Database Migration</strong> - Create affiliate_profiles and affiliate_referrals tables, update staff role constraint</li>
+                <li><strong>Install QR Package</strong> - Run <code>npm install qrcode.react</code></li>
+                <li><strong>Update Role System</strong> - Add 'affiliate' role to roles.ts with appropriate permissions</li>
+                <li><strong>Update Login Page</strong> - Add "Affiliate" option to account type selection</li>
+                <li><strong>Update Middleware</strong> - Add affiliate route protection</li>
+                <li><strong>Create API Routes</strong> - Build all affiliate CRUD and data endpoints</li>
+                <li><strong>Create Components</strong> - Build QR code, stats, and table components</li>
+                <li><strong>Create Affiliate Dashboard</strong> - Build affiliate's personal dashboard pages</li>
+                <li><strong>Create Admin Pages</strong> - Build affiliate management for admins/managers</li>
+                <li><strong>Update Dashboard Layout</strong> - Add affiliate navigation items</li>
+                <li><strong>Update Staff Page</strong> - Add affiliate role option when creating staff</li>
+                <li><strong>Update Booking API</strong> - Integrate affiliate discount and commission tracking</li>
+            </ol>
+        </section>
+
+        <!-- Approval Section -->
+        <section class="approval-section">
+            <h2>Ready for Implementation</h2>
+            <p>Review this plan and let me know if you'd like any changes before I begin implementation.</p>
+        </section>
+    </div>
+</body>
+</html>

@@ -104,8 +104,22 @@ const navigationGroups: NavGroup[] = [
   {
     heading: "Marketing",
     items: [
+      { name: "Affiliates", href: "/dashboard/affiliates", icon: Users, roles: ['admin', 'location_manager'] },
       { name: "Widgets", href: "/dashboard/widgets", icon: Code, roles: ['admin', 'location_manager'] },
       { name: "Analytics", href: "/dashboard/analytics", icon: BarChart3, roles: ['admin', 'location_manager'] },
+    ],
+  },
+];
+
+// Affiliate-specific navigation (shown only to affiliates)
+const affiliateNavigationGroups: NavGroup[] = [
+  {
+    heading: "Affiliate",
+    items: [
+      { name: "Dashboard", href: "/dashboard/affiliate", icon: LayoutDashboard },
+      { name: "My QR Code", href: "/dashboard/affiliate/qr-code", icon: Globe },
+      { name: "Referrals", href: "/dashboard/affiliate/referrals", icon: Users },
+      { name: "Earnings", href: "/dashboard/affiliate/earnings", icon: DollarSign },
     ],
   },
 ];
@@ -184,14 +198,17 @@ export default function DashboardLayout({
     .slice(0, 2);
 
   // Filter navigation items based on user role
-  const filteredNavigationGroups = navigationGroups.map(group => ({
-    ...group,
-    items: group.items.filter(item => {
-      if (!item.roles) return true; // No role restriction
-      if (!userRole) return false; // User has no role, hide restricted items
-      return item.roles.includes(userRole);
-    })
-  })).filter(group => group.items.length > 0); // Remove empty groups
+  // Affiliates get their own navigation
+  const filteredNavigationGroups = userRole === 'affiliate'
+    ? affiliateNavigationGroups
+    : navigationGroups.map(group => ({
+        ...group,
+        items: group.items.filter(item => {
+          if (!item.roles) return true; // No role restriction
+          if (!userRole) return false; // User has no role, hide restricted items
+          return item.roles.includes(userRole);
+        })
+      })).filter(group => group.items.length > 0); // Remove empty groups
 
   return (
     <LocationProvider>

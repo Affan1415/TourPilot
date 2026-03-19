@@ -1,7 +1,7 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
-type UserRole = 'admin' | 'location_manager' | 'captain' | 'front_desk' | 'customer';
+type UserRole = 'admin' | 'location_manager' | 'captain' | 'front_desk' | 'affiliate' | 'customer';
 
 // Define which roles can access which routes
 const ROUTE_PERMISSIONS: Record<string, UserRole[]> = {
@@ -24,6 +24,12 @@ const ROUTE_PERMISSIONS: Record<string, UserRole[]> = {
 
   // Captain-specific routes
   '/captain': ['captain'],
+
+  // Affiliate-specific routes
+  '/dashboard/affiliate': ['affiliate'],
+
+  // Affiliate management routes (for admins and location managers)
+  '/dashboard/affiliates': ['admin', 'location_manager'],
 
   // Customer routes
   '/account': ['customer'],
@@ -122,6 +128,8 @@ export async function middleware(request: NextRequest) {
         const url = request.nextUrl.clone();
         if (userRole === 'captain') {
           url.pathname = '/captain';
+        } else if (userRole === 'affiliate') {
+          url.pathname = '/dashboard/affiliate';
         } else if (userRole === 'customer') {
           url.pathname = '/account';
         } else if (userRole) {
@@ -160,6 +168,8 @@ export async function middleware(request: NextRequest) {
       if (staffData && staffData.is_active) {
         if (staffData.role === 'captain') {
           url.pathname = '/captain';
+        } else if (staffData.role === 'affiliate') {
+          url.pathname = '/dashboard/affiliate';
         } else {
           url.pathname = '/dashboard';
         }

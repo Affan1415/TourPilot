@@ -8,11 +8,11 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
-import { Ship, Mail, Lock, Eye, EyeOff, AlertCircle, Shield, Anchor, User, Building2, Monitor } from "lucide-react";
+import { Ship, Mail, Lock, Eye, EyeOff, AlertCircle, Shield, Anchor, User, Building2, Monitor, Users } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
 
-type LoginType = "admin" | "location_manager" | "front_desk" | "captain" | "customer" | null;
+type LoginType = "admin" | "location_manager" | "front_desk" | "captain" | "affiliate" | "customer" | null;
 
 function LoginPageContent() {
   const router = useRouter();
@@ -37,6 +37,8 @@ function LoginPageContent() {
       setError("You don't have front desk access. Please contact your administrator.");
     } else if (errorParam === "no_captain_access") {
       setError("You don't have captain access. Please contact your administrator.");
+    } else if (errorParam === "no_affiliate_access") {
+      setError("You don't have affiliate access. Please contact your administrator.");
     }
   }, [searchParams]);
 
@@ -116,6 +118,21 @@ function LoginPageContent() {
             router.push("/captain");
           } else {
             setError("You don't have captain access. Please contact your administrator.");
+            await supabase.auth.signOut();
+            return;
+          }
+        } else if (loginType === "affiliate") {
+          // Verify user is affiliate
+          const { data: staffData } = await supabase
+            .from('staff')
+            .select('role, is_active')
+            .eq('user_id', data.user.id)
+            .single();
+
+          if (staffData && staffData.is_active && staffData.role === 'affiliate') {
+            router.push("/dashboard/affiliate");
+          } else {
+            setError("You don't have affiliate access. Please contact your administrator.");
             await supabase.auth.signOut();
             return;
           }
@@ -244,6 +261,22 @@ function LoginPageContent() {
                 </div>
               </button>
 
+              {/* Affiliate Option */}
+              <button
+                onClick={() => setLoginType("affiliate")}
+                className="flex items-center gap-4 p-4 rounded-xl border-2 border-transparent bg-muted/50 hover:border-teal-500 hover:bg-teal-50 transition-all text-left"
+              >
+                <div className="h-12 w-12 rounded-xl bg-teal-100 flex items-center justify-center">
+                  <Users className="h-6 w-6 text-teal-600" />
+                </div>
+                <div>
+                  <p className="font-semibold">Affiliate</p>
+                  <p className="text-sm text-muted-foreground">
+                    View your QR code and track referrals
+                  </p>
+                </div>
+              </button>
+
               {/* Customer Option */}
               <button
                 onClick={() => setLoginType("customer")}
@@ -303,6 +336,12 @@ function LoginPageContent() {
       color: "blue",
       icon: Anchor,
     },
+    affiliate: {
+      title: "Affiliate Login",
+      subtitle: "Sign in to view your QR code and earnings",
+      color: "teal",
+      icon: Users,
+    },
     customer: {
       title: "Customer Login",
       subtitle: "Sign in to view your bookings",
@@ -346,6 +385,7 @@ function LoginPageContent() {
               config.color === "amber" && "bg-amber-100",
               config.color === "emerald" && "bg-emerald-100",
               config.color === "blue" && "bg-blue-100",
+              config.color === "teal" && "bg-teal-100",
               config.color === "violet" && "bg-violet-100"
             )}>
               <IconComponent className={cn(
@@ -354,6 +394,7 @@ function LoginPageContent() {
                 config.color === "amber" && "text-amber-600",
                 config.color === "emerald" && "text-emerald-600",
                 config.color === "blue" && "text-blue-600",
+                config.color === "teal" && "text-teal-600",
                 config.color === "violet" && "text-violet-600"
               )} />
             </div>
@@ -430,6 +471,7 @@ function LoginPageContent() {
                 config.color === "amber" && "bg-amber-600 hover:bg-amber-700",
                 config.color === "emerald" && "bg-emerald-600 hover:bg-emerald-700",
                 config.color === "blue" && "bg-blue-600 hover:bg-blue-700",
+                config.color === "teal" && "bg-teal-600 hover:bg-teal-700",
                 config.color === "violet" && "bg-violet-600 hover:bg-violet-700"
               )}
               disabled={loading}

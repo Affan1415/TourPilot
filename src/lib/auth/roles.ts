@@ -1,4 +1,4 @@
-export type UserRole = 'admin' | 'location_manager' | 'captain' | 'front_desk' | 'customer';
+export type UserRole = 'admin' | 'location_manager' | 'captain' | 'front_desk' | 'affiliate' | 'customer';
 
 export interface UserProfile {
   userId: string;
@@ -12,6 +12,7 @@ export interface UserProfile {
 export const ADMIN_ROLES: UserRole[] = ['admin'];
 export const MANAGER_ROLES: UserRole[] = ['admin', 'location_manager'];
 export const STAFF_ROLES: UserRole[] = ['admin', 'location_manager', 'captain', 'front_desk'];
+export const AFFILIATE_ROLES: UserRole[] = ['affiliate'];
 
 export function isAdminRole(role: UserRole | null): boolean {
   return role === 'admin';
@@ -31,6 +32,10 @@ export function isStaffRole(role: UserRole | null): boolean {
 
 export function isCaptainRole(role: UserRole | null): boolean {
   return role === 'captain';
+}
+
+export function isAffiliateRole(role: UserRole | null): boolean {
+  return role === 'affiliate';
 }
 
 export function isCustomerRole(role: UserRole | null): boolean {
@@ -71,6 +76,15 @@ export const ROUTE_ACCESS: Record<string, UserRole[]> = {
   '/captain': ['captain'],
   '/captain/tours': ['captain'],
   '/captain/manifest': ['captain'],
+
+  // Affiliate-specific routes
+  '/dashboard/affiliate': ['affiliate'],
+  '/dashboard/affiliate/qr-code': ['affiliate'],
+  '/dashboard/affiliate/referrals': ['affiliate'],
+  '/dashboard/affiliate/earnings': ['affiliate'],
+
+  // Affiliate management routes (for admins and location managers)
+  '/dashboard/affiliates': ['admin', 'location_manager'],
 
   // Customer routes
   '/account': ['customer'],
@@ -116,6 +130,8 @@ export function getDefaultRedirect(role: UserRole | null): string {
       return '/dashboard';
     case 'captain':
       return '/captain';
+    case 'affiliate':
+      return '/dashboard/affiliate';
     case 'customer':
       return '/account';
     default:

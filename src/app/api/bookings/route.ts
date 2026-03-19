@@ -72,7 +72,38 @@ export async function POST(request: NextRequest) {
     const adminClient = createAdminClient();
     const body = await request.json();
 
-    const { customer, availability_id, guest_count, guests, notes, total_price } = body;
+    const { customer, availability_id, guest_count, guests, notes, total_price, affiliate_code } = body;
+
+    // Check for affiliate code and get discount info
+    let affiliateData: {
+      id: string;
+      discount_type: string;
+      discount_value: number;
+      commission_type: string;
+      commission_rate: number;
+    } | null = null;
+    let affiliateDiscount = 0;
+
+    if (affiliate_code) {
+      const { data: affiliate } = await adminClient
+        .from("affiliate_profiles")
+        .select("id, discount_type, discount_value, commission_type, commission_rate, is_active")
+        .eq("affiliate_code", affiliate_code.toUpperCase())
+        .single();
+
+      if (affiliate && affiliate.is_active) {
+        affiliateData = affiliate;
+        // Calculate discount
+        if (affiliate.discount_type === "percentage") {
+          affiliateDiscount = (total_price * affiliate.discount_value) / 100;
+        } else {
+          affiliateDiscount = affiliate.discount_value;
+        }
+      }
+    }
+
+    // Calculate final price after affiliate discount
+    const finalPrice = total_price - affiliateDiscount;
 
     // 1. Create or get customer
     let customerId: string;
@@ -153,18 +184,27 @@ export async function POST(request: NextRequest) {
 
     // 3. Create booking
     const bookingReference = generateBookingReference();
+    const bookingData: Record<string, unknown> = {
+      booking_reference: bookingReference,
+      customer_id: customerId,
+      availability_id,
+      guest_count,
+      total_price: finalPrice,
+      original_price: total_price,
+      discount_amount: affiliateDiscount,
+      notes,
+      status: "pending",
+      payment_status: "pending",
+    };
+
+    // Add affiliate_id if affiliate code was used
+    if (affiliateData) {
+      bookingData.affiliate_id = affiliateData.id;
+    }
+
     const { data: booking, error: bookingError } = await adminClient
       .from("bookings")
-      .insert([{
-        booking_reference: bookingReference,
-        customer_id: customerId,
-        availability_id,
-        guest_count,
-        total_price,
-        notes,
-        status: "pending",
-        payment_status: "pending",
-      }])
+      .insert([bookingData])
       .select()
       .single();
 
@@ -242,7 +282,30 @@ export async function POST(request: NextRequest) {
       })
       .eq("id", availability_id);
 
-    // 7. Send confirmation email
+    // 7. Create affiliate referral record if affiliate code was used
+    if (affiliateData) {
+      // Calculate commission
+      let commissionAmount = 0;
+      if (affiliateData.commission_type === "percentage") {
+        commissionAmount = (finalPrice * affiliateData.commission_rate) / 100;
+      } else {
+        commissionAmount = affiliateData.commission_rate;
+      }
+
+      await adminClient
+        .from("affiliate_referrals")
+        .insert({
+          affiliate_id: affiliateData.id,
+          booking_id: booking.id,
+          customer_id: customerId,
+          booking_amount: finalPrice,
+          discount_given: affiliateDiscount,
+          commission_amount: commissionAmount,
+          status: "pending",
+        });
+    }
+
+    // 8. Send confirmation email
     try {
       const waiverUrl = `${APP_URL}/waiver/${booking.booking_reference}`;
       const bookingUrl = `${APP_URL}/booking/${booking.booking_reference}`;
@@ -258,7 +321,7 @@ export async function POST(request: NextRequest) {
           tourDate: availability.date,
           tourTime: availability.start_time?.slice(0, 5) || '',
           guestCount: guest_count,
-          totalAmount: total_price,
+          totalAmount: finalPrice,
           meetingPoint: tourData?.meeting_point || '',
           waiverUrl,
           bookingUrl,
