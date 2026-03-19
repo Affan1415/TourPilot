@@ -2,20 +2,53 @@
 
 import { useRef, useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Eraser, Check, RotateCcw } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Eraser, Check, RotateCcw, ChevronDown, ChevronUp, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface SignaturePadProps {
   onSave: (signatureDataUrl: string) => void;
   onCancel: () => void;
   guestName: string;
+  bookingId: string;
   saving?: boolean;
 }
 
-export function SignaturePad({ onSave, onCancel, guestName, saving }: SignaturePadProps) {
+export function SignaturePad({ onSave, onCancel, guestName, bookingId, saving }: SignaturePadProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [isDrawing, setIsDrawing] = useState(false);
   const [hasSignature, setHasSignature] = useState(false);
+  const [waiverContent, setWaiverContent] = useState<string | null>(null);
+  const [waiverName, setWaiverName] = useState<string>("Liability Waiver");
+  const [loadingWaiver, setLoadingWaiver] = useState(true);
+  const [showFullWaiver, setShowFullWaiver] = useState(false);
+  const [agreed, setAgreed] = useState(false);
+
+  // Fetch waiver template
+  useEffect(() => {
+    const fetchWaiverTemplate = async () => {
+      try {
+        const response = await fetch(`/api/waivers/${bookingId}`);
+        if (response.ok) {
+          const data = await response.json();
+          if (data.waivers?.[0]?.waiver_template) {
+            setWaiverContent(data.waivers[0].waiver_template.content);
+            setWaiverName(data.waivers[0].waiver_template.name || "Liability Waiver");
+          }
+        }
+      } catch (error) {
+        console.error("Failed to fetch waiver template:", error);
+      } finally {
+        setLoadingWaiver(false);
+      }
+    };
+
+    if (bookingId) {
+      fetchWaiverTemplate();
+    } else {
+      setLoadingWaiver(false);
+    }
+  }, [bookingId]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -136,32 +169,93 @@ export function SignaturePad({ onSave, onCancel, guestName, saving }: SignatureP
     onSave(dataUrl);
   };
 
+  if (loadingWaiver) {
+    return (
+      <div className="flex items-center justify-center py-8">
+        <Loader2 className="h-6 w-6 animate-spin text-indigo-600" />
+      </div>
+    );
+  }
+
   return (
-    <div className="space-y-4">
-      <div className="text-center">
-        <p className="text-sm text-muted-foreground">
-          I, <span className="font-medium text-foreground">{guestName}</span>, agree to the terms and conditions of this waiver.
-        </p>
+    <div className="space-y-4 max-h-[80vh] overflow-y-auto">
+      {/* Waiver Content */}
+      {waiverContent && (
+        <div className="border rounded-lg bg-slate-50 dark:bg-slate-900">
+          <div className="p-3 border-b bg-slate-100 dark:bg-slate-800">
+            <h4 className="font-semibold text-sm">{waiverName}</h4>
+          </div>
+          <div className="p-3">
+            <div
+              className={cn(
+                "prose prose-sm max-w-none overflow-hidden transition-all text-xs",
+                showFullWaiver ? "max-h-none" : "max-h-32"
+              )}
+            >
+              <div
+                dangerouslySetInnerHTML={{ __html: waiverContent }}
+                className="text-muted-foreground"
+              />
+            </div>
+            {!showFullWaiver && (
+              <div className="relative -mt-8 pt-8 bg-gradient-to-t from-slate-50 dark:from-slate-900 to-transparent" />
+            )}
+            <Button
+              variant="ghost"
+              size="sm"
+              className="w-full mt-2 gap-1 h-8 text-xs"
+              onClick={() => setShowFullWaiver(!showFullWaiver)}
+            >
+              {showFullWaiver ? (
+                <>
+                  <ChevronUp className="h-3 w-3" />
+                  Show Less
+                </>
+              ) : (
+                <>
+                  <ChevronDown className="h-3 w-3" />
+                  Read Full Waiver
+                </>
+              )}
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {/* Agreement Checkbox */}
+      <div className="flex items-start gap-3 p-3 bg-muted/50 rounded-lg">
+        <Checkbox
+          id="agree-waiver"
+          checked={agreed}
+          onCheckedChange={(checked) => setAgreed(!!checked)}
+        />
+        <label htmlFor="agree-waiver" className="text-sm leading-relaxed cursor-pointer">
+          I, <span className="font-semibold">{guestName}</span>, have read and understand the above waiver.
+          I acknowledge the risks involved and voluntarily agree to assume all risks.
+        </label>
       </div>
 
       {/* Signature Canvas */}
-      <div className="relative">
-        <canvas
-          ref={canvasRef}
-          className="w-full h-48 border-2 border-dashed border-slate-300 rounded-xl bg-white touch-none cursor-crosshair"
-          onMouseDown={startDrawing}
-          onMouseMove={draw}
-          onMouseUp={stopDrawing}
-          onMouseLeave={stopDrawing}
-          onTouchStart={startDrawing}
-          onTouchMove={draw}
-          onTouchEnd={stopDrawing}
-        />
-        {!hasSignature && (
-          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-            <p className="text-slate-400 text-sm">Sign here</p>
-          </div>
-        )}
+      <div>
+        <p className="text-sm font-medium mb-2">Signature</p>
+        <div className="relative">
+          <canvas
+            ref={canvasRef}
+            className="w-full h-40 border-2 border-dashed border-slate-300 rounded-xl bg-white touch-none cursor-crosshair"
+            onMouseDown={startDrawing}
+            onMouseMove={draw}
+            onMouseUp={stopDrawing}
+            onMouseLeave={stopDrawing}
+            onTouchStart={startDrawing}
+            onTouchMove={draw}
+            onTouchEnd={stopDrawing}
+          />
+          {!hasSignature && (
+            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+              <p className="text-slate-400 text-sm">Sign here</p>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Actions */}
@@ -185,9 +279,9 @@ export function SignaturePad({ onSave, onCancel, guestName, saving }: SignatureP
         <Button
           className={cn(
             "flex-1",
-            hasSignature ? "bg-green-600 hover:bg-green-700" : ""
+            hasSignature && agreed ? "bg-green-600 hover:bg-green-700" : ""
           )}
-          disabled={!hasSignature || saving}
+          disabled={!hasSignature || !agreed || saving}
           onClick={handleSave}
         >
           {saving ? (

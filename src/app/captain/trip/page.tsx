@@ -128,8 +128,8 @@ interface ChecklistState {
 
 // Trip workflow steps
 const TRIP_STEPS = [
-  { id: "boarding", label: "Check-in", icon: Users, description: "Check in guests & sign waivers" },
   { id: "pre_checklist", label: "Pre-Check", icon: Shield, description: "Complete safety checklist" },
+  { id: "boarding", label: "Check-in", icon: Users, description: "Check in guests & sign waivers" },
   { id: "sailing", label: "Sailing", icon: Navigation, description: "Trip in progress" },
   { id: "post_checklist", label: "Post-Check", icon: Clipboard, description: "Post-arrival checklist" },
   { id: "completed", label: "Done", icon: Flag, description: "Trip completed" },
@@ -148,7 +148,7 @@ function TripWorkflowContent() {
   const [assignedTours, setAssignedTours] = useState<AssignedTour[]>([]);
 
   // Current step tracking
-  const [currentStep, setCurrentStep] = useState<string>("boarding");
+  const [currentStep, setCurrentStep] = useState<string>("pre_checklist");
 
   // Location tracking
   const [currentLocation, setCurrentLocation] = useState<{
@@ -425,9 +425,9 @@ function TripWorkflowContent() {
 
         // Map status to step
         const statusToStep: Record<string, string> = {
-          "not_started": "boarding",
-          "boarding": "boarding",
+          "not_started": "pre_checklist",
           "pre_checklist": "pre_checklist",
+          "boarding": "boarding",
           "departed": "sailing",
           "in_progress": "sailing",
           "returning": "sailing",
@@ -435,7 +435,7 @@ function TripWorkflowContent() {
           "post_checklist": "post_checklist",
           "completed": "completed",
         };
-        setCurrentStep(statusToStep[existingLog.status] || "boarding");
+        setCurrentStep(statusToStep[existingLog.status] || "pre_checklist");
 
         // Start tracking if trip is active
         if (["departed", "in_progress", "returning"].includes(existingLog.status)) {
@@ -716,7 +716,43 @@ function TripWorkflowContent() {
     return requiredItems.every(item => checklistState[item.id]?.checked);
   };
 
-  // Submit checklist
+  // Submit pre-departure checklist (moves to boarding/check-in step)
+  const submitPreChecklist = async () => {
+    if (!canProceedFromChecklist() || !checklistTemplate || !staffId || !availabilityId) return;
+
+    setUpdating(true);
+    try {
+      const supabase = createClient();
+
+      const completedItems = Object.entries(checklistState).map(([itemId, state]) => ({
+        itemId,
+        checked: state.checked,
+        photoUrl: state.photoUrl,
+        note: state.note,
+      }));
+
+      await supabase.from("checklist_completions").insert({
+        checklist_template_id: checklistTemplate.id,
+        availability_id: availabilityId,
+        captain_id: staffId,
+        completed_items: completedItems,
+        notes: checklistNotes || null,
+        completed_at: new Date().toISOString(),
+      });
+
+      toast.success("Pre-departure checklist completed!");
+
+      // Move to boarding/check-in step
+      await updateTripStatus("boarding");
+    } catch (error: any) {
+      console.error("Error submitting checklist:", error);
+      toast.error("Failed to submit checklist");
+    } finally {
+      setUpdating(false);
+    }
+  };
+
+  // Submit post-arrival checklist
   const submitChecklist = async () => {
     if (!canProceedFromChecklist() || !checklistTemplate || !staffId || !availabilityId) return;
 
@@ -740,14 +776,10 @@ function TripWorkflowContent() {
         completed_at: new Date().toISOString(),
       });
 
-      toast.success(`${checklistTemplate.type === "pre" ? "Pre-departure" : "Post-arrival"} checklist completed!`);
+      toast.success("Post-arrival checklist completed!");
 
-      // Move to next step
-      if (checklistTemplate.type === "pre") {
-        await updateTripStatus("departed");
-      } else {
-        await updateTripStatus("completed");
-      }
+      // Complete the trip
+      await updateTripStatus("completed");
     } catch (error: any) {
       console.error("Error submitting checklist:", error);
       toast.error("Failed to submit checklist");
@@ -813,11 +845,10 @@ function TripWorkflowContent() {
 
   // Move to next step in workflow
   const proceedToNextStep = async () => {
-    if (currentStep === "boarding") {
-      await updateTripStatus("pre_checklist");
-      setCurrentStep("pre_checklist");
-    } else if (currentStep === "pre_checklist") {
-      await submitChecklist();
+    if (currentStep === "pre_checklist") {
+      await submitPreChecklist();
+    } else if (currentStep === "boarding") {
+      await updateTripStatus("departed");
     } else if (currentStep === "sailing") {
       setConfirmAction("dock");
       setShowConfirmDialog(true);
@@ -1033,7 +1064,80 @@ function TripWorkflowContent() {
       <div className="flex-1 overflow-auto p-4">
         <div className="max-w-2xl mx-auto space-y-4">
 
-          {/* Step 1: Boarding / Check-in */}
+          {/* Step 1: Pre-departure Checklist */}
+          {currentStep === "pre_checklist" && checklistTemplate && (
+            <>
+              <Card className="p-4 bg-indigo-50 dark:bg-indigo-950/30 border-indigo-200">
+                <div className="flex items-center gap-3">
+                  <Shield className="h-6 w-6 text-indigo-600" />
+                  <div className="flex-1">
+                    <h3 className="font-semibold">Pre-Departure Safety Check</h3>
+                    <p className="text-sm text-muted-foreground">
+                      Complete all required items before departing
+                    </p>
+                  </div>
+                </div>
+                <div className="mt-3">
+                  <div className="flex items-center justify-between text-sm mb-2">
+                    <span>{checklistStats.completed}/{checklistStats.total} items</span>
+                    <span className={cn(
+                      "font-medium",
+                      checklistStats.requiredComplete === checklistStats.required ? "text-green-600" : "text-orange-600"
+                    )}>
+                      {checklistStats.requiredComplete}/{checklistStats.required} required
+                    </span>
+                  </div>
+                  <Progress
+                    value={(checklistStats.completed / checklistStats.total) * 100}
+                    className="h-2"
+                  />
+                </div>
+              </Card>
+
+              <div className="space-y-2">
+                {checklistTemplate.items.map((item, index) => {
+                  const isChecked = checklistState[item.id]?.checked || false;
+
+                  return (
+                    <button
+                      key={item.id}
+                      onClick={() => toggleChecklistItem(item.id)}
+                      className={cn(
+                        "w-full flex items-center gap-4 p-4 rounded-xl border-2 transition-all text-left",
+                        isChecked
+                          ? "bg-green-50 dark:bg-green-950/30 border-green-300 dark:border-green-700"
+                          : "bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 hover:border-indigo-300"
+                      )}
+                    >
+                      <div className={cn(
+                        "h-8 w-8 rounded-full flex items-center justify-center flex-shrink-0 transition-all",
+                        isChecked ? "bg-green-500 text-white" : "bg-slate-100 dark:bg-slate-800 text-slate-400"
+                      )}>
+                        {isChecked ? <Check className="h-5 w-5" /> : <span className="text-sm font-medium">{index + 1}</span>}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className={cn("font-medium", isChecked && "text-green-800 dark:text-green-200")}>
+                          {item.label}
+                        </p>
+                        {item.required && !isChecked && (
+                          <p className="text-xs text-orange-600 mt-0.5">Required</p>
+                        )}
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+
+              <Textarea
+                placeholder="Additional notes (optional)..."
+                value={checklistNotes}
+                onChange={(e) => setChecklistNotes(e.target.value)}
+                rows={2}
+              />
+            </>
+          )}
+
+          {/* Step 2: Waiver & Check-in */}
           {currentStep === "boarding" && (
             <>
               {/* Stats */}
@@ -1128,79 +1232,6 @@ function TripWorkflowContent() {
                   );
                 })}
               </div>
-            </>
-          )}
-
-          {/* Step 2: Pre-departure Checklist */}
-          {currentStep === "pre_checklist" && checklistTemplate && (
-            <>
-              <Card className="p-4 bg-indigo-50 dark:bg-indigo-950/30 border-indigo-200">
-                <div className="flex items-center gap-3">
-                  <Shield className="h-6 w-6 text-indigo-600" />
-                  <div className="flex-1">
-                    <h3 className="font-semibold">Pre-Departure Safety Check</h3>
-                    <p className="text-sm text-muted-foreground">
-                      Complete all required items before departing
-                    </p>
-                  </div>
-                </div>
-                <div className="mt-3">
-                  <div className="flex items-center justify-between text-sm mb-2">
-                    <span>{checklistStats.completed}/{checklistStats.total} items</span>
-                    <span className={cn(
-                      "font-medium",
-                      checklistStats.requiredComplete === checklistStats.required ? "text-green-600" : "text-orange-600"
-                    )}>
-                      {checklistStats.requiredComplete}/{checklistStats.required} required
-                    </span>
-                  </div>
-                  <Progress
-                    value={(checklistStats.completed / checklistStats.total) * 100}
-                    className="h-2"
-                  />
-                </div>
-              </Card>
-
-              <div className="space-y-2">
-                {checklistTemplate.items.map((item, index) => {
-                  const isChecked = checklistState[item.id]?.checked || false;
-
-                  return (
-                    <button
-                      key={item.id}
-                      onClick={() => toggleChecklistItem(item.id)}
-                      className={cn(
-                        "w-full flex items-center gap-4 p-4 rounded-xl border-2 transition-all text-left",
-                        isChecked
-                          ? "bg-green-50 dark:bg-green-950/30 border-green-300 dark:border-green-700"
-                          : "bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 hover:border-indigo-300"
-                      )}
-                    >
-                      <div className={cn(
-                        "h-8 w-8 rounded-full flex items-center justify-center flex-shrink-0 transition-all",
-                        isChecked ? "bg-green-500 text-white" : "bg-slate-100 dark:bg-slate-800 text-slate-400"
-                      )}>
-                        {isChecked ? <Check className="h-5 w-5" /> : <span className="text-sm font-medium">{index + 1}</span>}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className={cn("font-medium", isChecked && "text-green-800 dark:text-green-200")}>
-                          {item.label}
-                        </p>
-                        {item.required && !isChecked && (
-                          <p className="text-xs text-orange-600 mt-0.5">Required</p>
-                        )}
-                      </div>
-                    </button>
-                  );
-                })}
-              </div>
-
-              <Textarea
-                placeholder="Additional notes (optional)..."
-                value={checklistNotes}
-                onChange={(e) => setChecklistNotes(e.target.value)}
-                rows={2}
-              />
             </>
           )}
 
@@ -1423,25 +1454,13 @@ function TripWorkflowContent() {
       {currentStep !== "completed" && (
         <div className="sticky bottom-0 p-4 bg-white/80 dark:bg-slate-900/80 backdrop-blur-lg border-t">
           <div className="max-w-2xl mx-auto">
-            {currentStep === "boarding" && (
-              <Button
-                size="lg"
-                className="w-full h-14 text-lg gap-2 bg-indigo-600 hover:bg-indigo-700"
-                onClick={proceedToNextStep}
-                disabled={updating}
-              >
-                {updating ? <Loader2 className="h-5 w-5 animate-spin" /> : <Shield className="h-5 w-5" />}
-                Proceed to Safety Checklist
-              </Button>
-            )}
-
             {currentStep === "pre_checklist" && (
               <Button
                 size="lg"
                 className={cn(
                   "w-full h-14 text-lg gap-2",
                   canProceedFromChecklist()
-                    ? "bg-green-600 hover:bg-green-700"
+                    ? "bg-indigo-600 hover:bg-indigo-700"
                     : "bg-slate-400 cursor-not-allowed"
                 )}
                 onClick={proceedToNextStep}
@@ -1451,8 +1470,8 @@ function TripWorkflowContent() {
                   <Loader2 className="h-5 w-5 animate-spin" />
                 ) : canProceedFromChecklist() ? (
                   <>
-                    <Play className="h-5 w-5" />
-                    Complete & Start Trip
+                    <Users className="h-5 w-5" />
+                    Proceed to Waiver & Check-in
                   </>
                 ) : (
                   <>
@@ -1460,6 +1479,18 @@ function TripWorkflowContent() {
                     Complete Required Items ({checklistStats.required - checklistStats.requiredComplete} left)
                   </>
                 )}
+              </Button>
+            )}
+
+            {currentStep === "boarding" && (
+              <Button
+                size="lg"
+                className="w-full h-14 text-lg gap-2 bg-green-600 hover:bg-green-700"
+                onClick={proceedToNextStep}
+                disabled={updating}
+              >
+                {updating ? <Loader2 className="h-5 w-5 animate-spin" /> : <Play className="h-5 w-5" />}
+                Start Trip
               </Button>
             )}
 
@@ -1566,41 +1597,14 @@ function TripWorkflowContent() {
                       <AlertCircle className="h-4 w-4" />
                       Waiver not signed yet
                     </p>
-                    <div className="flex flex-col gap-2">
-                      <Button
-                        size="sm"
-                        className="w-full gap-2 bg-indigo-600 hover:bg-indigo-700"
-                        onClick={() => setShowSignaturePad(true)}
-                      >
-                        <FileText className="h-4 w-4" />
-                        Sign Waiver Now
-                      </Button>
-                      <div className="flex gap-2">
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="flex-1 gap-2"
-                          onClick={() => sendWaiverToGuest(selectedGuest.guest.id, selectedGuest.booking.bookingId)}
-                          disabled={sendingWaiver === selectedGuest.guest.id}
-                        >
-                          {sendingWaiver === selectedGuest.guest.id ? (
-                            <Loader2 className="h-4 w-4 animate-spin" />
-                          ) : (
-                            <Send className="h-4 w-4" />
-                          )}
-                          Email Link
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="flex-1 gap-2"
-                          onClick={() => window.open(`/waiver/${selectedGuest.booking.bookingId}?guest=${selectedGuest.guest.id}`, "_blank")}
-                        >
-                          <FileText className="h-4 w-4" />
-                          Open Form
-                        </Button>
-                      </div>
-                    </div>
+                    <Button
+                      size="sm"
+                      className="w-full gap-2 bg-indigo-600 hover:bg-indigo-700"
+                      onClick={() => setShowSignaturePad(true)}
+                    >
+                      <FileText className="h-4 w-4" />
+                      Sign Waiver Now
+                    </Button>
                   </div>
                 )}
 
@@ -1635,10 +1639,11 @@ function TripWorkflowContent() {
 
       {/* Signature Pad Dialog */}
       <Dialog open={showSignaturePad} onOpenChange={setShowSignaturePad}>
-        <DialogContent className="sm:max-w-lg">
+        <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-hidden">
           {selectedGuest && (
             <SignaturePad
               guestName={`${selectedGuest.guest.firstName} ${selectedGuest.guest.lastName}`}
+              bookingId={selectedGuest.booking.bookingId}
               onSave={handleSignatureCapture}
               onCancel={() => setShowSignaturePad(false)}
               saving={savingSignature}

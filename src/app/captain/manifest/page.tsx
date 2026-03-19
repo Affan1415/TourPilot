@@ -906,6 +906,7 @@ function CaptainManifestContent() {
               {showSignaturePad ? (
                 <SignaturePad
                   guestName={`${selectedGuest.guest.firstName} ${selectedGuest.guest.lastName}`}
+                  bookingId={selectedGuest.booking.bookingId}
                   onSave={handleSignatureCapture}
                   onCancel={() => setShowSignaturePad(false)}
                   saving={savingSignature}
