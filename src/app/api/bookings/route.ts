@@ -134,6 +134,7 @@ export async function POST(request: NextRequest) {
 
     // tours is a single object when using a foreign key relationship
     const tourData = availability.tours as unknown as {
+      id: string;
       name: string;
       max_capacity: number;
       meeting_point: string;
@@ -190,20 +191,42 @@ export async function POST(request: NextRequest) {
     }
 
     // 5. Create waivers for each guest (if tour requires waivers)
-    if (tourData?.requires_waiver) {
-      const { data: activeWaiver } = await adminClient
-        .from("waiver_templates")
-        .select("id")
-        .eq("is_active", true)
-        .single();
+    if (tourData?.requires_waiver && createdGuests) {
+      // First, check for tour-specific waivers in tour_waivers table
+      const { data: tourWaivers } = await adminClient
+        .from("tour_waivers")
+        .select("waiver_template_id")
+        .eq("tour_id", tourData.id);
 
-      if (activeWaiver && createdGuests) {
-        const waiverRecords = createdGuests.map((guest: any) => ({
-          booking_id: booking.id,
-          guest_id: guest.id,
-          waiver_template_id: activeWaiver.id,
-          status: "pending",
-        }));
+      let waiverTemplateIds: string[] = [];
+
+      if (tourWaivers && tourWaivers.length > 0) {
+        // Use tour-specific waivers
+        waiverTemplateIds = tourWaivers.map((tw: { waiver_template_id: string }) => tw.waiver_template_id);
+      } else {
+        // Fallback: get any active waiver template (backwards compatibility)
+        const { data: activeWaiver } = await adminClient
+          .from("waiver_templates")
+          .select("id")
+          .eq("is_active", true)
+          .limit(1)
+          .single();
+
+        if (activeWaiver) {
+          waiverTemplateIds = [activeWaiver.id];
+        }
+      }
+
+      // Create waiver records for each guest and each required waiver template
+      if (waiverTemplateIds.length > 0) {
+        const waiverRecords = createdGuests.flatMap((guest: any) =>
+          waiverTemplateIds.map((templateId) => ({
+            booking_id: booking.id,
+            guest_id: guest.id,
+            waiver_template_id: templateId,
+            status: "pending",
+          }))
+        );
 
         await adminClient.from("waivers").insert(waiverRecords);
       }
