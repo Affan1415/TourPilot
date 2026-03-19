@@ -45,6 +45,8 @@ import {
 import { format, subDays, parseISO } from "date-fns";
 import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
+import { useLocation } from "@/lib/location/context";
+import { MapPin } from "lucide-react";
 
 interface ChecklistCompletion {
   id: string;
@@ -77,6 +79,7 @@ interface ComplianceStats {
 }
 
 export default function ComplianceDashboard() {
+  const { selectedLocation } = useLocation();
   const [loading, setLoading] = useState(true);
   const [completions, setCompletions] = useState<ChecklistCompletion[]>([]);
   const [stats, setStats] = useState<ComplianceStats | null>(null);
@@ -164,7 +167,7 @@ export default function ComplianceDashboard() {
 
   useEffect(() => {
     fetchData();
-  }, [dateFilter]);
+  }, [dateFilter, selectedLocation]);
 
   const handleRefresh = () => {
     setRefreshing(true);
@@ -199,8 +202,15 @@ export default function ComplianceDashboard() {
             <Shield className="h-6 w-6 text-primary" />
             Safety Compliance
           </h1>
-          <p className="text-muted-foreground">
-            Monitor captain safety checklist compliance
+          <p className="text-muted-foreground flex items-center gap-2">
+            {selectedLocation ? (
+              <>
+                <MapPin className="h-4 w-4" />
+                {selectedLocation.name}
+              </>
+            ) : (
+              "Monitor captain safety checklist compliance"
+            )}
           </p>
         </div>
         <Button variant="outline" onClick={handleRefresh} disabled={refreshing}>

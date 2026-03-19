@@ -8,11 +8,11 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
-import { Ship, Mail, Lock, Eye, EyeOff, AlertCircle, Shield, Anchor, User } from "lucide-react";
+import { Ship, Mail, Lock, Eye, EyeOff, AlertCircle, Shield, Anchor, User, Building2, Monitor } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
 
-type LoginType = "admin" | "captain" | "customer" | null;
+type LoginType = "admin" | "location_manager" | "front_desk" | "captain" | "customer" | null;
 
 function LoginPageContent() {
   const router = useRouter();
@@ -31,6 +31,10 @@ function LoginPageContent() {
       setError("Authentication failed. Please try again.");
     } else if (errorParam === "no_admin_access") {
       setError("You don't have admin access. Please contact your administrator.");
+    } else if (errorParam === "no_location_manager_access") {
+      setError("You don't have location manager access. Please contact your administrator.");
+    } else if (errorParam === "no_front_desk_access") {
+      setError("You don't have front desk access. Please contact your administrator.");
     } else if (errorParam === "no_captain_access") {
       setError("You don't have captain access. Please contact your administrator.");
     }
@@ -56,17 +60,47 @@ function LoginPageContent() {
       if (data.user) {
         // Redirect based on selected login type
         if (loginType === "admin") {
-          // Verify user is staff
+          // Verify user is admin
           const { data: staffData } = await supabase
             .from('staff')
             .select('role, is_active')
             .eq('user_id', data.user.id)
             .single();
 
-          if (staffData && staffData.is_active && ['admin', 'manager', 'guide', 'front_desk'].includes(staffData.role)) {
+          if (staffData && staffData.is_active && staffData.role === 'admin') {
             router.push("/dashboard");
           } else {
             setError("You don't have admin access. Please contact your administrator.");
+            await supabase.auth.signOut();
+            return;
+          }
+        } else if (loginType === "location_manager") {
+          // Verify user is location manager
+          const { data: staffData } = await supabase
+            .from('staff')
+            .select('role, is_active')
+            .eq('user_id', data.user.id)
+            .single();
+
+          if (staffData && staffData.is_active && ['location_manager', 'manager'].includes(staffData.role)) {
+            router.push("/dashboard");
+          } else {
+            setError("You don't have location manager access. Please contact your administrator.");
+            await supabase.auth.signOut();
+            return;
+          }
+        } else if (loginType === "front_desk") {
+          // Verify user is front desk
+          const { data: staffData } = await supabase
+            .from('staff')
+            .select('role, is_active')
+            .eq('user_id', data.user.id)
+            .single();
+
+          if (staffData && staffData.is_active && staffData.role === 'front_desk') {
+            router.push("/dashboard");
+          } else {
+            setError("You don't have front desk access. Please contact your administrator.");
             await supabase.auth.signOut();
             return;
           }
@@ -145,19 +179,51 @@ function LoginPageContent() {
               </p>
             </div>
 
-            <div className="grid gap-4">
-              {/* Admin/Staff Option */}
+            <div className="grid gap-3">
+              {/* Admin Option */}
               <button
                 onClick={() => setLoginType("admin")}
-                className="flex items-center gap-4 p-4 rounded-xl border-2 border-transparent bg-muted/50 hover:border-primary hover:bg-primary/5 transition-all text-left"
+                className="flex items-center gap-4 p-4 rounded-xl border-2 border-transparent bg-muted/50 hover:border-red-500 hover:bg-red-50 transition-all text-left"
               >
-                <div className="h-12 w-12 rounded-xl bg-blue-100 flex items-center justify-center">
-                  <Shield className="h-6 w-6 text-blue-600" />
+                <div className="h-12 w-12 rounded-xl bg-red-100 flex items-center justify-center">
+                  <Shield className="h-6 w-6 text-red-600" />
                 </div>
                 <div>
-                  <p className="font-semibold">Admin / Staff</p>
+                  <p className="font-semibold">Admin</p>
                   <p className="text-sm text-muted-foreground">
-                    Manage tours, bookings, and customers
+                    Full system access and management
+                  </p>
+                </div>
+              </button>
+
+              {/* Location Manager Option */}
+              <button
+                onClick={() => setLoginType("location_manager")}
+                className="flex items-center gap-4 p-4 rounded-xl border-2 border-transparent bg-muted/50 hover:border-amber-500 hover:bg-amber-50 transition-all text-left"
+              >
+                <div className="h-12 w-12 rounded-xl bg-amber-100 flex items-center justify-center">
+                  <Building2 className="h-6 w-6 text-amber-600" />
+                </div>
+                <div>
+                  <p className="font-semibold">Location Manager</p>
+                  <p className="text-sm text-muted-foreground">
+                    Manage your location's tours and staff
+                  </p>
+                </div>
+              </button>
+
+              {/* Front Desk Option */}
+              <button
+                onClick={() => setLoginType("front_desk")}
+                className="flex items-center gap-4 p-4 rounded-xl border-2 border-transparent bg-muted/50 hover:border-emerald-500 hover:bg-emerald-50 transition-all text-left"
+              >
+                <div className="h-12 w-12 rounded-xl bg-emerald-100 flex items-center justify-center">
+                  <Monitor className="h-6 w-6 text-emerald-600" />
+                </div>
+                <div>
+                  <p className="font-semibold">Front Desk</p>
+                  <p className="text-sm text-muted-foreground">
+                    Handle bookings and customer check-ins
                   </p>
                 </div>
               </button>
@@ -165,10 +231,10 @@ function LoginPageContent() {
               {/* Captain Option */}
               <button
                 onClick={() => setLoginType("captain")}
-                className="flex items-center gap-4 p-4 rounded-xl border-2 border-transparent bg-muted/50 hover:border-indigo-500 hover:bg-indigo-50 transition-all text-left"
+                className="flex items-center gap-4 p-4 rounded-xl border-2 border-transparent bg-muted/50 hover:border-blue-500 hover:bg-blue-50 transition-all text-left"
               >
-                <div className="h-12 w-12 rounded-xl bg-indigo-100 flex items-center justify-center">
-                  <Anchor className="h-6 w-6 text-indigo-600" />
+                <div className="h-12 w-12 rounded-xl bg-blue-100 flex items-center justify-center">
+                  <Anchor className="h-6 w-6 text-blue-600" />
                 </div>
                 <div>
                   <p className="font-semibold">Captain</p>
@@ -181,10 +247,10 @@ function LoginPageContent() {
               {/* Customer Option */}
               <button
                 onClick={() => setLoginType("customer")}
-                className="flex items-center gap-4 p-4 rounded-xl border-2 border-transparent bg-muted/50 hover:border-green-500 hover:bg-green-50 transition-all text-left"
+                className="flex items-center gap-4 p-4 rounded-xl border-2 border-transparent bg-muted/50 hover:border-violet-500 hover:bg-violet-50 transition-all text-left"
               >
-                <div className="h-12 w-12 rounded-xl bg-green-100 flex items-center justify-center">
-                  <User className="h-6 w-6 text-green-600" />
+                <div className="h-12 w-12 rounded-xl bg-violet-100 flex items-center justify-center">
+                  <User className="h-6 w-6 text-violet-600" />
                 </div>
                 <div>
                   <p className="font-semibold">Customer</p>
@@ -214,21 +280,33 @@ function LoginPageContent() {
   // Login form
   const loginConfig = {
     admin: {
-      title: "Admin / Staff Login",
-      subtitle: "Sign in to manage your tours",
-      color: "blue",
+      title: "Admin Login",
+      subtitle: "Sign in with full system access",
+      color: "red",
       icon: Shield,
+    },
+    location_manager: {
+      title: "Location Manager Login",
+      subtitle: "Sign in to manage your location",
+      color: "amber",
+      icon: Building2,
+    },
+    front_desk: {
+      title: "Front Desk Login",
+      subtitle: "Sign in to handle bookings",
+      color: "emerald",
+      icon: Monitor,
     },
     captain: {
       title: "Captain Login",
       subtitle: "Sign in to view your assignments",
-      color: "indigo",
+      color: "blue",
       icon: Anchor,
     },
     customer: {
       title: "Customer Login",
       subtitle: "Sign in to view your bookings",
-      color: "green",
+      color: "violet",
       icon: User,
     },
   };
@@ -264,15 +342,19 @@ function LoginPageContent() {
           <div className="text-center mb-6">
             <div className={cn(
               "h-14 w-14 rounded-xl mx-auto mb-3 flex items-center justify-center",
+              config.color === "red" && "bg-red-100",
+              config.color === "amber" && "bg-amber-100",
+              config.color === "emerald" && "bg-emerald-100",
               config.color === "blue" && "bg-blue-100",
-              config.color === "indigo" && "bg-indigo-100",
-              config.color === "green" && "bg-green-100"
+              config.color === "violet" && "bg-violet-100"
             )}>
               <IconComponent className={cn(
                 "h-7 w-7",
+                config.color === "red" && "text-red-600",
+                config.color === "amber" && "text-amber-600",
+                config.color === "emerald" && "text-emerald-600",
                 config.color === "blue" && "text-blue-600",
-                config.color === "indigo" && "text-indigo-600",
-                config.color === "green" && "text-green-600"
+                config.color === "violet" && "text-violet-600"
               )} />
             </div>
             <h1 className="text-2xl font-bold">{config.title}</h1>
@@ -344,9 +426,11 @@ function LoginPageContent() {
               type="submit"
               className={cn(
                 "w-full border-0",
+                config.color === "red" && "bg-red-600 hover:bg-red-700",
+                config.color === "amber" && "bg-amber-600 hover:bg-amber-700",
+                config.color === "emerald" && "bg-emerald-600 hover:bg-emerald-700",
                 config.color === "blue" && "bg-blue-600 hover:bg-blue-700",
-                config.color === "indigo" && "bg-indigo-600 hover:bg-indigo-700",
-                config.color === "green" && "bg-green-600 hover:bg-green-700"
+                config.color === "violet" && "bg-violet-600 hover:bg-violet-700"
               )}
               disabled={loading}
             >

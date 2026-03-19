@@ -52,6 +52,8 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { createClient } from '@/lib/supabase/client';
+import { useLocation } from '@/lib/location/context';
+import { MapPin } from 'lucide-react';
 
 interface Tour {
   id: string;
@@ -96,6 +98,7 @@ interface WaiverRecord {
 }
 
 export default function WaiversPage() {
+  const { selectedLocation } = useLocation();
   const [templates, setTemplates] = useState<WaiverTemplate[]>([]);
   const [tours, setTours] = useState<Tour[]>([]);
   const [waiverRecords, setWaiverRecords] = useState<WaiverRecord[]>([]);
@@ -118,7 +121,7 @@ export default function WaiversPage() {
   // Load all data
   useEffect(() => {
     loadData();
-  }, []);
+  }, [selectedLocation]);
 
   const loadData = async () => {
     setLoading(true);
@@ -135,13 +138,40 @@ export default function WaiversPage() {
 
   const loadTemplates = async () => {
     try {
+      // First, fetch all templates
       const { data, error } = await supabase
         .from('waiver_templates')
         .select('*')
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      setTemplates(data || []);
+
+      // If a location is selected, filter templates that apply to tours in this location
+      if (selectedLocation?.id && data) {
+        // Get tour IDs for the selected location
+        const { data: locationTours } = await supabase
+          .from('tours')
+          .select('id')
+          .eq('location_id', selectedLocation.id);
+
+        const locationTourIds = new Set(locationTours?.map(t => t.id) || []);
+
+        // Filter templates:
+        // - Templates with null tour_ids (apply to all tours) are included
+        // - Templates with tour_ids that overlap with location tours are included
+        const filteredTemplates = data.filter(template => {
+          if (!template.tour_ids || template.tour_ids.length === 0) {
+            // Applies to all tours - include it
+            return true;
+          }
+          // Check if any of the template's tour_ids belong to this location
+          return template.tour_ids.some((tourId: string) => locationTourIds.has(tourId));
+        });
+
+        setTemplates(filteredTemplates);
+      } else {
+        setTemplates(data || []);
+      }
     } catch (error) {
       console.error('Error loading templates:', error);
       toast.error('Failed to load waiver templates');
@@ -151,11 +181,17 @@ export default function WaiversPage() {
   const loadTours = async () => {
     setLoadingTours(true);
     try {
-      const { data, error } = await supabase
+      let query = supabase
         .from('tours')
         .select('id, name, status')
         .eq('status', 'active')
         .order('name');
+
+      if (selectedLocation?.id) {
+        query = query.eq('location_id', selectedLocation.id);
+      }
+
+      const { data, error } = await query;
 
       if (error) throw error;
       setTours(data || []);
@@ -168,6 +204,7 @@ export default function WaiversPage() {
 
   const loadWaiverRecords = async () => {
     try {
+      // Include tour's location_id in the query for filtering
       const { data, error } = await supabase
         .from('waivers')
         .select(`
@@ -181,15 +218,17 @@ export default function WaiversPage() {
           booking:bookings(
             booking_reference,
             availability:availabilities(
-              tour:tours(name)
+              tour:tours(name, location_id)
             )
           )
         `)
         .order('created_at', { ascending: false })
-        .limit(50);
+        .limit(100);
 
       if (error) throw error;
-      const transformedData: WaiverRecord[] = (data || []).map((w: any) => ({
+
+      // Transform and filter by location if selected
+      let transformedData: WaiverRecord[] = (data || []).map((w: any) => ({
         id: w.id,
         booking_id: w.booking_id,
         status: w.status,
@@ -202,9 +241,19 @@ export default function WaiversPage() {
           availability: w.booking[0].availability?.[0] ? {
             tour: w.booking[0].availability[0].tour?.[0],
           } : undefined,
+          _location_id: w.booking[0].availability?.[0]?.tour?.[0]?.location_id,
         } : undefined,
       }));
-      setWaiverRecords(transformedData);
+
+      // Filter by location if one is selected
+      if (selectedLocation?.id) {
+        transformedData = transformedData.filter(record =>
+          (record.booking as any)?._location_id === selectedLocation.id
+        );
+      }
+
+      // Limit to 50 after filtering
+      setWaiverRecords(transformedData.slice(0, 50));
     } catch (error) {
       console.error('Error loading waiver records:', error);
     }
@@ -226,8 +275,17 @@ export default function WaiversPage() {
       return;
     }
 
+    // Validate tour selection if not applying to all
+    if (!newTemplate.applyToAll && newTemplate.tour_ids.length === 0) {
+      toast.error('Please select at least one tour or apply to all tours');
+      return;
+    }
+
     setSaving(true);
     try {
+      // Determine tour_ids to save
+      const tourIdsToSave = newTemplate.applyToAll ? null : newTemplate.tour_ids;
+
       const { data, error } = await supabase
         .from('waiver_templates')
         .insert({
@@ -235,7 +293,7 @@ export default function WaiversPage() {
           content: newTemplate.content,
           version: 1,
           is_active: true,
-          tour_ids: newTemplate.applyToAll ? null : newTemplate.tour_ids,
+          tour_ids: tourIdsToSave,
         })
         .select()
         .single();
@@ -245,7 +303,11 @@ export default function WaiversPage() {
       setTemplates([{ ...data, usage_count: 0, signed_count: 0 }, ...templates]);
       setNewTemplate({ name: '', content: '', tour_ids: [], applyToAll: true });
       setIsCreateOpen(false);
-      toast.success('Waiver template created');
+      toast.success('Waiver template created', {
+        description: tourIdsToSave
+          ? `Assigned to ${tourIdsToSave.length} tour(s)`
+          : 'Applies to all tours'
+      });
     } catch (error) {
       console.error('Error creating template:', error);
       toast.error('Failed to create template');
@@ -381,7 +443,16 @@ export default function WaiversPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold">Waivers</h1>
-          <p className="text-muted-foreground">Manage waiver templates and track signatures</p>
+          <p className="text-muted-foreground flex items-center gap-2">
+            {selectedLocation ? (
+              <>
+                <MapPin className="h-4 w-4" />
+                {selectedLocation.name}
+              </>
+            ) : (
+              "Manage waiver templates and track signatures"
+            )}
+          </p>
         </div>
         <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
           <DialogTrigger asChild>

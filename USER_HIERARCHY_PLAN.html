@@ -1,0 +1,993 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>User Hierarchy & Login System Plan - TourPilot</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+            color: #e8e8e8;
+            min-height: 100vh;
+            padding: 40px 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            text-align: center;
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            background: linear-gradient(90deg, #00d4ff, #7b2cbf);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .subtitle {
+            text-align: center;
+            color: #888;
+            margin-bottom: 50px;
+            font-size: 1.1rem;
+        }
+
+        /* Hierarchy Section */
+        .hierarchy-section {
+            background: rgba(255,255,255,0.05);
+            border-radius: 20px;
+            padding: 40px;
+            margin-bottom: 40px;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .section-title {
+            font-size: 1.8rem;
+            margin-bottom: 30px;
+            color: #00d4ff;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .section-title::before {
+            content: '';
+            width: 4px;
+            height: 30px;
+            background: linear-gradient(180deg, #00d4ff, #7b2cbf);
+            border-radius: 2px;
+        }
+
+        /* Org Chart */
+        .org-chart {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .level {
+            display: flex;
+            justify-content: center;
+            gap: 30px;
+            flex-wrap: wrap;
+            position: relative;
+        }
+
+        .connector {
+            position: absolute;
+            top: -20px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 2px;
+            height: 20px;
+            background: #00d4ff;
+        }
+
+        .horizontal-line {
+            width: 100%;
+            height: 40px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .horizontal-line::before {
+            content: '';
+            width: 2px;
+            height: 40px;
+            background: linear-gradient(180deg, #00d4ff, #7b2cbf);
+        }
+
+        .role-card {
+            background: linear-gradient(145deg, rgba(255,255,255,0.1), rgba(255,255,255,0.05));
+            border-radius: 15px;
+            padding: 25px 35px;
+            text-align: center;
+            border: 2px solid transparent;
+            transition: all 0.3s ease;
+            min-width: 200px;
+        }
+
+        .role-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 40px rgba(0,212,255,0.2);
+        }
+
+        .role-card.admin {
+            border-color: #ff6b6b;
+            background: linear-gradient(145deg, rgba(255,107,107,0.2), rgba(255,107,107,0.05));
+        }
+
+        .role-card.location-manager {
+            border-color: #ffd93d;
+            background: linear-gradient(145deg, rgba(255,217,61,0.2), rgba(255,217,61,0.05));
+        }
+
+        .role-card.front-desk {
+            border-color: #6bcb77;
+            background: linear-gradient(145deg, rgba(107,203,119,0.2), rgba(107,203,119,0.05));
+        }
+
+        .role-card.captain {
+            border-color: #4d96ff;
+            background: linear-gradient(145deg, rgba(77,150,255,0.2), rgba(77,150,255,0.05));
+        }
+
+        .role-icon {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+        }
+
+        .role-name {
+            font-size: 1.2rem;
+            font-weight: 600;
+            margin-bottom: 5px;
+        }
+
+        .role-db-value {
+            font-size: 0.85rem;
+            color: #888;
+            font-family: 'Courier New', monospace;
+            background: rgba(0,0,0,0.3);
+            padding: 3px 10px;
+            border-radius: 5px;
+            display: inline-block;
+        }
+
+        /* Branch Lines */
+        .branch-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            width: 100%;
+        }
+
+        .branch-line {
+            width: 300px;
+            height: 2px;
+            background: linear-gradient(90deg, #ffd93d, #ffd93d);
+            position: relative;
+        }
+
+        .branch-line::before,
+        .branch-line::after {
+            content: '';
+            position: absolute;
+            width: 2px;
+            height: 30px;
+            background: #ffd93d;
+            bottom: 0;
+        }
+
+        .branch-line::before {
+            left: 0;
+        }
+
+        .branch-line::after {
+            right: 0;
+        }
+
+        .vertical-connector {
+            width: 2px;
+            height: 30px;
+            background: linear-gradient(180deg, #ffd93d, transparent);
+        }
+
+        /* Role Details Table */
+        .role-details {
+            margin-top: 40px;
+        }
+
+        .details-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+
+        .details-table th,
+        .details-table td {
+            padding: 15px 20px;
+            text-align: left;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .details-table th {
+            background: rgba(0,212,255,0.1);
+            color: #00d4ff;
+            font-weight: 600;
+        }
+
+        .details-table tr:hover {
+            background: rgba(255,255,255,0.03);
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 500;
+        }
+
+        .badge-admin { background: rgba(255,107,107,0.2); color: #ff6b6b; }
+        .badge-lm { background: rgba(255,217,61,0.2); color: #ffd93d; }
+        .badge-fd { background: rgba(107,203,119,0.2); color: #6bcb77; }
+        .badge-captain { background: rgba(77,150,255,0.2); color: #4d96ff; }
+
+        /* Login Flow Section */
+        .login-section {
+            background: rgba(255,255,255,0.05);
+            border-radius: 20px;
+            padding: 40px;
+            margin-bottom: 40px;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .login-cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 25px;
+            margin-top: 30px;
+        }
+
+        .login-card {
+            background: linear-gradient(145deg, rgba(255,255,255,0.08), rgba(255,255,255,0.02));
+            border-radius: 15px;
+            padding: 30px;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .login-card h3 {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 20px;
+            font-size: 1.3rem;
+        }
+
+        .login-card .route {
+            font-family: 'Courier New', monospace;
+            background: rgba(0,0,0,0.3);
+            padding: 8px 15px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            color: #00d4ff;
+        }
+
+        .login-card ul {
+            list-style: none;
+            margin-top: 15px;
+        }
+
+        .login-card li {
+            padding: 8px 0;
+            padding-left: 25px;
+            position: relative;
+            color: #ccc;
+        }
+
+        .login-card li::before {
+            content: '>';
+            position: absolute;
+            left: 0;
+            color: #00d4ff;
+        }
+
+        /* Database Schema Section */
+        .db-section {
+            background: rgba(255,255,255,0.05);
+            border-radius: 20px;
+            padding: 40px;
+            margin-bottom: 40px;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .code-block {
+            background: #0d1117;
+            border-radius: 10px;
+            padding: 25px;
+            font-family: 'Courier New', monospace;
+            overflow-x: auto;
+            border: 1px solid #30363d;
+            margin-top: 20px;
+        }
+
+        .code-block .keyword { color: #ff7b72; }
+        .code-block .type { color: #79c0ff; }
+        .code-block .string { color: #a5d6ff; }
+        .code-block .comment { color: #8b949e; }
+        .code-block .new { color: #7ee787; background: rgba(126,231,135,0.1); padding: 0 4px; }
+
+        /* Implementation Checklist */
+        .checklist-section {
+            background: rgba(255,255,255,0.05);
+            border-radius: 20px;
+            padding: 40px;
+            margin-bottom: 40px;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .checklist {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 20px;
+            margin-top: 25px;
+        }
+
+        .checklist-item {
+            background: rgba(0,0,0,0.2);
+            border-radius: 10px;
+            padding: 20px;
+            display: flex;
+            align-items: flex-start;
+            gap: 15px;
+        }
+
+        .checklist-num {
+            background: linear-gradient(135deg, #00d4ff, #7b2cbf);
+            color: #fff;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            flex-shrink: 0;
+        }
+
+        .checklist-content h4 {
+            margin-bottom: 5px;
+            color: #fff;
+        }
+
+        .checklist-content p {
+            color: #888;
+            font-size: 0.9rem;
+        }
+
+        /* Permissions Matrix */
+        .permissions-matrix {
+            overflow-x: auto;
+            margin-top: 20px;
+        }
+
+        .permissions-table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 800px;
+        }
+
+        .permissions-table th,
+        .permissions-table td {
+            padding: 12px 15px;
+            text-align: center;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .permissions-table th {
+            background: rgba(0,212,255,0.1);
+            color: #00d4ff;
+        }
+
+        .permissions-table th:first-child,
+        .permissions-table td:first-child {
+            text-align: left;
+            background: rgba(0,0,0,0.2);
+        }
+
+        .check { color: #6bcb77; font-size: 1.2rem; }
+        .cross { color: #ff6b6b; font-size: 1.2rem; }
+        .partial { color: #ffd93d; font-size: 1.2rem; }
+
+        /* Flow Diagram */
+        .flow-diagram {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 15px;
+            flex-wrap: wrap;
+            margin: 30px 0;
+            padding: 30px;
+            background: rgba(0,0,0,0.2);
+            border-radius: 15px;
+        }
+
+        .flow-step {
+            background: linear-gradient(145deg, rgba(255,255,255,0.1), rgba(255,255,255,0.05));
+            padding: 15px 25px;
+            border-radius: 10px;
+            text-align: center;
+            min-width: 120px;
+        }
+
+        .flow-arrow {
+            color: #00d4ff;
+            font-size: 1.5rem;
+        }
+
+        /* Footer */
+        .footer {
+            text-align: center;
+            padding: 30px;
+            color: #666;
+            font-size: 0.9rem;
+        }
+
+        /* Current vs New comparison */
+        .comparison {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            margin-top: 25px;
+        }
+
+        .comparison-box {
+            background: rgba(0,0,0,0.2);
+            border-radius: 15px;
+            padding: 25px;
+        }
+
+        .comparison-box h4 {
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .comparison-box.current h4 {
+            color: #888;
+        }
+
+        .comparison-box.new h4 {
+            color: #7ee787;
+        }
+
+        .comparison-box ul {
+            list-style: none;
+        }
+
+        .comparison-box li {
+            padding: 8px 0;
+            padding-left: 20px;
+            position: relative;
+        }
+
+        .comparison-box.current li::before {
+            content: '-';
+            position: absolute;
+            left: 0;
+            color: #888;
+        }
+
+        .comparison-box.new li::before {
+            content: '+';
+            position: absolute;
+            left: 0;
+            color: #7ee787;
+        }
+
+        @media (max-width: 768px) {
+            .comparison {
+                grid-template-columns: 1fr;
+            }
+
+            h1 {
+                font-size: 1.8rem;
+            }
+
+            .role-card {
+                min-width: 150px;
+                padding: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>TourPilot User Hierarchy & Authentication Plan</h1>
+        <p class="subtitle">Complete plan for implementing the organizational hierarchy with role-based login</p>
+
+        <!-- SECTION 1: Organizational Hierarchy -->
+        <div class="hierarchy-section">
+            <h2 class="section-title">Organizational Hierarchy</h2>
+
+            <div class="org-chart">
+                <!-- Level 1: Admin -->
+                <div class="level">
+                    <div class="role-card admin">
+                        <div class="role-icon">&#128081;</div>
+                        <div class="role-name">Admin</div>
+                        <div class="role-db-value">role: 'admin'</div>
+                    </div>
+                </div>
+
+                <!-- Connector -->
+                <div class="horizontal-line"></div>
+
+                <!-- Level 2: Location Manager -->
+                <div class="level">
+                    <div class="role-card location-manager">
+                        <div class="role-icon">&#127970;</div>
+                        <div class="role-name">Location Manager</div>
+                        <div class="role-db-value">role: 'location_manager'</div>
+                    </div>
+                </div>
+
+                <!-- Branch to Front Desk & Captain -->
+                <div class="branch-container">
+                    <div class="vertical-connector"></div>
+                    <div class="branch-line"></div>
+                </div>
+
+                <!-- Level 3: Front Desk & Captain -->
+                <div class="level" style="gap: 100px;">
+                    <div class="role-card front-desk">
+                        <div class="role-icon">&#128187;</div>
+                        <div class="role-name">Front Desk Manager</div>
+                        <div class="role-db-value">role: 'front_desk'</div>
+                    </div>
+                    <div class="role-card captain">
+                        <div class="role-icon">&#9875;</div>
+                        <div class="role-name">Captain</div>
+                        <div class="role-db-value">role: 'captain'</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Role Details Table -->
+            <div class="role-details">
+                <h3 style="color: #00d4ff; margin-bottom: 15px;">Role Definitions & Responsibilities</h3>
+                <table class="details-table">
+                    <thead>
+                        <tr>
+                            <th>Role</th>
+                            <th>DB Value</th>
+                            <th>Reports To</th>
+                            <th>Primary Responsibilities</th>
+                            <th>Dashboard Access</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><span class="badge badge-admin">Admin</span></td>
+                            <td><code>admin</code></td>
+                            <td>None (Top Level)</td>
+                            <td>Full system control, manage all locations, staff, settings</td>
+                            <td>/dashboard (Full Access)</td>
+                        </tr>
+                        <tr>
+                            <td><span class="badge badge-lm">Location Manager</span></td>
+                            <td><code>location_manager</code></td>
+                            <td>Admin</td>
+                            <td>Manage assigned location, oversee front desk & captains, view reports</td>
+                            <td>/dashboard (Location Scoped)</td>
+                        </tr>
+                        <tr>
+                            <td><span class="badge badge-fd">Front Desk Manager</span></td>
+                            <td><code>front_desk</code></td>
+                            <td>Location Manager</td>
+                            <td>Create bookings, manage customers, handle check-ins</td>
+                            <td>/dashboard (Limited)</td>
+                        </tr>
+                        <tr>
+                            <td><span class="badge badge-captain">Captain</span></td>
+                            <td><code>captain</code></td>
+                            <td>Location Manager</td>
+                            <td>View assigned trips, check-in guests, manage trip logs</td>
+                            <td>/captain</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- SECTION 2: Current vs New Roles -->
+        <div class="login-section">
+            <h2 class="section-title">Role Changes Required</h2>
+
+            <div class="comparison">
+                <div class="comparison-box current">
+                    <h4>Current Roles in System</h4>
+                    <ul>
+                        <li><code>admin</code> - Full access</li>
+                        <li><code>manager</code> - Similar to admin</li>
+                        <li><code>captain</code> - Trip management</li>
+                        <li><code>guide</code> - View bookings</li>
+                        <li><code>front_desk</code> - Booking creation</li>
+                    </ul>
+                </div>
+                <div class="comparison-box new">
+                    <h4>New Hierarchy Roles (4 Total)</h4>
+                    <ul>
+                        <li><code>admin</code> - Keep as-is (Top level)</li>
+                        <li><code>location_manager</code> - Rename from 'manager' + location scoping</li>
+                        <li><code>front_desk</code> - Keep as-is (Reports to LM)</li>
+                        <li><code>captain</code> - Keep as-is (Reports to LM)</li>
+                        <li><code>guide</code> - <strong>REMOVED</strong></li>
+                        <li><code>location_id</code> - New column for multi-location support</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- SECTION 3: Login Flow Design -->
+        <div class="login-section">
+            <h2 class="section-title">Login Page Role Selection (5 Options)</h2>
+            <p style="color: #888; margin-bottom: 20px;">Users select their role type on the login page. Server validates the role after authentication.</p>
+
+            <div class="login-cards">
+                <div class="login-card">
+                    <h3><span style="color: #ff6b6b;">&#128081;</span> Admin</h3>
+                    <div class="route">LoginType: "admin"</div>
+                    <p>Full system administrators with unrestricted access.</p>
+                    <ul>
+                        <li>Validates: role = 'admin'</li>
+                        <li>Redirects to /dashboard</li>
+                        <li>Full access to all features</li>
+                    </ul>
+                </div>
+
+                <div class="login-card">
+                    <h3><span style="color: #ffd93d;">&#127970;</span> Location Manager</h3>
+                    <div class="route">LoginType: "location_manager"</div>
+                    <p>Managers responsible for specific locations.</p>
+                    <ul>
+                        <li>Validates: role = 'location_manager'</li>
+                        <li>Redirects to /dashboard</li>
+                        <li>Scoped to their location</li>
+                    </ul>
+                </div>
+
+                <div class="login-card">
+                    <h3><span style="color: #6bcb77;">&#128187;</span> Front Desk</h3>
+                    <div class="route">LoginType: "front_desk"</div>
+                    <p>Front desk staff handling bookings and customers.</p>
+                    <ul>
+                        <li>Validates: role = 'front_desk'</li>
+                        <li>Redirects to /dashboard</li>
+                        <li>Bookings & customers only</li>
+                    </ul>
+                </div>
+
+                <div class="login-card">
+                    <h3><span style="color: #4d96ff;">&#9875;</span> Captain</h3>
+                    <div class="route">LoginType: "captain"</div>
+                    <p>Boat captains managing their assigned trips.</p>
+                    <ul>
+                        <li>Validates: role = 'captain'</li>
+                        <li>Redirects to /captain</li>
+                        <li>Trip check-ins & logs</li>
+                    </ul>
+                </div>
+
+                <div class="login-card">
+                    <h3><span style="color: #9b59b6;">&#128100;</span> Customer</h3>
+                    <div class="route">LoginType: "customer"</div>
+                    <p>Customers viewing their bookings.</p>
+                    <ul>
+                        <li>Validates: customers table</li>
+                        <li>Redirects to /account</li>
+                        <li>View bookings & waivers</li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- Login Flow Diagram -->
+            <h3 style="color: #00d4ff; margin: 30px 0 15px;">Authentication Flow</h3>
+            <div class="flow-diagram">
+                <div class="flow-step">User visits<br>/login</div>
+                <div class="flow-arrow">→</div>
+                <div class="flow-step">Selects 1 of 5<br>Role Options</div>
+                <div class="flow-arrow">→</div>
+                <div class="flow-step">Email/Password<br>or Google OAuth</div>
+                <div class="flow-arrow">→</div>
+                <div class="flow-step">Query staff table<br>Validate role match</div>
+                <div class="flow-arrow">→</div>
+                <div class="flow-step">Redirect based<br>on role</div>
+            </div>
+
+            <!-- Code Change Preview -->
+            <h3 style="color: #00d4ff; margin: 30px 0 15px;">Login Page Code Changes</h3>
+            <div class="code-block">
+<span class="comment">// src/app/(auth)/login/page.tsx</span>
+
+<span class="comment">// BEFORE:</span>
+<span class="keyword">type</span> LoginType = <span class="string">"admin"</span> | <span class="string">"captain"</span> | <span class="string">"customer"</span> | <span class="type">null</span>;
+
+<span class="comment">// AFTER:</span>
+<span class="keyword">type</span> LoginType = <span class="string">"admin"</span> | <span class="new">"location_manager"</span> | <span class="new">"front_desk"</span> | <span class="string">"captain"</span> | <span class="string">"customer"</span> | <span class="type">null</span>;
+
+<span class="comment">// Add new role buttons in selection screen</span>
+<span class="comment">// Update handleLogin to validate each role type</span>
+            </div>
+        </div>
+
+        <!-- SECTION 4: Database Changes -->
+        <div class="db-section">
+            <h2 class="section-title">Database Schema Changes</h2>
+
+            <h3 style="margin-bottom: 10px;">1. Update Role Enum in Staff Table</h3>
+            <div class="code-block">
+<span class="comment">-- Migration: Update staff role constraint</span>
+<span class="keyword">ALTER TABLE</span> staff
+<span class="keyword">DROP CONSTRAINT</span> staff_role_check;
+
+<span class="keyword">ALTER TABLE</span> staff
+<span class="keyword">ADD CONSTRAINT</span> staff_role_check
+<span class="keyword">CHECK</span> (role <span class="keyword">IN</span> (
+    <span class="string">'admin'</span>,
+    <span class="new">'location_manager'</span>,  <span class="comment">-- NEW: replaces 'manager'</span>
+    <span class="string">'captain'</span>,
+    <span class="string">'front_desk'</span>
+));
+
+<span class="comment">-- Migrate existing managers to location_manager</span>
+<span class="keyword">UPDATE</span> staff
+<span class="keyword">SET</span> role = <span class="string">'location_manager'</span>
+<span class="keyword">WHERE</span> role = <span class="string">'manager'</span>;
+
+<span class="comment">-- Remove guide role</span>
+<span class="keyword">DELETE FROM</span> staff <span class="keyword">WHERE</span> role = <span class="string">'guide'</span>;
+            </div>
+
+            <h3 style="margin: 30px 0 10px;">2. Create Locations Table & Add Location Scoping</h3>
+            <div class="code-block">
+<span class="comment">-- Create locations table for multi-location support</span>
+<span class="keyword">CREATE TABLE</span> locations (
+    id <span class="type">UUID</span> <span class="keyword">PRIMARY KEY DEFAULT</span> gen_random_uuid(),
+    name <span class="type">VARCHAR(255)</span> <span class="keyword">NOT NULL</span>,
+    address <span class="type">TEXT</span>,
+    is_active <span class="type">BOOLEAN</span> <span class="keyword">DEFAULT</span> <span class="string">true</span>,
+    created_at <span class="type">TIMESTAMPTZ</span> <span class="keyword">DEFAULT</span> NOW()
+);
+
+<span class="comment">-- Add location_id to staff for scoping</span>
+<span class="keyword">ALTER TABLE</span> staff
+<span class="keyword">ADD COLUMN</span> <span class="new">location_id</span> <span class="type">UUID</span> <span class="keyword">REFERENCES</span> locations(id);
+
+<span class="comment">-- Location managers can only see their location's data</span>
+<span class="comment">-- Front desk & captains inherit location from their manager</span>
+            </div>
+
+            <h3 style="margin: 30px 0 10px;">3. Add Manager Assignment for Hierarchy</h3>
+            <div class="code-block">
+<span class="comment">-- Add reports_to column for hierarchy</span>
+<span class="keyword">ALTER TABLE</span> staff
+<span class="keyword">ADD COLUMN</span> <span class="new">reports_to</span> <span class="type">UUID</span> <span class="keyword">REFERENCES</span> staff(id);
+
+<span class="comment">-- Front desk and captains report to a location_manager</span>
+<span class="comment">-- Location managers report to admin (or NULL)</span>
+            </div>
+        </div>
+
+        <!-- SECTION 5: Permissions Matrix -->
+        <div class="checklist-section">
+            <h2 class="section-title">Permissions Matrix</h2>
+
+            <div class="permissions-matrix">
+                <table class="permissions-table">
+                    <thead>
+                        <tr>
+                            <th>Feature / Route</th>
+                            <th>Admin</th>
+                            <th>Location Manager</th>
+                            <th>Front Desk</th>
+                            <th>Captain</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>/dashboard</td>
+                            <td><span class="check">✓</span></td>
+                            <td><span class="check">✓</span></td>
+                            <td><span class="check">✓</span></td>
+                            <td><span class="cross">✗</span></td>
+                        </tr>
+                        <tr>
+                            <td>/dashboard/tours</td>
+                            <td><span class="check">✓</span></td>
+                            <td><span class="check">✓</span></td>
+                            <td><span class="cross">✗</span></td>
+                            <td><span class="cross">✗</span></td>
+                        </tr>
+                        <tr>
+                            <td>/dashboard/staff</td>
+                            <td><span class="check">✓</span></td>
+                            <td><span class="partial">◐</span> (Own team only)</td>
+                            <td><span class="cross">✗</span></td>
+                            <td><span class="cross">✗</span></td>
+                        </tr>
+                        <tr>
+                            <td>/dashboard/bookings</td>
+                            <td><span class="check">✓</span></td>
+                            <td><span class="check">✓</span></td>
+                            <td><span class="check">✓</span></td>
+                            <td><span class="cross">✗</span></td>
+                        </tr>
+                        <tr>
+                            <td>/dashboard/customers</td>
+                            <td><span class="check">✓</span></td>
+                            <td><span class="check">✓</span></td>
+                            <td><span class="check">✓</span></td>
+                            <td><span class="cross">✗</span></td>
+                        </tr>
+                        <tr>
+                            <td>/dashboard/settings</td>
+                            <td><span class="check">✓</span></td>
+                            <td><span class="cross">✗</span></td>
+                            <td><span class="cross">✗</span></td>
+                            <td><span class="cross">✗</span></td>
+                        </tr>
+                        <tr>
+                            <td>/dashboard/manifest</td>
+                            <td><span class="check">✓</span></td>
+                            <td><span class="check">✓</span></td>
+                            <td><span class="partial">◐</span> (View only)</td>
+                            <td><span class="cross">✗</span></td>
+                        </tr>
+                        <tr>
+                            <td>/captain</td>
+                            <td><span class="cross">✗</span></td>
+                            <td><span class="cross">✗</span></td>
+                            <td><span class="cross">✗</span></td>
+                            <td><span class="check">✓</span></td>
+                        </tr>
+                        <tr>
+                            <td>Create Staff</td>
+                            <td><span class="check">✓</span></td>
+                            <td><span class="partial">◐</span> (FD & Captains only)</td>
+                            <td><span class="cross">✗</span></td>
+                            <td><span class="cross">✗</span></td>
+                        </tr>
+                        <tr>
+                            <td>View Reports</td>
+                            <td><span class="check">✓</span></td>
+                            <td><span class="partial">◐</span> (Location only)</td>
+                            <td><span class="cross">✗</span></td>
+                            <td><span class="cross">✗</span></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <p style="margin-top: 15px; color: #888; font-size: 0.9rem;">
+                <span class="check">✓</span> = Full Access &nbsp;&nbsp;
+                <span class="partial">◐</span> = Partial/Scoped Access &nbsp;&nbsp;
+                <span class="cross">✗</span> = No Access
+            </p>
+        </div>
+
+        <!-- SECTION 6: Implementation Checklist -->
+        <div class="checklist-section">
+            <h2 class="section-title">Implementation Checklist</h2>
+
+            <div class="checklist">
+                <div class="checklist-item">
+                    <div class="checklist-num">1</div>
+                    <div class="checklist-content">
+                        <h4>Update Role Definitions</h4>
+                        <p>Modify src/lib/auth/roles.ts to add 'location_manager' and update role arrays</p>
+                    </div>
+                </div>
+
+                <div class="checklist-item">
+                    <div class="checklist-num">2</div>
+                    <div class="checklist-content">
+                        <h4>Create Database Migration</h4>
+                        <p>Add migration to update staff role constraint and add reports_to column</p>
+                    </div>
+                </div>
+
+                <div class="checklist-item">
+                    <div class="checklist-num">3</div>
+                    <div class="checklist-content">
+                        <h4>Update Middleware</h4>
+                        <p>Modify src/middleware.ts route permissions for location_manager role</p>
+                    </div>
+                </div>
+
+                <div class="checklist-item">
+                    <div class="checklist-num">4</div>
+                    <div class="checklist-content">
+                        <h4>Update Login UI</h4>
+                        <p>Modify login page to show all 4 role types clearly in selection UI</p>
+                    </div>
+                </div>
+
+                <div class="checklist-item">
+                    <div class="checklist-num">5</div>
+                    <div class="checklist-content">
+                        <h4>Update Login Validation</h4>
+                        <p>Ensure handleAdminLogin validates 'location_manager' role</p>
+                    </div>
+                </div>
+
+                <div class="checklist-item">
+                    <div class="checklist-num">6</div>
+                    <div class="checklist-content">
+                        <h4>Update RLS Policies</h4>
+                        <p>Add location_manager to is_admin_or_manager() function and policies</p>
+                    </div>
+                </div>
+
+                <div class="checklist-item">
+                    <div class="checklist-num">7</div>
+                    <div class="checklist-content">
+                        <h4>Update Staff Management UI</h4>
+                        <p>Add location_manager as selectable role when creating/editing staff</p>
+                    </div>
+                </div>
+
+                <div class="checklist-item">
+                    <div class="checklist-num">8</div>
+                    <div class="checklist-content">
+                        <h4>Add Hierarchy Display</h4>
+                        <p>Show reporting structure in staff list and detail views</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- SECTION 7: Files to Modify -->
+        <div class="db-section">
+            <h2 class="section-title">Files to Modify</h2>
+
+            <div class="code-block">
+<span class="comment"># Core Auth Files</span>
+src/lib/auth/roles.ts              <span class="comment"># Add location_manager role</span>
+src/lib/auth/get-user-role.ts      <span class="comment"># Update role checks</span>
+src/lib/auth/api-auth.ts           <span class="comment"># Update API auth helpers</span>
+
+<span class="comment"># Login Pages</span>
+src/app/(auth)/login/page.tsx      <span class="comment"># Update role selection UI</span>
+
+<span class="comment"># Middleware</span>
+src/middleware.ts                   <span class="comment"># Update route permissions</span>
+
+<span class="comment"># Database</span>
+supabase/migrations/XXX_hierarchy.sql  <span class="comment"># New migration file</span>
+
+<span class="comment"># Staff Management</span>
+src/app/dashboard/staff/...         <span class="comment"># Update role options</span>
+
+<span class="comment"># RLS Policies</span>
+supabase/migrations/001_role_based_access.sql <span class="comment"># Update functions</span>
+            </div>
+        </div>
+
+        <div class="footer">
+            <p>TourPilot User Hierarchy Plan | Generated for implementation review</p>
+        </div>
+    </div>
+</body>
+</html>

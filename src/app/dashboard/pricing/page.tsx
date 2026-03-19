@@ -1,6 +1,7 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useLocation } from '@/lib/location/context';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -59,6 +60,7 @@ import {
   Sun,
   Moon,
   Calendar as CalendarDays,
+  MapPin,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
@@ -310,6 +312,7 @@ const ruleTypeLabels: Record<string, string> = {
 };
 
 export default function PricingPage() {
+  const { selectedLocation } = useLocation();
   const [pricingRules, setPricingRules] = useState<PricingRule[]>(mockPricingRules);
   const [promoCodes, setPromoCodes] = useState<PromoCode[]>(mockPromoCodes);
   const [isAddRuleOpen, setIsAddRuleOpen] = useState(false);
@@ -438,7 +441,16 @@ export default function PricingPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold">Pricing Rules</h1>
-          <p className="text-muted-foreground">Configure dynamic pricing and promotional codes</p>
+          <p className="text-muted-foreground flex items-center gap-2">
+            {selectedLocation ? (
+              <>
+                <MapPin className="h-4 w-4" />
+                {selectedLocation.name}
+              </>
+            ) : (
+              "Configure dynamic pricing and promotional codes"
+            )}
+          </p>
         </div>
       </div>
 

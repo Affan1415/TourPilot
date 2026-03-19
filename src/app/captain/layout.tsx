@@ -38,8 +38,6 @@ import type { User as SupabaseUser } from "@supabase/supabase-js";
 
 const navigation = [
   { name: "My Tours", href: "/captain", icon: LayoutDashboard },
-  { name: "Checklist", href: "/captain/checklist", icon: Shield },
-  { name: "Manifest", href: "/captain/manifest", icon: ClipboardList },
   { name: "Trip Tracker", href: "/captain/trip", icon: Navigation },
   { name: "Weather", href: "/captain/weather", icon: Cloud },
   { name: "Messages", href: "/captain/messages", icon: MessageSquare },

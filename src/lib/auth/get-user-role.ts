@@ -68,13 +68,25 @@ export async function requireRole(allowedRoles: UserRole[]): Promise<UserProfile
 }
 
 export async function requireAdmin(): Promise<UserProfile> {
-  return requireRole(['admin', 'manager']);
+  return requireRole(['admin']);
+}
+
+export async function requireAdminOrManager(): Promise<UserProfile> {
+  return requireRole(['admin', 'location_manager']);
 }
 
 export async function requireStaff(): Promise<UserProfile> {
-  return requireRole(['admin', 'manager', 'captain', 'guide', 'front_desk']);
+  return requireRole(['admin', 'location_manager', 'captain', 'front_desk']);
 }
 
 export async function requireCaptain(): Promise<UserProfile> {
   return requireRole(['captain']);
+}
+
+export async function requireLocationManager(): Promise<UserProfile> {
+  return requireRole(['location_manager']);
+}
+
+export async function requireFrontDesk(): Promise<UserProfile> {
+  return requireRole(['front_desk']);
 }

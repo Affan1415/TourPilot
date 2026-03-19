@@ -41,7 +41,6 @@ import {
   Ship,
   Anchor,
   MapPin,
-  List,
   Grid3X3,
   CalendarDays,
   Eye,
@@ -63,6 +62,7 @@ import {
 } from "date-fns";
 import { cn } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/client";
+import { useLocation } from "@/lib/location/context";
 
 interface Tour {
   id: string;
@@ -95,7 +95,7 @@ interface Availability {
   staffName?: string;
 }
 
-type ViewMode = "week" | "day" | "agenda";
+type ViewMode = "week" | "day";
 
 const timeSlots = [
   "06:00", "07:00", "08:00", "09:00", "10:00", "11:00",
@@ -113,16 +113,17 @@ const colorPalette = [
 ];
 
 export default function CalendarPage() {
+  const { selectedLocation: globalLocation } = useLocation();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [currentWeek, setCurrentWeek] = useState(startOfWeek(new Date(), { weekStartsOn: 1 }));
   const [selectedDay, setSelectedDay] = useState(new Date());
   const [viewMode, setViewMode] = useState<ViewMode>("week");
 
-  // Filters
+  // Filters (local filters within the selected global location)
   const [selectedTour, setSelectedTour] = useState("all");
   const [selectedBoat, setSelectedBoat] = useState("all");
-  const [selectedLocation, setSelectedLocation] = useState("all");
+  const [selectedMeetingPoint, setSelectedMeetingPoint] = useState("all");
   const [filtersOpen, setFiltersOpen] = useState(false);
 
   // Data
@@ -131,28 +132,28 @@ export default function CalendarPage() {
   const [availabilities, setAvailabilities] = useState<Availability[]>([]);
   const [selectedSlot, setSelectedSlot] = useState<Availability | null>(null);
 
-  // Derived data
-  const locations = useMemo(() => {
-    const locs = [...new Set(tours.map(t => t.location).filter(Boolean))];
-    return locs.sort();
+  // Derived data - meeting points from tours (local filter within location)
+  const meetingPoints = useMemo(() => {
+    const points = [...new Set(tours.map(t => t.location).filter(Boolean))];
+    return points.sort();
   }, [tours]);
 
   const activeFilterCount = useMemo(() => {
     let count = 0;
     if (selectedTour !== "all") count++;
     if (selectedBoat !== "all") count++;
-    if (selectedLocation !== "all") count++;
+    if (selectedMeetingPoint !== "all") count++;
     return count;
-  }, [selectedTour, selectedBoat, selectedLocation]);
+  }, [selectedTour, selectedBoat, selectedMeetingPoint]);
 
   const filteredAvailabilities = useMemo(() => {
     return availabilities.filter(a => {
       if (selectedTour !== "all" && a.tourId !== selectedTour) return false;
       if (selectedBoat !== "all" && a.boatId !== selectedBoat) return false;
-      if (selectedLocation !== "all" && a.tourLocation !== selectedLocation) return false;
+      if (selectedMeetingPoint !== "all" && a.tourLocation !== selectedMeetingPoint) return false;
       return true;
     });
-  }, [availabilities, selectedTour, selectedBoat, selectedLocation]);
+  }, [availabilities, selectedTour, selectedBoat, selectedMeetingPoint]);
 
   // Stats
   const stats = useMemo(() => {
@@ -176,12 +177,18 @@ export default function CalendarPage() {
     try {
       const supabase = createClient();
 
-      // Fetch tours with location
-      const { data: toursData } = await supabase
+      // Fetch tours with location - filtered by global location
+      let toursQuery = supabase
         .from('tours')
-        .select('id, name, location')
+        .select('id, name, location, location_id')
         .eq('status', 'active')
         .order('name');
+
+      if (globalLocation?.id) {
+        toursQuery = toursQuery.eq('location_id', globalLocation.id);
+      }
+
+      const { data: toursData } = await toursQuery;
 
       if (toursData) {
         setTours(toursData.map((t, index) => ({
@@ -192,12 +199,18 @@ export default function CalendarPage() {
         })));
       }
 
-      // Fetch boats
-      const { data: boatsData } = await supabase
+      // Fetch boats - filtered by global location
+      let boatsQuery = supabase
         .from('boats')
         .select('id, name, capacity, boat_type')
         .eq('status', 'active')
         .order('name');
+
+      if (globalLocation?.id) {
+        boatsQuery = boatsQuery.eq('location_id', globalLocation.id);
+      }
+
+      const { data: boatsData } = await boatsQuery;
 
       if (boatsData) {
         setBoats(boatsData);
@@ -210,9 +223,6 @@ export default function CalendarPage() {
       if (viewMode === 'day') {
         startDate = format(selectedDay, 'yyyy-MM-dd');
         endDate = startDate;
-      } else if (viewMode === 'agenda') {
-        startDate = format(new Date(), 'yyyy-MM-dd');
-        endDate = format(addDays(new Date(), 13), 'yyyy-MM-dd');
       } else {
         startDate = format(currentWeek, 'yyyy-MM-dd');
         endDate = format(addDays(currentWeek, 6), 'yyyy-MM-dd');
@@ -275,7 +285,7 @@ export default function CalendarPage() {
 
   useEffect(() => {
     fetchData();
-  }, [currentWeek, selectedDay, viewMode]);
+  }, [currentWeek, selectedDay, viewMode, globalLocation]);
 
   const handleRefresh = () => {
     setRefreshing(true);
@@ -302,7 +312,7 @@ export default function CalendarPage() {
   const clearFilters = () => {
     setSelectedTour("all");
     setSelectedBoat("all");
-    setSelectedLocation("all");
+    setSelectedMeetingPoint("all");
   };
 
   const getSlotsForTime = (date: Date, time: string) => {
@@ -517,8 +527,15 @@ export default function CalendarPage() {
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
             <h1 className="text-2xl font-bold">Booking Calendar</h1>
-            <p className="text-muted-foreground">
-              Manage tour availability and bookings
+            <p className="text-muted-foreground flex items-center gap-2">
+              {globalLocation ? (
+                <>
+                  <MapPin className="h-4 w-4" />
+                  {globalLocation.name}
+                </>
+              ) : (
+                "Manage tour availability and bookings"
+              )}
             </p>
           </div>
 
@@ -533,10 +550,6 @@ export default function CalendarPage() {
                 <TabsTrigger value="day" className="rounded-lg gap-1.5">
                   <CalendarDays className="h-4 w-4" />
                   Day
-                </TabsTrigger>
-                <TabsTrigger value="agenda" className="rounded-lg gap-1.5">
-                  <List className="h-4 w-4" />
-                  Agenda
                 </TabsTrigger>
               </TabsList>
             </Tabs>
@@ -565,19 +578,19 @@ export default function CalendarPage() {
                     )}
                   </div>
 
-                  {/* Location Filter */}
+                  {/* Meeting Point Filter */}
                   <div className="space-y-2">
                     <label className="text-sm font-medium flex items-center gap-2">
                       <MapPin className="h-4 w-4 text-muted-foreground" />
-                      Location
+                      Meeting Point
                     </label>
-                    <Select value={selectedLocation} onValueChange={setSelectedLocation}>
+                    <Select value={selectedMeetingPoint} onValueChange={setSelectedMeetingPoint}>
                       <SelectTrigger className="rounded-xl">
-                        <SelectValue placeholder="All Locations" />
+                        <SelectValue placeholder="All Meeting Points" />
                       </SelectTrigger>
                       <SelectContent className="rounded-xl">
-                        <SelectItem value="all">All Locations</SelectItem>
-                        {locations.map((loc) => (
+                        <SelectItem value="all">All Meeting Points</SelectItem>
+                        {meetingPoints.map((loc) => (
                           <SelectItem key={loc} value={loc}>{loc}</SelectItem>
                         ))}
                       </SelectContent>
@@ -687,8 +700,6 @@ export default function CalendarPage() {
           <h2 className="text-lg font-semibold">
             {viewMode === 'day'
               ? format(selectedDay, "EEEE, MMMM d, yyyy")
-              : viewMode === 'agenda'
-              ? `Next 14 Days`
               : `${format(currentWeek, "MMMM d")} - ${format(addDays(currentWeek, 6), "MMMM d, yyyy")}`
             }
           </h2>
@@ -727,92 +738,6 @@ export default function CalendarPage() {
                 </Button>
               </Link>
             </div>
-          </div>
-        ) : viewMode === 'agenda' ? (
-          /* Agenda View */
-          <div className="space-y-6">
-            {Array.from({ length: 14 }, (_, i) => addDays(new Date(), i)).map(day => {
-              const daySlots = getSlotsForDay(day);
-              if (daySlots.length === 0) return null;
-
-              return (
-                <div key={day.toISOString()}>
-                  <div className={cn(
-                    "sticky top-0 z-10 py-2 px-3 mb-3 rounded-xl font-medium",
-                    isToday(day)
-                      ? "bg-gradient-to-r from-sky to-lavender text-sky-dark"
-                      : "bg-muted"
-                  )}>
-                    {format(day, "EEEE, MMMM d")}
-                    {isToday(day) && <Badge className="ml-2 bg-sky-dark text-white">Today</Badge>}
-                  </div>
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {daySlots.map(slot => (
-                      <Card key={slot.id} className="rounded-2xl border shadow-sm hover:shadow-md transition-shadow">
-                        <CardContent className="p-4">
-                          <div className="flex items-start justify-between mb-3">
-                            <div>
-                              <h3 className="font-semibold">{slot.tourName}</h3>
-                              <p className="text-sm text-muted-foreground flex items-center gap-1">
-                                <Clock className="h-3 w-3" />
-                                {slot.time} - {slot.endTime}
-                              </p>
-                            </div>
-                            <Badge
-                              variant={
-                                slot.status === "full" ? "rose" :
-                                slot.status === "limited" ? "peach" : "mint"
-                              }
-                            >
-                              {slot.booked}/{slot.capacity}
-                            </Badge>
-                          </div>
-
-                          <div className="flex items-center gap-4 text-sm text-muted-foreground mb-3">
-                            <span className="flex items-center gap-1">
-                              <MapPin className="h-3 w-3" />
-                              {slot.tourLocation}
-                            </span>
-                            {slot.boatName && (
-                              <span className="flex items-center gap-1">
-                                <Anchor className="h-3 w-3" />
-                                {slot.boatName}
-                              </span>
-                            )}
-                          </div>
-
-                          <div className="h-1.5 bg-muted rounded-full overflow-hidden mb-3">
-                            <div
-                              className={cn(
-                                "h-full rounded-full transition-all",
-                                slot.status === "full" ? "bg-rose-dark" :
-                                slot.status === "limited" ? "bg-peach-dark" : "bg-mint-dark"
-                              )}
-                              style={{ width: `${(slot.booked / slot.capacity) * 100}%` }}
-                            />
-                          </div>
-
-                          <div className="flex gap-2">
-                            <Link href={`/dashboard/bookings?availability=${slot.id}`} className="flex-1">
-                              <Button variant="outline" size="sm" className="w-full rounded-lg">
-                                <Eye className="h-3 w-3 mr-1" />
-                                View
-                              </Button>
-                            </Link>
-                            <Link href={`/dashboard/bookings/new?availability=${slot.id}`} className="flex-1">
-                              <Button size="sm" className="w-full gradient-primary border-0 rounded-lg">
-                                <Plus className="h-3 w-3 mr-1" />
-                                Book
-                              </Button>
-                            </Link>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    ))}
-                  </div>
-                </div>
-              );
-            })}
           </div>
         ) : viewMode === 'day' ? (
           /* Day View */

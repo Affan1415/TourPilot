@@ -44,7 +44,6 @@ import {
   XCircle,
   Loader2,
   Anchor,
-  GripVertical,
   Sparkles,
   UserCircle,
   X,
@@ -52,7 +51,10 @@ import {
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";
-import type { Boat, BoatStatus, Staff } from "@/types";
+import type { Boat, BoatStatus, Staff, Tour, TourBoat } from "@/types";
+import { useLocation } from "@/lib/location/context";
+import { MapPin, Route } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
 
 const statusConfig: Record<BoatStatus, { label: string; color: string; bgColor: string; icon: React.ReactNode }> = {
   active: {
@@ -112,9 +114,11 @@ const defaultFormData: BoatFormData = {
 };
 
 export default function FleetPage() {
+  const { selectedLocation } = useLocation();
   const [loading, setLoading] = useState(true);
   const [boats, setBoats] = useState<Boat[]>([]);
   const [captains, setCaptains] = useState<Staff[]>([]);
+  const [tours, setTours] = useState<Tour[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
@@ -122,43 +126,91 @@ export default function FleetPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState<BoatFormData>(defaultFormData);
   const [editingBoat, setEditingBoat] = useState<Boat | null>(null);
-  const [draggedCaptain, setDraggedCaptain] = useState<Staff | null>(null);
-  const [dragOverBoat, setDragOverBoat] = useState<string | null>(null);
+  const [assignedTourIds, setAssignedTourIds] = useState<Set<string>>(new Set());
+  const [boatTourAssignments, setBoatTourAssignments] = useState<Map<string, string[]>>(new Map());
 
   useEffect(() => {
     fetchData();
-  }, []);
+  }, [selectedLocation]);
 
   const fetchData = async () => {
     try {
       const supabase = createClient();
 
-      // Fetch boats with captain
-      let boatsResult = await supabase
+      // Fetch boats with captain - filtered by location
+      let boatsQuery = supabase
         .from("boats")
         .select("*, assigned_captain:staff(*)")
         .order("created_at", { ascending: false });
 
+      if (selectedLocation?.id) {
+        boatsQuery = boatsQuery.eq("location_id", selectedLocation.id);
+      }
+
+      let boatsResult = await boatsQuery;
+
       // If the assigned_captain column doesn't exist, fetch without it
       if (boatsResult.error?.code === "42703") {
-        boatsResult = await supabase
+        let fallbackQuery = supabase
           .from("boats")
           .select("*")
           .order("created_at", { ascending: false });
+
+        if (selectedLocation?.id) {
+          fallbackQuery = fallbackQuery.eq("location_id", selectedLocation.id);
+        }
+
+        boatsResult = await fallbackQuery;
       }
 
-      const captainsResult = await supabase
+      // Fetch captains filtered by location
+      let captainsQuery = supabase
         .from("staff")
         .select("*")
         .in("role", ["captain", "guide"])
         .eq("is_active", true)
         .order("name");
 
+      if (selectedLocation?.id) {
+        captainsQuery = captainsQuery.eq("location_id", selectedLocation.id);
+      }
+
+      const captainsResult = await captainsQuery;
+
+      // Fetch tours filtered by location
+      let toursQuery = supabase
+        .from("tours")
+        .select("*")
+        .eq("status", "active")
+        .order("name");
+
+      if (selectedLocation?.id) {
+        toursQuery = toursQuery.eq("location_id", selectedLocation.id);
+      }
+
+      const toursResult = await toursQuery;
+
+      // Fetch tour_boats junction table to know which boats are assigned to which tours
+      const tourBoatsResult = await supabase
+        .from("tour_boats")
+        .select("boat_id, tour_id");
+
       if (boatsResult.error) throw boatsResult.error;
       if (captainsResult.error) throw captainsResult.error;
+      if (toursResult.error) throw toursResult.error;
+
+      // Build a map of boat_id -> tour_ids
+      const boatToTours = new Map<string, string[]>();
+      (tourBoatsResult.data || []).forEach((tb: { boat_id: string; tour_id: string }) => {
+        const existing = boatToTours.get(tb.boat_id) || [];
+        existing.push(tb.tour_id);
+        boatToTours.set(tb.boat_id, existing);
+      });
 
       setBoats(boatsResult.data || []);
       setCaptains(captainsResult.data || []);
+      setTours(toursResult.data || []);
+      setBoatTourAssignments(boatToTours);
     } catch (error) {
       console.error("Error fetching data:", error);
       toast.error("Failed to load fleet data");
@@ -182,93 +234,6 @@ export default function FleetPage() {
     totalCapacity: boats
       .filter((b) => b.status === "active")
       .reduce((sum, b) => sum + b.capacity, 0),
-  };
-
-  // Captain drag handlers
-  const handleCaptainDragStart = (e: React.DragEvent, captain: Staff) => {
-    setDraggedCaptain(captain);
-    e.dataTransfer.effectAllowed = "move";
-    setTimeout(() => {
-      (e.target as HTMLElement).style.opacity = "0.5";
-    }, 0);
-  };
-
-  const handleCaptainDragEnd = (e: React.DragEvent) => {
-    (e.target as HTMLElement).style.opacity = "1";
-    setDraggedCaptain(null);
-    setDragOverBoat(null);
-  };
-
-  const handleDragOverBoat = (e: React.DragEvent, boatId: string) => {
-    if (!draggedCaptain) return;
-    e.preventDefault();
-    e.dataTransfer.dropEffect = "move";
-    setDragOverBoat(boatId);
-  };
-
-  const handleDragLeaveBoat = () => {
-    setDragOverBoat(null);
-  };
-
-  const handleDropCaptainOnBoat = async (e: React.DragEvent, boatId: string) => {
-    e.preventDefault();
-    setDragOverBoat(null);
-
-    if (!draggedCaptain) return;
-
-    const boat = boats.find((b) => b.id === boatId);
-    if (!boat) return;
-
-    // Already assigned to this boat
-    if (boat.assigned_captain_id === draggedCaptain.id) {
-      setDraggedCaptain(null);
-      return;
-    }
-
-    // Check if captain is already assigned to another boat
-    const existingAssignment = boats.find((b) => b.assigned_captain_id === draggedCaptain.id);
-    if (existingAssignment) {
-      toast.error("Captain already assigned", {
-        description: `${draggedCaptain.name} is already on ${existingAssignment.name}. Remove them first.`,
-      });
-      setDraggedCaptain(null);
-      return;
-    }
-
-    try {
-      const supabase = createClient();
-      const { data: updatedBoat, error } = await supabase
-        .from("boats")
-        .update({ assigned_captain_id: draggedCaptain.id })
-        .eq("id", boatId)
-        .select("*, assigned_captain:staff(*)")
-        .single();
-
-      if (error) {
-        if (error.code === "23505") {
-          toast.error("Captain already assigned", {
-            description: `${draggedCaptain.name} can only be assigned to one boat.`,
-          });
-          setDraggedCaptain(null);
-          return;
-        }
-        throw error;
-      }
-
-      setBoats((prev) =>
-        prev.map((b) => (b.id === boatId ? updatedBoat : b))
-      );
-
-      toast.success("Captain assigned!", {
-        description: `${draggedCaptain.name} → ${boat.name}`,
-        icon: <UserCircle className="h-4 w-4" />,
-      });
-    } catch (error: any) {
-      console.error("Error assigning captain:", error);
-      toast.error("Failed to assign captain", { description: error.message });
-    }
-
-    setDraggedCaptain(null);
   };
 
   const handleRemoveCaptain = async (boat: Boat) => {
@@ -300,6 +265,11 @@ export default function FleetPage() {
       return;
     }
 
+    if (!selectedLocation?.id) {
+      toast.error("Please select a location first");
+      return;
+    }
+
     setIsSubmitting(true);
     try {
       const supabase = createClient();
@@ -320,17 +290,38 @@ export default function FleetPage() {
           status: formData.status,
           maintenance_notes: formData.maintenance_notes || null,
           assigned_captain_id: formData.assigned_captain_id || null,
+          location_id: selectedLocation.id,
         })
         .select("*, assigned_captain:staff(*)")
         .single();
 
       if (error) throw error;
 
+      // Save tour assignments for the new boat
+      if (assignedTourIds.size > 0) {
+        const tourBoatInserts = Array.from(assignedTourIds).map((tourId) => ({
+          tour_id: tourId,
+          boat_id: data.id,
+          is_primary: false,
+          price_modifier: 0,
+        }));
+
+        await supabase.from("tour_boats").insert(tourBoatInserts);
+
+        // Update local boat tour assignments map
+        setBoatTourAssignments((prev) => {
+          const newMap = new Map(prev);
+          newMap.set(data.id, Array.from(assignedTourIds));
+          return newMap;
+        });
+      }
+
       setBoats((prev) => [data, ...prev]);
       setFormData(defaultFormData);
+      setAssignedTourIds(new Set());
       setIsAddDialogOpen(false);
       toast.success("Boat added!", {
-        description: `${data.name} has joined the fleet`,
+        description: `${data.name} has joined the fleet${assignedTourIds.size > 0 ? ` with ${assignedTourIds.size} tour(s)` : ''}`,
         icon: <Sparkles className="h-4 w-4" />,
       });
     } catch (error: any) {
@@ -354,6 +345,9 @@ export default function FleetPage() {
       maintenance_notes: boat.maintenance_notes || "",
       assigned_captain_id: boat.assigned_captain_id || "",
     });
+    // Load assigned tours for this boat
+    const tourIds = boatTourAssignments.get(boat.id) || [];
+    setAssignedTourIds(new Set(tourIds));
     setIsEditDialogOpen(true);
   };
 
@@ -387,6 +381,38 @@ export default function FleetPage() {
 
       if (error) throw error;
 
+      // Update tour assignments for this boat
+      // First delete existing assignments
+      await supabase
+        .from("tour_boats")
+        .delete()
+        .eq("boat_id", editingBoat.id);
+
+      // Then insert new assignments
+      if (assignedTourIds.size > 0) {
+        const tourBoatInserts = Array.from(assignedTourIds).map((tourId) => ({
+          tour_id: tourId,
+          boat_id: editingBoat.id,
+          is_primary: false,
+          price_modifier: 0,
+        }));
+
+        const { error: tourBoatError } = await supabase
+          .from("tour_boats")
+          .insert(tourBoatInserts);
+
+        if (tourBoatError) {
+          console.error("Error updating tour assignments:", tourBoatError);
+        }
+      }
+
+      // Update local boat tour assignments map
+      setBoatTourAssignments((prev) => {
+        const newMap = new Map(prev);
+        newMap.set(editingBoat.id, Array.from(assignedTourIds));
+        return newMap;
+      });
+
       setBoats((prev) =>
         prev.map((b) => (b.id === editingBoat.id ? updatedBoat : b))
       );
@@ -394,6 +420,7 @@ export default function FleetPage() {
       setIsEditDialogOpen(false);
       setEditingBoat(null);
       setFormData(defaultFormData);
+      setAssignedTourIds(new Set());
       toast.success("Boat updated!", { description: formData.name });
     } catch (error: any) {
       console.error("Error updating boat:", error);
@@ -463,17 +490,11 @@ export default function FleetPage() {
 
   // Boat card component
   const BoatCard = ({ boat }: { boat: Boat }) => {
-    const isDropTarget = dragOverBoat === boat.id;
-
     return (
       <div
-        onDragOver={(e) => handleDragOverBoat(e, boat.id)}
-        onDragLeave={handleDragLeaveBoat}
-        onDrop={(e) => handleDropCaptainOnBoat(e, boat.id)}
         className={cn(
           "group relative bg-white rounded-xl border-2 shadow-sm transition-all duration-200 p-4",
-          "hover:shadow-md",
-          isDropTarget ? "border-violet-500 bg-violet-50 scale-[1.02]" : "border-transparent hover:border-primary/30"
+          "hover:shadow-md border-transparent hover:border-primary/30"
         )}
       >
         <div className="flex items-start gap-3">
@@ -550,11 +571,44 @@ export default function FleetPage() {
                 <Users className="h-3 w-3" />
                 {boat.capacity}
               </span>
+              {/* Tour count badge */}
+              {(boatTourAssignments.get(boat.id)?.length || 0) > 0 && (
+                <span className="text-xs text-muted-foreground flex items-center gap-1">
+                  <Route className="h-3 w-3" />
+                  {boatTourAssignments.get(boat.id)?.length} tour{(boatTourAssignments.get(boat.id)?.length || 0) !== 1 ? "s" : ""}
+                </span>
+              )}
             </div>
 
+            {/* Assigned tours preview */}
+            {(boatTourAssignments.get(boat.id)?.length || 0) > 0 && (
+              <div className="mt-1.5 flex flex-wrap gap-1">
+                {boatTourAssignments.get(boat.id)?.slice(0, 2).map((tourId) => {
+                  const tour = tours.find((t) => t.id === tourId);
+                  return tour ? (
+                    <Badge
+                      key={tourId}
+                      variant="outline"
+                      className="text-[9px] px-1.5 py-0 h-4 bg-sky-50 text-sky-700 border-sky-200"
+                    >
+                      {tour.name.length > 15 ? tour.name.substring(0, 15) + "..." : tour.name}
+                    </Badge>
+                  ) : null;
+                })}
+                {(boatTourAssignments.get(boat.id)?.length || 0) > 2 && (
+                  <Badge
+                    variant="outline"
+                    className="text-[9px] px-1.5 py-0 h-4 bg-muted text-muted-foreground"
+                  >
+                    +{(boatTourAssignments.get(boat.id)?.length || 0) - 2} more
+                  </Badge>
+                )}
+              </div>
+            )}
+
             {/* Captain badge */}
-            <div className="mt-2">
-              {boat.assigned_captain ? (
+            {boat.assigned_captain && (
+              <div className="mt-2">
                 <div className="flex items-center gap-2 bg-gradient-to-r from-violet-50 to-purple-50 rounded-lg p-2 border border-violet-200">
                   <Avatar className="h-6 w-6">
                     <AvatarImage src={boat.assigned_captain.avatar_url || undefined} />
@@ -574,81 +628,10 @@ export default function FleetPage() {
                     <X className="h-3 w-3 text-violet-600" />
                   </Button>
                 </div>
-              ) : (
-                <div className={cn(
-                  "flex items-center justify-center gap-2 rounded-lg p-2 border-2 border-dashed transition-colors",
-                  isDropTarget ? "border-violet-500 bg-violet-100" : "border-muted-foreground/20"
-                )}>
-                  <UserCircle className="h-4 w-4 text-muted-foreground" />
-                  <span className="text-xs text-muted-foreground">
-                    {isDropTarget ? "Drop captain here!" : "Drag captain here"}
-                  </span>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  };
-
-  // Captain card component
-  const CaptainCard = ({ captain }: { captain: Staff }) => {
-    const assignedBoat = boats.find((b) => b.assigned_captain_id === captain.id);
-    const isAssigned = !!assignedBoat;
-
-    return (
-      <div
-        draggable={!isAssigned}
-        onDragStart={(e) => !isAssigned && handleCaptainDragStart(e, captain)}
-        onDragEnd={handleCaptainDragEnd}
-        className={cn(
-          "group relative rounded-xl border-2 shadow-sm p-3 transition-all duration-200",
-          isAssigned
-            ? "bg-emerald-50 border-emerald-200 cursor-default"
-            : "bg-white border-transparent cursor-grab active:cursor-grabbing hover:shadow-md hover:border-violet-300 hover:scale-[1.02]",
-          draggedCaptain?.id === captain.id && "opacity-50 scale-95"
-        )}
-      >
-        <div className="flex items-center gap-3">
-          <Avatar className="h-10 w-10 shrink-0">
-            <AvatarImage src={captain.avatar_url || undefined} />
-            <AvatarFallback className={cn(
-              "font-semibold",
-              isAssigned
-                ? "bg-emerald-500 text-white"
-                : "bg-gradient-to-br from-violet-400 to-purple-500 text-white"
-            )}>
-              {getCaptainInitials(captain.name)}
-            </AvatarFallback>
-          </Avatar>
-          <div className="flex-1 min-w-0">
-            <h4 className="font-medium text-sm truncate">{captain.name}</h4>
-            <p className="text-xs text-muted-foreground capitalize">{captain.role}</p>
-            {isAssigned && (
-              <p className="text-[10px] text-emerald-600 font-medium mt-0.5">
-                On {assignedBoat.name}
-              </p>
-            )}
-          </div>
-          <div className="text-right shrink-0">
-            {isAssigned ? (
-              <Badge className="text-[10px] bg-emerald-100 text-emerald-700 border-emerald-300">
-                Assigned
-              </Badge>
-            ) : (
-              <Badge variant="outline" className="text-[10px] text-violet-600 border-violet-300">
-                Available
-              </Badge>
+              </div>
             )}
           </div>
         </div>
-        {/* Drag handle - only show for available captains */}
-        {!isAssigned && (
-          <div className="absolute left-1 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-40 transition-opacity">
-            <GripVertical className="h-3 w-3 text-muted-foreground" />
-          </div>
-        )}
       </div>
     );
   };
@@ -749,6 +732,57 @@ export default function FleetPage() {
         </Select>
       </div>
 
+      {/* Tour Assignments */}
+      {tours.length > 0 && (
+        <div className="grid gap-2">
+          <Label className="flex items-center gap-2">
+            <Route className="h-4 w-4" />
+            Assigned Tours
+          </Label>
+          <p className="text-xs text-muted-foreground">
+            Select the tours this boat can operate
+          </p>
+          <div className="border rounded-lg p-3 space-y-2 max-h-[200px] overflow-y-auto bg-muted/30">
+            {tours.map((tour) => (
+              <div
+                key={tour.id}
+                className="flex items-center gap-3 p-2 rounded-md hover:bg-muted transition-colors"
+              >
+                <Checkbox
+                  id={`tour-${tour.id}`}
+                  checked={assignedTourIds.has(tour.id)}
+                  onCheckedChange={(checked) => {
+                    setAssignedTourIds((prev) => {
+                      const newSet = new Set(prev);
+                      if (checked) {
+                        newSet.add(tour.id);
+                      } else {
+                        newSet.delete(tour.id);
+                      }
+                      return newSet;
+                    });
+                  }}
+                />
+                <label
+                  htmlFor={`tour-${tour.id}`}
+                  className="flex-1 text-sm cursor-pointer"
+                >
+                  {tour.name}
+                </label>
+                <span className="text-xs text-muted-foreground">
+                  {tour.duration_minutes} min
+                </span>
+              </div>
+            ))}
+          </div>
+          {assignedTourIds.size > 0 && (
+            <p className="text-xs text-muted-foreground">
+              {assignedTourIds.size} tour{assignedTourIds.size !== 1 ? "s" : ""} selected
+            </p>
+          )}
+        </div>
+      )}
+
       <div className="grid gap-2">
         <Label htmlFor="description">Description</Label>
         <Textarea
@@ -812,8 +846,15 @@ export default function FleetPage() {
             <Anchor className="h-6 w-6 text-primary" />
             Fleet Management
           </h1>
-          <p className="text-muted-foreground">
-            Manage your boats and assign captains
+          <p className="text-muted-foreground flex items-center gap-2">
+            {selectedLocation ? (
+              <>
+                <MapPin className="h-4 w-4" />
+                {selectedLocation.name}
+              </>
+            ) : (
+              "Manage your boats and assign captains"
+            )}
           </p>
         </div>
 
@@ -918,49 +959,10 @@ export default function FleetPage() {
           </div>
         </Card>
       ) : (
-        <div className="space-y-4">
-          <p className="text-sm text-muted-foreground flex items-center gap-2">
-            <GripVertical className="h-4 w-4" />
-            Drag captains to boats to assign them
-          </p>
-
-          <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-            {/* Captains sidebar */}
-            <div className="lg:col-span-1">
-              <Card className="p-4 bg-gradient-to-br from-violet-50 to-purple-50 border-violet-200">
-                <div className="flex items-center gap-2 mb-4">
-                  <div className="h-8 w-8 rounded-lg bg-violet-500 flex items-center justify-center">
-                    <UserCircle className="h-4 w-4 text-white" />
-                  </div>
-                  <div>
-                    <h3 className="font-semibold">Captains</h3>
-                    <p className="text-xs text-muted-foreground">{captains.length} available</p>
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  {captains.length === 0 ? (
-                    <p className="text-sm text-muted-foreground text-center py-4">
-                      No captains found
-                    </p>
-                  ) : (
-                    captains.map((captain) => (
-                      <CaptainCard key={captain.id} captain={captain} />
-                    ))
-                  )}
-                </div>
-              </Card>
-            </div>
-
-            {/* Boats grid */}
-            <div className="lg:col-span-3">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {filteredBoats.map((boat) => (
-                  <BoatCard key={boat.id} boat={boat} />
-                ))}
-              </div>
-            </div>
-          </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {filteredBoats.map((boat) => (
+            <BoatCard key={boat.id} boat={boat} />
+          ))}
         </div>
       )}
 
@@ -981,6 +983,7 @@ export default function FleetPage() {
               onClick={() => {
                 setIsAddDialogOpen(false);
                 setFormData(defaultFormData);
+                setAssignedTourIds(new Set());
               }}
               disabled={isSubmitting}
             >
@@ -1021,6 +1024,7 @@ export default function FleetPage() {
                 setIsEditDialogOpen(false);
                 setFormData(defaultFormData);
                 setEditingBoat(null);
+                setAssignedTourIds(new Set());
               }}
               disabled={isSubmitting}
             >

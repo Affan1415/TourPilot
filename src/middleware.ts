@@ -1,24 +1,26 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
-type UserRole = 'admin' | 'manager' | 'captain' | 'guide' | 'front_desk' | 'customer';
+type UserRole = 'admin' | 'location_manager' | 'captain' | 'front_desk' | 'customer';
 
 // Define which roles can access which routes
 const ROUTE_PERMISSIONS: Record<string, UserRole[]> = {
   // Admin-only routes
-  '/dashboard/tours': ['admin', 'manager'],
-  '/dashboard/staff': ['admin', 'manager'],
-  '/dashboard/settings': ['admin', 'manager'],
-  '/dashboard/reports': ['admin', 'manager'],
-  '/dashboard/communications': ['admin', 'manager'],
-  '/dashboard/customers': ['admin', 'manager', 'front_desk'],
-  '/dashboard/bookings/new': ['admin', 'manager', 'front_desk'],
+  '/dashboard/settings': ['admin'],
 
-  // Staff routes (all staff can access)
-  '/dashboard': ['admin', 'manager', 'captain', 'guide', 'front_desk'],
-  '/dashboard/calendar': ['admin', 'manager', 'captain', 'guide', 'front_desk'],
-  '/dashboard/bookings': ['admin', 'manager', 'captain', 'guide', 'front_desk'],
-  '/dashboard/manifest': ['admin', 'manager', 'captain', 'guide'],
+  // Admin and Location Manager routes
+  '/dashboard/tours': ['admin', 'location_manager'],
+  '/dashboard/staff': ['admin', 'location_manager'],
+  '/dashboard/reports': ['admin', 'location_manager'],
+  '/dashboard/communications': ['admin', 'location_manager'],
+  '/dashboard/customers': ['admin', 'location_manager', 'front_desk'],
+  '/dashboard/bookings/new': ['admin', 'location_manager', 'front_desk'],
+
+  // Staff routes (admin, location_manager, front_desk can access)
+  '/dashboard': ['admin', 'location_manager', 'front_desk'],
+  '/dashboard/calendar': ['admin', 'location_manager', 'front_desk'],
+  '/dashboard/bookings': ['admin', 'location_manager', 'front_desk'],
+  '/dashboard/manifest': ['admin', 'location_manager', 'front_desk'],
 
   // Captain-specific routes
   '/captain': ['captain'],

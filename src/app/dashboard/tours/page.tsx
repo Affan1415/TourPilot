@@ -64,6 +64,7 @@ import {
   Anchor,
   GripVertical,
   Check,
+  FileSignature,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/client";
@@ -72,6 +73,23 @@ import { StatCard } from "@/components/ui/stat-card";
 import { IconBox } from "@/components/ui/icon-box";
 import type { Boat, TourBoat, TourDefaultSlot } from "@/types";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useLocation } from "@/lib/location/context";
+import { Checkbox } from "@/components/ui/checkbox";
+import { ScrollArea } from "@/components/ui/scroll-area";
+
+interface WaiverTemplate {
+  id: string;
+  name: string;
+  is_active: boolean;
+}
+
+interface TourWaiver {
+  id: string;
+  tour_id: string;
+  waiver_template_id: string;
+  is_required: boolean;
+  display_order: number;
+}
 
 interface Tour {
   id: string;
@@ -89,6 +107,7 @@ interface Tour {
   reviews: number;
   location: string;
   boatCount: number;
+  location_id: string | null;
 }
 
 // V6 Pastel status variants
@@ -99,6 +118,7 @@ const statusConfig: Record<string, { label: string; variant: "mint" | "peach" | 
 };
 
 export default function ToursPage() {
+  const { selectedLocation } = useLocation();
   const [loading, setLoading] = useState(true);
   const [tours, setTours] = useState<Tour[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
@@ -106,15 +126,13 @@ export default function ToursPage() {
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Form state for new tour
+  // Form state for new tour (simplified - prices/capacity are per slot/boat)
   const [newTour, setNewTour] = useState({
     name: "",
     slug: "",
     description: "",
-    price: "",
-    duration: "",
-    capacity: "",
-    location: "",
+    duration: "",  // Duration in minutes
+    location: "",  // Meeting point
     status: "draft",
   });
 
@@ -160,6 +178,8 @@ export default function ToursPage() {
   const [assignedBoatIds, setAssignedBoatIds] = useState<Set<string>>(new Set());
   const [primaryBoatId, setPrimaryBoatId] = useState<string | null>(null);
   const [editSlots, setEditSlots] = useState<TourDefaultSlot[]>([]);
+  const [allWaiverTemplates, setAllWaiverTemplates] = useState<WaiverTemplate[]>([]);
+  const [assignedWaiverIds, setAssignedWaiverIds] = useState<Set<string>>(new Set());
   const [loadingEditData, setLoadingEditData] = useState(false);
   const [newDefaultSlot, setNewDefaultSlot] = useState({
     startTime: "09:00",
@@ -181,11 +201,17 @@ export default function ToursPage() {
       try {
         const supabase = createClient();
 
-        // Fetch tours
-        const { data, error } = await supabase
+        // Fetch tours - filtered by location
+        let toursQuery = supabase
           .from('tours')
           .select('*')
           .order('created_at', { ascending: false });
+
+        if (selectedLocation?.id) {
+          toursQuery = toursQuery.eq('location_id', selectedLocation.id);
+        }
+
+        const { data, error } = await toursQuery;
 
         if (error) {
           console.error('Error fetching tours:', error);
@@ -265,6 +291,7 @@ export default function ToursPage() {
             reviews: 0,
             location: t.meeting_point || '',
             boatCount: boatCounts[t.id] || 0,
+            location_id: t.location_id || null,
           })));
         }
       } catch (error) {
@@ -275,11 +302,16 @@ export default function ToursPage() {
     };
 
     fetchTours();
-  }, []);
+  }, [selectedLocation]);
 
   const handleCreateTour = async () => {
-    if (!newTour.name || !newTour.price) {
-      alert("Please fill in at least the tour name and price.");
+    if (!newTour.name) {
+      alert("Please fill in the tour name.");
+      return;
+    }
+
+    if (!selectedLocation?.id) {
+      alert("Please select a location first.");
       return;
     }
 
@@ -296,11 +328,10 @@ export default function ToursPage() {
           name: newTour.name,
           slug: slug,
           short_description: newTour.description,
-          base_price: parseFloat(newTour.price) || 0,
           duration_minutes: parseInt(newTour.duration) || 60,
-          max_capacity: parseInt(newTour.capacity) || 10,
           meeting_point: newTour.location,
           status: newTour.status,
+          location_id: selectedLocation.id,
         })
         .select()
         .single();
@@ -329,6 +360,7 @@ export default function ToursPage() {
           reviews: 0,
           location: data.meeting_point || '',
           boatCount: 0,
+          location_id: data.location_id || null,
         }, ...prev]);
       }
 
@@ -337,9 +369,7 @@ export default function ToursPage() {
         name: "",
         slug: "",
         description: "",
-        price: "",
         duration: "",
-        capacity: "",
         location: "",
         status: "draft",
       });
@@ -478,11 +508,13 @@ export default function ToursPage() {
     try {
       const supabase = createClient();
 
-      // Fetch boats, assigned boats, and default slots in parallel
-      const [boatsResult, tourBoatsResult, slotsResult] = await Promise.all([
+      // Fetch boats, assigned boats, default slots, and waivers in parallel
+      const [boatsResult, tourBoatsResult, slotsResult, waiversResult, tourWaiversResult] = await Promise.all([
         supabase.from('boats').select('*').eq('status', 'active').order('name'),
         supabase.from('tour_boats').select('*, boat:boats(*)').eq('tour_id', tour.id),
         supabase.from('tour_default_slots').select('*').eq('tour_id', tour.id).eq('is_active', true).order('start_time'),
+        supabase.from('waiver_templates').select('id, name, is_active').eq('is_active', true).order('name'),
+        supabase.from('tour_waivers').select('waiver_template_id').eq('tour_id', tour.id),
       ]);
 
       setEditBoats(boatsResult.data || []);
@@ -499,6 +531,14 @@ export default function ToursPage() {
 
       // Set default slots
       setEditSlots(slotsResult.data || []);
+
+      // Set waiver templates and assigned waivers
+      setAllWaiverTemplates(waiversResult.data || []);
+      const assignedWaivers = new Set<string>();
+      (tourWaiversResult.data || []).forEach((tw: { waiver_template_id: string }) => {
+        assignedWaivers.add(tw.waiver_template_id);
+      });
+      setAssignedWaiverIds(assignedWaivers);
     } catch (error) {
       console.error('Error loading edit data:', error);
       // Still allow editing basic info
@@ -557,6 +597,40 @@ export default function ToursPage() {
       setPrimaryBoatId(boatId);
     } catch (error) {
       console.error('Error setting primary boat:', error);
+    }
+  };
+
+  // Toggle waiver assignment
+  const handleToggleWaiver = async (waiverId: string) => {
+    if (!editingTour) return;
+
+    const supabase = createClient();
+    const isAssigned = assignedWaiverIds.has(waiverId);
+
+    try {
+      if (isAssigned) {
+        // Remove assignment
+        await supabase.from('tour_waivers').delete().eq('tour_id', editingTour.id).eq('waiver_template_id', waiverId);
+        setAssignedWaiverIds(prev => {
+          const next = new Set(prev);
+          next.delete(waiverId);
+          return next;
+        });
+      } else {
+        // Add assignment
+        await supabase.from('tour_waivers').insert({
+          tour_id: editingTour.id,
+          waiver_template_id: waiverId,
+          is_required: true,
+          display_order: assignedWaiverIds.size,
+        });
+        setAssignedWaiverIds(prev => new Set([...prev, waiverId]));
+      }
+    } catch (error: any) {
+      console.error('Error toggling waiver:', error);
+      if (error.code === '42P01') {
+        alert('Please run the migration to create the tour_waivers table first.');
+      }
     }
   };
 
@@ -697,6 +771,7 @@ export default function ToursPage() {
         reviews: 0,
         location: data.meeting_point || '',
         boatCount: 0,
+        location_id: data.location_id || null,
       }, ...prev]);
     } catch (error: any) {
       console.error('Error duplicating tour:', error);
@@ -764,8 +839,15 @@ export default function ToursPage() {
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold">Tours Management</h1>
-          <p className="text-muted-foreground">
-            Create and manage your tour offerings
+          <p className="text-muted-foreground flex items-center gap-2">
+            {selectedLocation ? (
+              <>
+                <MapPin className="h-4 w-4" />
+                {selectedLocation.name}
+              </>
+            ) : (
+              "Create and manage your tour offerings"
+            )}
           </p>
         </div>
 
@@ -811,37 +893,18 @@ export default function ToursPage() {
                   onChange={(e) => setNewTour({ ...newTour, description: e.target.value })}
                 />
               </div>
-              <div className="grid grid-cols-3 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="price">Price ($) *</Label>
-                  <Input
-                    id="price"
-                    type="number"
-                    placeholder="99"
-                    value={newTour.price}
-                    onChange={(e) => setNewTour({ ...newTour, price: e.target.value })}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="duration">Duration (min)</Label>
-                  <Input
-                    id="duration"
-                    type="number"
-                    placeholder="120"
-                    value={newTour.duration}
-                    onChange={(e) => setNewTour({ ...newTour, duration: e.target.value })}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="capacity">Max Capacity</Label>
-                  <Input
-                    id="capacity"
-                    type="number"
-                    placeholder="20"
-                    value={newTour.capacity}
-                    onChange={(e) => setNewTour({ ...newTour, capacity: e.target.value })}
-                  />
-                </div>
+              <div className="space-y-2">
+                <Label htmlFor="duration">Duration (minutes)</Label>
+                <Input
+                  id="duration"
+                  type="number"
+                  placeholder="120"
+                  value={newTour.duration}
+                  onChange={(e) => setNewTour({ ...newTour, duration: e.target.value })}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Prices and capacity are set per slot/boat, not per tour
+                </p>
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
@@ -1059,18 +1122,6 @@ export default function ToursPage() {
                             <Edit className="h-4 w-4 mr-2" />
                             Edit
                           </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => handleManageAvailability(tour)} className="rounded-lg">
-                            <Calendar className="h-4 w-4 mr-2" />
-                            Manage Availability
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => router.push(`/dashboard/tours/assign-boats`)} className="rounded-lg">
-                            <Anchor className="h-4 w-4 mr-2" />
-                            Assign Boats
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => router.push(`/dashboard/tours/assign-staff?tour=${tour.id}`)} className="rounded-lg">
-                            <Users className="h-4 w-4 mr-2" />
-                            Assign Staff
-                          </DropdownMenuItem>
                           <DropdownMenuItem onClick={() => router.push(`/dashboard/reports?tour=${tour.id}`)} className="rounded-lg">
                             <BarChart3 className="h-4 w-4 mr-2" />
                             View Analytics
@@ -1282,16 +1333,16 @@ export default function ToursPage() {
           <Tabs defaultValue="basic" className="flex-1 flex flex-col overflow-hidden">
             <TabsList className="grid w-full grid-cols-3">
               <TabsTrigger value="basic">Basic Info</TabsTrigger>
-              <TabsTrigger value="boats">
-                Boats
-                {assignedBoatIds.size > 0 && (
-                  <Badge variant="secondary" className="ml-2">{assignedBoatIds.size}</Badge>
-                )}
-              </TabsTrigger>
               <TabsTrigger value="slots">
                 Time Slots
                 {editSlots.length > 0 && (
                   <Badge variant="secondary" className="ml-2">{editSlots.length}</Badge>
+                )}
+              </TabsTrigger>
+              <TabsTrigger value="waivers">
+                Waivers
+                {assignedWaiverIds.size > 0 && (
+                  <Badge variant="secondary" className="ml-2">{assignedWaiverIds.size}</Badge>
                 )}
               </TabsTrigger>
             </TabsList>
@@ -1381,110 +1432,6 @@ export default function ToursPage() {
                     </Select>
                   </div>
                 </div>
-              </TabsContent>
-
-              {/* Boats Tab */}
-              <TabsContent value="boats" className="mt-0">
-                {loadingEditData ? (
-                  <div className="flex items-center justify-center py-12">
-                    <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-                  </div>
-                ) : (
-                  <div className="space-y-4">
-                    <p className="text-sm text-muted-foreground">
-                      Click on a boat to assign/unassign it. Click the star to set as primary.
-                    </p>
-
-                    {editBoats.length === 0 ? (
-                      <div className="text-center py-8 border-2 border-dashed rounded-xl">
-                        <Anchor className="h-10 w-10 mx-auto text-muted-foreground/50 mb-2" />
-                        <p className="font-medium">No boats available</p>
-                        <p className="text-sm text-muted-foreground">Add boats in Fleet Management first</p>
-                      </div>
-                    ) : (
-                      <div className="grid grid-cols-2 gap-3">
-                        {editBoats.map((boat) => {
-                          const isAssigned = assignedBoatIds.has(boat.id);
-                          const isPrimary = primaryBoatId === boat.id;
-
-                          return (
-                            <div
-                              key={boat.id}
-                              onClick={() => handleToggleBoat(boat.id)}
-                              className={cn(
-                                "p-4 rounded-xl border-2 cursor-pointer transition-all",
-                                isAssigned
-                                  ? "border-primary bg-primary/5 shadow-sm"
-                                  : "border-border hover:border-primary/50 hover:bg-muted/50"
-                              )}
-                            >
-                              <div className="flex items-start justify-between">
-                                <div className="flex items-center gap-3">
-                                  <div className={cn(
-                                    "h-10 w-10 rounded-lg flex items-center justify-center",
-                                    isAssigned ? "bg-primary/20" : "bg-muted"
-                                  )}>
-                                    <Ship className={cn(
-                                      "h-5 w-5",
-                                      isAssigned ? "text-primary" : "text-muted-foreground"
-                                    )} />
-                                  </div>
-                                  <div>
-                                    <p className="font-medium text-sm">{boat.name}</p>
-                                    <p className="text-xs text-muted-foreground">
-                                      {boat.capacity} passengers • {boat.boat_type || 'Boat'}
-                                    </p>
-                                  </div>
-                                </div>
-                                <div className="flex items-center gap-2">
-                                  {isAssigned && (
-                                    <button
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        handleSetPrimaryBoat(boat.id);
-                                      }}
-                                      className={cn(
-                                        "p-1 rounded-full transition-colors",
-                                        isPrimary
-                                          ? "text-yellow-500"
-                                          : "text-muted-foreground hover:text-yellow-500"
-                                      )}
-                                      title={isPrimary ? "Primary boat" : "Set as primary"}
-                                    >
-                                      <Star className={cn("h-4 w-4", isPrimary && "fill-current")} />
-                                    </button>
-                                  )}
-                                  <div className={cn(
-                                    "h-5 w-5 rounded-full border-2 flex items-center justify-center",
-                                    isAssigned ? "border-primary bg-primary" : "border-muted-foreground/30"
-                                  )}>
-                                    {isAssigned && <Check className="h-3 w-3 text-white" />}
-                                  </div>
-                                </div>
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    )}
-
-                    {assignedBoatIds.size > 0 && (
-                      <div className="pt-3 border-t">
-                        <p className="text-sm font-medium mb-2">
-                          Assigned: {assignedBoatIds.size} boat{assignedBoatIds.size !== 1 ? 's' : ''}
-                        </p>
-                        <div className="flex flex-wrap gap-2">
-                          {editBoats.filter(b => assignedBoatIds.has(b.id)).map(boat => (
-                            <Badge key={boat.id} variant={primaryBoatId === boat.id ? "default" : "secondary"}>
-                              {primaryBoatId === boat.id && <Star className="h-3 w-3 mr-1 fill-current" />}
-                              {boat.name}
-                            </Badge>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                )}
               </TabsContent>
 
               {/* Time Slots Tab */}
@@ -1642,6 +1589,74 @@ export default function ToursPage() {
                         </div>
                       )}
                     </div>
+                  </div>
+                )}
+              </TabsContent>
+
+              {/* Waivers Tab */}
+              <TabsContent value="waivers" className="mt-0">
+                {loadingEditData ? (
+                  <div className="flex items-center justify-center py-12">
+                    <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <FileSignature className="h-4 w-4" />
+                      <span>Select which waivers guests must sign before booking this tour</span>
+                    </div>
+
+                    {allWaiverTemplates.length === 0 ? (
+                      <div className="text-center py-8 border-2 border-dashed rounded-xl">
+                        <FileSignature className="h-10 w-10 mx-auto text-muted-foreground/50 mb-2" />
+                        <p className="font-medium">No waiver templates</p>
+                        <p className="text-sm text-muted-foreground">Create waiver templates in the Waivers page first</p>
+                      </div>
+                    ) : (
+                      <ScrollArea className="h-[300px] border rounded-xl p-4">
+                        <div className="space-y-2">
+                          {allWaiverTemplates.map((waiver) => (
+                            <div
+                              key={waiver.id}
+                              className={cn(
+                                "flex items-center justify-between p-3 rounded-xl transition-colors cursor-pointer",
+                                assignedWaiverIds.has(waiver.id)
+                                  ? "bg-primary/10 border border-primary/30"
+                                  : "bg-muted/50 hover:bg-muted border border-transparent"
+                              )}
+                              onClick={() => handleToggleWaiver(waiver.id)}
+                            >
+                              <div className="flex items-center gap-3">
+                                <Checkbox
+                                  checked={assignedWaiverIds.has(waiver.id)}
+                                  onCheckedChange={() => handleToggleWaiver(waiver.id)}
+                                />
+                                <div>
+                                  <p className="font-medium text-sm">{waiver.name}</p>
+                                  <p className="text-xs text-muted-foreground">
+                                    {assignedWaiverIds.has(waiver.id) ? "Required for this tour" : "Click to require"}
+                                  </p>
+                                </div>
+                              </div>
+                              {assignedWaiverIds.has(waiver.id) && (
+                                <Badge className="bg-primary/20 text-primary border-0">
+                                  <Check className="h-3 w-3 mr-1" />
+                                  Required
+                                </Badge>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      </ScrollArea>
+                    )}
+
+                    {assignedWaiverIds.size > 0 && (
+                      <div className="bg-muted/50 rounded-xl p-3">
+                        <p className="text-sm">
+                          <span className="font-medium">{assignedWaiverIds.size}</span> waiver{assignedWaiverIds.size !== 1 ? 's' : ''} required for this tour
+                        </p>
+                      </div>
+                    )}
                   </div>
                 )}
               </TabsContent>

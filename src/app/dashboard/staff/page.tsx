@@ -38,7 +38,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
-import { Checkbox } from "@/components/ui/checkbox";
 import {
   UserCog,
   Plus,
@@ -47,17 +46,18 @@ import {
   Mail,
   Phone,
   Calendar,
-  Ship,
   Shield,
   Edit,
   Trash2,
   Clock,
   CheckCircle2,
   Loader2,
+  MapPin,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";
+import { useLocation } from "@/lib/location/context";
 
 interface StaffMember {
   id: string;
@@ -67,34 +67,34 @@ interface StaffMember {
   role: string;
   status: string;
   certifications: string[];
-  assignedTours: string[];
-  toursThisMonth: number;
   rating: number | null;
   avatar: string | null;
+  location_id: string | null;
 }
 
 const roleConfig: Record<string, { label: string; color: string }> = {
   admin: { label: "Admin", color: "bg-red-100 text-red-800" },
-  manager: { label: "Manager", color: "bg-blue-100 text-blue-800" },
-  captain: { label: "Captain", color: "bg-indigo-100 text-indigo-800" },
+  location_manager: { label: "Location Manager", color: "bg-amber-100 text-amber-800" },
+  captain: { label: "Captain", color: "bg-blue-100 text-blue-800" },
+  front_desk: { label: "Front Desk", color: "bg-emerald-100 text-emerald-800" },
+  // Legacy roles for backwards compatibility
+  manager: { label: "Manager", color: "bg-amber-100 text-amber-800" },
   guide: { label: "Guide", color: "bg-purple-100 text-purple-800" },
-  front_desk: { label: "Front Desk", color: "bg-green-100 text-green-800" },
 };
 
 export default function StaffPage() {
+  const { selectedLocation } = useLocation();
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [roleFilter, setRoleFilter] = useState("all");
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [staffMembers, setStaffMembers] = useState<StaffMember[]>([]);
-  const [tours, setTours] = useState<string[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [newStaff, setNewStaff] = useState({
     name: "",
     email: "",
     phone: "",
-    role: "guide",
-    assignedTours: [] as string[],
+    role: "front_desk",
   });
   const [editingStaff, setEditingStaff] = useState<StaffMember | null>(null);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
@@ -104,11 +104,18 @@ export default function StaffPage() {
       try {
         const supabase = createClient();
 
-        // Fetch staff from staff table
-        const { data: staffData } = await supabase
+        // Fetch staff from staff table - filtered by selected location
+        let staffQuery = supabase
           .from('staff')
           .select('*')
           .order('created_at', { ascending: false });
+
+        // Filter by location if one is selected
+        if (selectedLocation?.id) {
+          staffQuery = staffQuery.eq('location_id', selectedLocation.id);
+        }
+
+        const { data: staffData } = await staffQuery;
 
         if (staffData) {
           setStaffMembers(staffData.map((s: any) => ({
@@ -119,21 +126,10 @@ export default function StaffPage() {
             role: s.role || 'guide',
             status: s.is_active ? 'active' : 'inactive',
             certifications: [],
-            assignedTours: [],
-            toursThisMonth: 0,
             rating: null,
             avatar: s.avatar_url || null,
+            location_id: s.location_id || null,
           })));
-        }
-
-        // Fetch tours for assignment dropdown
-        const { data: toursData } = await supabase
-          .from('tours')
-          .select('name')
-          .eq('status', 'active');
-
-        if (toursData) {
-          setTours(toursData.map(t => t.name));
         }
       } catch (error) {
         console.error('Error fetching staff:', error);
@@ -143,7 +139,7 @@ export default function StaffPage() {
     };
 
     fetchData();
-  }, []);
+  }, [selectedLocation]);
 
   const filteredStaff = staffMembers.filter((member) => {
     const matchesSearch =
@@ -157,12 +153,17 @@ export default function StaffPage() {
     total: staffMembers.length,
     active: staffMembers.filter((s) => s.status === "active").length,
     captains: staffMembers.filter((s) => s.role === "captain").length,
-    guides: staffMembers.filter((s) => s.role === "guide").length,
+    frontDesk: staffMembers.filter((s) => s.role === "front_desk").length,
   };
 
   const handleAddStaff = async () => {
     if (!newStaff.name || !newStaff.email) {
       toast.error("Missing fields", { description: "Please fill in name and email." });
+      return;
+    }
+
+    if (!selectedLocation?.id) {
+      toast.error("No location selected", { description: "Please select a location first." });
       return;
     }
 
@@ -178,6 +179,7 @@ export default function StaffPage() {
           phone: newStaff.phone || null,
           role: newStaff.role,
           is_active: true,
+          location_id: selectedLocation.id,
         })
         .select()
         .single();
@@ -192,13 +194,12 @@ export default function StaffPage() {
         role: data.role,
         status: 'active',
         certifications: [],
-        assignedTours: [],
-        toursThisMonth: 0,
         rating: null,
         avatar: null,
+        location_id: data.location_id,
       }, ...prev]);
 
-      setNewStaff({ name: "", email: "", phone: "", role: "guide", assignedTours: [] });
+      setNewStaff({ name: "", email: "", phone: "", role: "front_desk" });
       setIsAddDialogOpen(false);
       toast.success("Staff member added", { description: `${data.name} has been added to the team.` });
     } catch (error: any) {
@@ -307,8 +308,15 @@ export default function StaffPage() {
             <UserCog className="h-6 w-6 text-primary" />
             Staff Management
           </h1>
-          <p className="text-muted-foreground">
-            Manage your team members and their assignments
+          <p className="text-muted-foreground flex items-center gap-2">
+            {selectedLocation ? (
+              <>
+                <MapPin className="h-4 w-4" />
+                {selectedLocation.name}
+              </>
+            ) : (
+              "Manage your team members and their assignments"
+            )}
           </p>
         </div>
 
@@ -368,28 +376,12 @@ export default function StaffPage() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="admin">Admin</SelectItem>
-                    <SelectItem value="manager">Manager</SelectItem>
-                    <SelectItem value="captain">Captain</SelectItem>
-                    <SelectItem value="guide">Guide</SelectItem>
+                    <SelectItem value="location_manager">Location Manager</SelectItem>
                     <SelectItem value="front_desk">Front Desk</SelectItem>
+                    <SelectItem value="captain">Captain</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
-              {tours.length > 0 && (
-                <div className="grid gap-2">
-                  <Label>Assigned Tours</Label>
-                  <div className="grid grid-cols-2 gap-2">
-                    {tours.map((tour) => (
-                      <div key={tour} className="flex items-center space-x-2">
-                        <Checkbox id={tour} />
-                        <label htmlFor={tour} className="text-sm">
-                          {tour}
-                        </label>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
             </div>
             <DialogFooter>
               <Button variant="outline" onClick={() => setIsAddDialogOpen(false)} disabled={isSubmitting}>
@@ -459,10 +451,9 @@ export default function StaffPage() {
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="admin">Admin</SelectItem>
-                        <SelectItem value="manager">Manager</SelectItem>
-                        <SelectItem value="captain">Captain</SelectItem>
-                        <SelectItem value="guide">Guide</SelectItem>
+                        <SelectItem value="location_manager">Location Manager</SelectItem>
                         <SelectItem value="front_desk">Front Desk</SelectItem>
+                        <SelectItem value="captain">Captain</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -518,8 +509,8 @@ export default function StaffPage() {
           <p className="text-2xl font-bold text-blue-600">{stats.captains}</p>
         </Card>
         <Card className="p-4">
-          <p className="text-sm text-muted-foreground">Guides</p>
-          <p className="text-2xl font-bold text-purple-600">{stats.guides}</p>
+          <p className="text-sm text-muted-foreground">Front Desk</p>
+          <p className="text-2xl font-bold text-emerald-600">{stats.frontDesk}</p>
         </Card>
       </div>
 
@@ -542,10 +533,9 @@ export default function StaffPage() {
           <SelectContent>
             <SelectItem value="all">All Roles</SelectItem>
             <SelectItem value="admin">Admin</SelectItem>
-            <SelectItem value="manager">Manager</SelectItem>
-            <SelectItem value="captain">Captain</SelectItem>
-            <SelectItem value="guide">Guide</SelectItem>
+            <SelectItem value="location_manager">Location Manager</SelectItem>
             <SelectItem value="front_desk">Front Desk</SelectItem>
+            <SelectItem value="captain">Captain</SelectItem>
           </SelectContent>
         </Select>
       </div>
@@ -573,8 +563,6 @@ export default function StaffPage() {
                 <TableHead>Staff Member</TableHead>
                 <TableHead>Role</TableHead>
                 <TableHead>Contact</TableHead>
-                <TableHead>Assigned Tours</TableHead>
-                <TableHead>This Month</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead></TableHead>
               </TableRow>
@@ -627,31 +615,6 @@ export default function StaffPage() {
                             {member.phone}
                           </p>
                         )}
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      {member.assignedTours.length > 0 ? (
-                        <div className="flex flex-wrap gap-1">
-                          {member.assignedTours.slice(0, 2).map((tour) => (
-                            <Badge key={tour} variant="outline" className="text-xs">
-                              {tour}
-                            </Badge>
-                          ))}
-                          {member.assignedTours.length > 2 && (
-                            <Badge variant="outline" className="text-xs">
-                              +{member.assignedTours.length - 2} more
-                            </Badge>
-                          )}
-                        </div>
-                      ) : (
-                        <span className="text-sm text-muted-foreground">None assigned</span>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-1">
-                        <Ship className="h-4 w-4 text-muted-foreground" />
-                        <span className="font-medium">{member.toursThisMonth}</span>
-                        <span className="text-sm text-muted-foreground">tours</span>
                       </div>
                     </TableCell>
                     <TableCell>

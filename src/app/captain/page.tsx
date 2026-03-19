@@ -10,13 +10,12 @@ import {
   Clock,
   MapPin,
   Users,
-  FileCheck,
   ChevronRight,
   Ship,
   AlertCircle,
   CheckCircle2,
-  Shield,
-  ClipboardCheck,
+  Navigation,
+  Play,
 } from "lucide-react";
 import { format, isToday, isTomorrow, parseISO, addDays } from "date-fns";
 import { createClient } from "@/lib/supabase/client";
@@ -227,7 +226,7 @@ export default function CaptainDashboard() {
           My Assigned Tours
         </h1>
         <p className="text-muted-foreground">
-          View your upcoming tour assignments and manage check-ins
+          Click &quot;Start Trip&quot; to begin check-in, safety checklists, and trip tracking
         </p>
       </div>
 
@@ -314,64 +313,77 @@ function TourCard({ tour, showDate = false }: { tour: AssignedTour; showDate?: b
       case 'complete':
         return <Badge className="bg-green-100 text-green-800"><CheckCircle2 className="h-3 w-3 mr-1" /> All Signed</Badge>;
       case 'partial':
-        return <Badge className="bg-orange-100 text-orange-800"><AlertCircle className="h-3 w-3 mr-1" /> Partial</Badge>;
+        return <Badge className="bg-orange-100 text-orange-800"><AlertCircle className="h-3 w-3 mr-1" /> Pending</Badge>;
       default:
         return <Badge className="bg-gray-100 text-gray-800">No Waivers</Badge>;
     }
   };
 
   return (
-    <Card className="p-4 hover:shadow-md transition-shadow">
+    <Card className={cn(
+      "p-4 hover:shadow-md transition-shadow",
+      isTodayTour && "border-indigo-200 bg-gradient-to-r from-indigo-50/50 to-transparent dark:from-indigo-950/20"
+    )}>
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div className="space-y-2">
-          <div className="flex items-center gap-2">
-            <h3 className="font-semibold text-lg">{tour.tour_name}</h3>
-            {showDate && (
+        <div className="flex items-start gap-4">
+          <div className={cn(
+            "h-14 w-14 rounded-xl flex items-center justify-center flex-shrink-0",
+            isTodayTour ? "bg-indigo-100 dark:bg-indigo-900/30" : "bg-slate-100 dark:bg-slate-800"
+          )}>
+            <Ship className={cn("h-7 w-7", isTodayTour ? "text-indigo-600" : "text-slate-600")} />
+          </div>
+          <div className="space-y-1.5">
+            <div className="flex items-center gap-2 flex-wrap">
+              <h3 className="font-semibold text-lg">{tour.tour_name}</h3>
+              {showDate && (
+                <Badge variant="outline">
+                  {format(parseISO(tour.date), "MMM d")}
+                </Badge>
+              )}
+            </div>
+
+            <div className="flex flex-wrap gap-3 text-sm text-muted-foreground">
+              <span className="flex items-center gap-1">
+                <Clock className="h-4 w-4" />
+                {tour.start_time.slice(0, 5)} - {tour.end_time.slice(0, 5)}
+              </span>
+              <span className="flex items-center gap-1">
+                <MapPin className="h-4 w-4" />
+                {tour.location}
+              </span>
+              <span className="flex items-center gap-1">
+                <Users className="h-4 w-4" />
+                {tour.checked_in_count}/{tour.total_guests} checked in
+              </span>
+            </div>
+
+            <div className="flex items-center gap-2">
+              {getWaiverBadge(tour.waiver_status)}
               <Badge variant="outline">
-                {format(parseISO(tour.date), "MMM d")}
+                {tour.booked_count}/{tour.capacity} booked
               </Badge>
-            )}
-          </div>
-
-          <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
-            <span className="flex items-center gap-1">
-              <Clock className="h-4 w-4" />
-              {tour.start_time.slice(0, 5)} - {tour.end_time.slice(0, 5)}
-            </span>
-            <span className="flex items-center gap-1">
-              <MapPin className="h-4 w-4" />
-              {tour.location}
-            </span>
-            <span className="flex items-center gap-1">
-              <Users className="h-4 w-4" />
-              {tour.checked_in_count}/{tour.total_guests} checked in
-            </span>
-          </div>
-
-          <div className="flex items-center gap-2">
-            {getWaiverBadge(tour.waiver_status)}
-            <Badge variant="outline">
-              {tour.booked_count}/{tour.capacity} booked
-            </Badge>
+            </div>
           </div>
         </div>
 
-        <div className="flex flex-col sm:flex-row gap-2">
-          {isTodayTour && (
-            <Link href={`/captain/checklist?availability=${tour.availability_id}`}>
-              <Button variant="outline" className="gap-2 border-green-300 text-green-700 hover:bg-green-50 hover:text-green-800 w-full sm:w-auto">
-                <Shield className="h-4 w-4" />
-                Safety Checklist
+        <div className="flex flex-col sm:flex-row gap-2 ml-0 md:ml-auto">
+          {isTodayTour ? (
+            <Link href={`/captain/trip?availability=${tour.availability_id}`}>
+              <Button size="lg" className="gap-2 bg-green-600 hover:bg-green-700 w-full sm:w-auto h-12 px-6">
+                <Play className="h-5 w-5" />
+                Start Trip
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+            </Link>
+          ) : (
+            <Link href={`/captain/trip?availability=${tour.availability_id}`}>
+              <Button variant="outline" className="gap-2 w-full sm:w-auto">
+                <Navigation className="h-4 w-4" />
+                View Trip
+                <ChevronRight className="h-4 w-4" />
               </Button>
             </Link>
           )}
-          <Link href={`/captain/manifest?date=${tour.date}&availability=${tour.availability_id}`}>
-            <Button className="gap-2 bg-indigo-600 hover:bg-indigo-700 w-full sm:w-auto">
-              <FileCheck className="h-4 w-4" />
-              View Manifest
-              <ChevronRight className="h-4 w-4" />
-            </Button>
-          </Link>
         </div>
       </div>
     </Card>

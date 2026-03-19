@@ -58,17 +58,23 @@ import {
   CheckCircle2,
   Loader2,
   Ship,
+  PlayCircle,
+  StopCircle,
 } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { format, parseISO } from "date-fns";
 import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
 import type { ChecklistTemplate, ChecklistItem, Tour } from "@/types";
+
+type ChecklistType = 'pre' | 'post';
 
 interface TemplateFormData {
   name: string;
   description: string;
   tour_id: string | null;
   is_active: boolean;
+  checklist_type: ChecklistType;
   items: ChecklistItem[];
 }
 
@@ -77,6 +83,7 @@ const emptyFormData: TemplateFormData = {
   description: "",
   tour_id: null,
   is_active: true,
+  checklist_type: 'pre',
   items: [],
 };
 
@@ -89,6 +96,7 @@ export default function ChecklistTemplatesPage() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [selectedTemplate, setSelectedTemplate] = useState<ChecklistTemplate | null>(null);
   const [formData, setFormData] = useState<TemplateFormData>(emptyFormData);
+  const [activeTab, setActiveTab] = useState<ChecklistType>('pre');
 
   const fetchData = async () => {
     try {
@@ -127,6 +135,7 @@ export default function ChecklistTemplatesPage() {
     setSelectedTemplate(null);
     setFormData({
       ...emptyFormData,
+      checklist_type: activeTab,
       items: [
         { id: crypto.randomUUID(), label: "", required: true, requiresPhoto: false },
       ],
@@ -141,6 +150,7 @@ export default function ChecklistTemplatesPage() {
       description: template.description || "",
       tour_id: template.tour_id,
       is_active: template.is_active,
+      checklist_type: (template as any).checklist_type || 'pre',
       items: template.items || [],
     });
     setDialogOpen(true);
@@ -155,6 +165,7 @@ export default function ChecklistTemplatesPage() {
         description: template.description,
         tour_id: template.tour_id,
         is_active: false,
+        checklist_type: (template as any).checklist_type || 'pre',
         items: template.items,
       });
 
@@ -202,6 +213,7 @@ export default function ChecklistTemplatesPage() {
         description: formData.description.trim() || null,
         tour_id: formData.tour_id === "all" ? null : formData.tour_id,
         is_active: formData.is_active,
+        checklist_type: formData.checklist_type,
         items: formData.items.map((item) => ({
           ...item,
           label: item.label.trim(),
@@ -278,6 +290,118 @@ export default function ChecklistTemplatesPage() {
     );
   }
 
+  // Filter templates by type
+  const preTemplates = templates.filter((t) => (t as any).checklist_type === 'pre' || !(t as any).checklist_type);
+  const postTemplates = templates.filter((t) => (t as any).checklist_type === 'post');
+
+  const renderTemplatesTable = (filteredTemplates: ChecklistTemplate[]) => (
+    <Card>
+      <CardContent className="p-0">
+        {filteredTemplates.length === 0 ? (
+          <div className="text-center py-12">
+            <ClipboardList className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+            <h3 className="font-medium mb-2">No {activeTab === 'pre' ? 'pre-trip' : 'post-trip'} templates yet</h3>
+            <p className="text-muted-foreground mb-4">
+              Create your first {activeTab === 'pre' ? 'pre-departure' : 'post-trip'} checklist template
+            </p>
+            <Button onClick={handleCreateNew}>
+              <Plus className="h-4 w-4 mr-2" />
+              Create Template
+            </Button>
+          </div>
+        ) : (
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Name</TableHead>
+                <TableHead>Tour</TableHead>
+                <TableHead>Items</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>Created</TableHead>
+                <TableHead className="w-[50px]"></TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {filteredTemplates.map((template) => (
+                <TableRow key={template.id}>
+                  <TableCell>
+                    <div>
+                      <p className="font-medium">{template.name}</p>
+                      {template.description && (
+                        <p className="text-sm text-muted-foreground truncate max-w-[300px]">
+                          {template.description}
+                        </p>
+                      )}
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    {template.tour ? (
+                      <span className="flex items-center gap-1">
+                        <Ship className="h-3 w-3 text-muted-foreground" />
+                        {(template.tour as any).name}
+                      </span>
+                    ) : (
+                      <span className="text-muted-foreground">All Tours</span>
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    <Badge variant="outline">
+                      {template.items?.length || 0} items
+                    </Badge>
+                  </TableCell>
+                  <TableCell>
+                    <Badge
+                      variant={template.is_active ? "default" : "secondary"}
+                      className={cn(
+                        template.is_active
+                          ? "bg-green-100 text-green-800"
+                          : "bg-gray-100 text-gray-600"
+                      )}
+                    >
+                      {template.is_active ? "Active" : "Inactive"}
+                    </Badge>
+                  </TableCell>
+                  <TableCell className="text-muted-foreground">
+                    {format(parseISO(template.created_at), "MMM d, yyyy")}
+                  </TableCell>
+                  <TableCell>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon">
+                          <MoreHorizontal className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={() => handleEdit(template)}>
+                          <Pencil className="h-4 w-4 mr-2" />
+                          Edit
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handleDuplicate(template)}>
+                          <Copy className="h-4 w-4 mr-2" />
+                          Duplicate
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          className="text-destructive"
+                          onClick={() => {
+                            setSelectedTemplate(template);
+                            setDeleteDialogOpen(true);
+                          }}
+                        >
+                          <Trash2 className="h-4 w-4 mr-2" />
+                          Delete
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        )}
+      </CardContent>
+    </Card>
+  );
+
   return (
     <div className="p-6 space-y-6">
       {/* Header */}
@@ -285,10 +409,10 @@ export default function ChecklistTemplatesPage() {
         <div>
           <h1 className="text-2xl font-bold flex items-center gap-2">
             <ClipboardList className="h-6 w-6 text-primary" />
-            Safety Checklist Templates
+            Safety Checklists
           </h1>
           <p className="text-muted-foreground">
-            Create and manage pre-departure safety checklists
+            Create and manage pre-trip and post-trip checklists
           </p>
         </div>
         <Button onClick={handleCreateNew}>
@@ -297,112 +421,33 @@ export default function ChecklistTemplatesPage() {
         </Button>
       </div>
 
-      {/* Templates Table */}
-      <Card>
-        <CardContent className="p-0">
-          {templates.length === 0 ? (
-            <div className="text-center py-12">
-              <ClipboardList className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-              <h3 className="font-medium mb-2">No templates yet</h3>
-              <p className="text-muted-foreground mb-4">
-                Create your first safety checklist template
-              </p>
-              <Button onClick={handleCreateNew}>
-                <Plus className="h-4 w-4 mr-2" />
-                Create Template
-              </Button>
-            </div>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Tour</TableHead>
-                  <TableHead>Items</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Created</TableHead>
-                  <TableHead className="w-[50px]"></TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {templates.map((template) => (
-                  <TableRow key={template.id}>
-                    <TableCell>
-                      <div>
-                        <p className="font-medium">{template.name}</p>
-                        {template.description && (
-                          <p className="text-sm text-muted-foreground truncate max-w-[300px]">
-                            {template.description}
-                          </p>
-                        )}
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      {template.tour ? (
-                        <span className="flex items-center gap-1">
-                          <Ship className="h-3 w-3 text-muted-foreground" />
-                          {(template.tour as any).name}
-                        </span>
-                      ) : (
-                        <span className="text-muted-foreground">All Tours</span>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant="outline">
-                        {template.items?.length || 0} items
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <Badge
-                        variant={template.is_active ? "default" : "secondary"}
-                        className={cn(
-                          template.is_active
-                            ? "bg-green-100 text-green-800"
-                            : "bg-gray-100 text-gray-600"
-                        )}
-                      >
-                        {template.is_active ? "Active" : "Inactive"}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-muted-foreground">
-                      {format(parseISO(template.created_at), "MMM d, yyyy")}
-                    </TableCell>
-                    <TableCell>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon">
-                            <MoreHorizontal className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem onClick={() => handleEdit(template)}>
-                            <Pencil className="h-4 w-4 mr-2" />
-                            Edit
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => handleDuplicate(template)}>
-                            <Copy className="h-4 w-4 mr-2" />
-                            Duplicate
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            className="text-destructive"
-                            onClick={() => {
-                              setSelectedTemplate(template);
-                              setDeleteDialogOpen(true);
-                            }}
-                          >
-                            <Trash2 className="h-4 w-4 mr-2" />
-                            Delete
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          )}
-        </CardContent>
-      </Card>
+      {/* Tabs for Pre/Post Checklists */}
+      <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as ChecklistType)}>
+        <TabsList className="grid w-full max-w-md grid-cols-2">
+          <TabsTrigger value="pre" className="flex items-center gap-2">
+            <PlayCircle className="h-4 w-4" />
+            Pre-Trip
+            {preTemplates.length > 0 && (
+              <Badge variant="secondary" className="ml-1">{preTemplates.length}</Badge>
+            )}
+          </TabsTrigger>
+          <TabsTrigger value="post" className="flex items-center gap-2">
+            <StopCircle className="h-4 w-4" />
+            Post-Trip
+            {postTemplates.length > 0 && (
+              <Badge variant="secondary" className="ml-1">{postTemplates.length}</Badge>
+            )}
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="pre" className="mt-4">
+          {renderTemplatesTable(preTemplates)}
+        </TabsContent>
+
+        <TabsContent value="post" className="mt-4">
+          {renderTemplatesTable(postTemplates)}
+        </TabsContent>
+      </Tabs>
 
       {/* Create/Edit Dialog */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
