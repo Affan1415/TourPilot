@@ -1,4 +1,4 @@
-export type UserRole = 'admin' | 'manager' | 'captain' | 'guide' | 'front_desk' | 'customer';
+export type UserRole = 'admin' | 'location_manager' | 'captain' | 'front_desk' | 'customer';
 
 export interface UserProfile {
   userId: string;
@@ -9,11 +9,20 @@ export interface UserProfile {
   isActive: boolean;
 }
 
-export const ADMIN_ROLES: UserRole[] = ['admin', 'manager'];
-export const STAFF_ROLES: UserRole[] = ['admin', 'manager', 'captain', 'guide', 'front_desk'];
+export const ADMIN_ROLES: UserRole[] = ['admin'];
+export const MANAGER_ROLES: UserRole[] = ['admin', 'location_manager'];
+export const STAFF_ROLES: UserRole[] = ['admin', 'location_manager', 'captain', 'front_desk'];
 
 export function isAdminRole(role: UserRole | null): boolean {
-  return role !== null && ADMIN_ROLES.includes(role);
+  return role === 'admin';
+}
+
+export function isManagerRole(role: UserRole | null): boolean {
+  return role !== null && MANAGER_ROLES.includes(role);
+}
+
+export function isLocationManager(role: UserRole | null): boolean {
+  return role === 'location_manager';
 }
 
 export function isStaffRole(role: UserRole | null): boolean {
@@ -31,18 +40,32 @@ export function isCustomerRole(role: UserRole | null): boolean {
 // Route access configuration
 export const ROUTE_ACCESS: Record<string, UserRole[]> = {
   // Admin-only routes
-  '/dashboard/tours': ['admin', 'manager'],
-  '/dashboard/staff': ['admin', 'manager'],
-  '/dashboard/settings': ['admin', 'manager'],
-  '/dashboard/reports': ['admin', 'manager'],
-  '/dashboard/communications': ['admin', 'manager'],
-  '/dashboard/customers': ['admin', 'manager', 'front_desk'],
+  '/dashboard/settings': ['admin'],
+  '/dashboard/super-admin': ['admin'],
 
-  // Staff routes (all staff can access)
-  '/dashboard': ['admin', 'manager', 'captain', 'guide', 'front_desk'],
-  '/dashboard/calendar': ['admin', 'manager', 'captain', 'guide', 'front_desk'],
-  '/dashboard/bookings': ['admin', 'manager', 'captain', 'guide', 'front_desk'],
-  '/dashboard/manifest': ['admin', 'manager', 'captain', 'guide'],
+  // Admin and Location Manager routes (front_desk cannot access these)
+  '/dashboard/tours': ['admin', 'location_manager'],
+  '/dashboard/staff': ['admin', 'location_manager'],
+  '/dashboard/reports': ['admin', 'location_manager'],
+  '/dashboard/communications': ['admin', 'location_manager'],
+  '/dashboard/customers': ['admin', 'location_manager'],
+  '/dashboard/reviews': ['admin', 'location_manager'],
+  '/dashboard/availability': ['admin', 'location_manager'],
+  '/dashboard/pricing': ['admin', 'location_manager'],
+  '/dashboard/waivers': ['admin', 'location_manager'],
+  '/dashboard/fleet': ['admin', 'location_manager'],
+  '/dashboard/locations': ['admin'],
+  '/dashboard/checklists': ['admin', 'location_manager'],
+  '/dashboard/compliance': ['admin', 'location_manager'],
+  '/dashboard/widgets': ['admin', 'location_manager'],
+  '/dashboard/analytics': ['admin', 'location_manager'],
+  '/dashboard/inbox': ['admin', 'location_manager'],
+
+  // Front desk routes (booking management and availability viewing only)
+  '/dashboard': ['admin', 'location_manager', 'front_desk'],
+  '/dashboard/calendar': ['admin', 'location_manager', 'front_desk'],
+  '/dashboard/bookings': ['admin', 'location_manager', 'front_desk'],
+  '/dashboard/manifest': ['admin', 'location_manager', 'front_desk'],
 
   // Captain-specific routes
   '/captain': ['captain'],
@@ -88,8 +111,7 @@ export function getDefaultRedirect(role: UserRole | null): string {
 
   switch (role) {
     case 'admin':
-    case 'manager':
-    case 'guide':
+    case 'location_manager':
     case 'front_desk':
       return '/dashboard';
     case 'captain':

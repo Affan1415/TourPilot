@@ -46,12 +46,16 @@ import {
 import { cn } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/client";
 import type { User as SupabaseUser } from "@supabase/supabase-js";
+import { LocationProvider } from "@/lib/location/context";
+import { LocationSelector } from "@/components/dashboard/location-selector";
+import { UserRole, MANAGER_ROLES, ADMIN_ROLES } from "@/lib/auth/roles";
 
 interface NavItem {
   name: string;
   href: string;
   icon: React.ComponentType<{ className?: string }>;
   badge?: number;
+  roles?: UserRole[]; // If specified, only show to these roles
 }
 
 interface NavGroup {
@@ -64,8 +68,8 @@ const navigationGroups: NavGroup[] = [
     heading: "Overview",
     items: [
       { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
-      { name: "Super Admin", href: "/dashboard/super-admin", icon: Crown },
-      { name: "Inbox", href: "/dashboard/inbox", icon: Mail, badge: 3 },
+      { name: "Super Admin", href: "/dashboard/super-admin", icon: Crown, roles: ['admin'] },
+      { name: "Inbox", href: "/dashboard/inbox", icon: Mail, badge: 3, roles: ['admin', 'location_manager'] },
     ],
   },
   {
@@ -73,35 +77,35 @@ const navigationGroups: NavGroup[] = [
     items: [
       { name: "Calendar", href: "/dashboard/calendar", icon: Calendar },
       { name: "Bookings", href: "/dashboard/bookings", icon: ClipboardList, badge: 12 },
-      { name: "Customers", href: "/dashboard/customers", icon: Users },
-      { name: "Reviews", href: "/dashboard/reviews", icon: Star },
+      { name: "Customers", href: "/dashboard/customers", icon: Users, roles: ['admin', 'location_manager'] },
+      { name: "Reviews", href: "/dashboard/reviews", icon: Star, roles: ['admin', 'location_manager'] },
       { name: "Manifest", href: "/dashboard/manifest", icon: FileText },
     ],
   },
   {
     heading: "Tours",
     items: [
-      { name: "Tours", href: "/dashboard/tours", icon: Ship },
-      { name: "Availability", href: "/dashboard/availability", icon: Clock },
-      { name: "Pricing", href: "/dashboard/pricing", icon: DollarSign },
-      { name: "Waivers", href: "/dashboard/waivers", icon: FileSignature },
+      { name: "Tours", href: "/dashboard/tours", icon: Ship, roles: ['admin', 'location_manager'] },
+      { name: "Availability", href: "/dashboard/availability", icon: Clock, roles: ['admin', 'location_manager'] },
+      { name: "Pricing", href: "/dashboard/pricing", icon: DollarSign, roles: ['admin', 'location_manager'] },
+      { name: "Waivers", href: "/dashboard/waivers", icon: FileSignature, roles: ['admin', 'location_manager'] },
     ],
   },
   {
     heading: "Operations",
     items: [
-      { name: "Fleet", href: "/dashboard/fleet", icon: Anchor },
-      { name: "Locations", href: "/dashboard/locations", icon: Globe },
-      { name: "Staff", href: "/dashboard/staff", icon: UserCog },
-      { name: "Checklists", href: "/dashboard/checklists", icon: ClipboardList },
-      { name: "Compliance", href: "/dashboard/compliance", icon: Shield },
+      { name: "Fleet", href: "/dashboard/fleet", icon: Anchor, roles: ['admin', 'location_manager'] },
+      { name: "Locations", href: "/dashboard/locations", icon: Globe, roles: ['admin'] },
+      { name: "Staff", href: "/dashboard/staff", icon: UserCog, roles: ['admin', 'location_manager'] },
+      { name: "Checklists", href: "/dashboard/checklists", icon: ClipboardList, roles: ['admin', 'location_manager'] },
+      { name: "Compliance", href: "/dashboard/compliance", icon: Shield, roles: ['admin', 'location_manager'] },
     ],
   },
   {
     heading: "Marketing",
     items: [
-      { name: "Widgets", href: "/dashboard/widgets", icon: Code },
-      { name: "Analytics", href: "/dashboard/analytics", icon: BarChart3 },
+      { name: "Widgets", href: "/dashboard/widgets", icon: Code, roles: ['admin', 'location_manager'] },
+      { name: "Analytics", href: "/dashboard/analytics", icon: BarChart3, roles: ['admin', 'location_manager'] },
     ],
   },
 ];
@@ -119,6 +123,7 @@ export default function DashboardLayout({
   const router = useRouter();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [user, setUser] = useState<SupabaseUser | null>(null);
+  const [userRole, setUserRole] = useState<UserRole | null>(null);
   const [loading, setLoading] = useState(true);
   const [mounted, setMounted] = useState(false);
 
@@ -132,6 +137,20 @@ export default function DashboardLayout({
     const getUser = async () => {
       const { data: { user } } = await supabase.auth.getUser();
       setUser(user);
+
+      if (user) {
+        // Fetch user role from staff table
+        const { data: staffData } = await supabase
+          .from('staff')
+          .select('role')
+          .eq('user_id', user.id)
+          .single();
+
+        if (staffData) {
+          setUserRole(staffData.role as UserRole);
+        }
+      }
+
       setLoading(false);
     };
 
@@ -164,7 +183,18 @@ export default function DashboardLayout({
     .toUpperCase()
     .slice(0, 2);
 
+  // Filter navigation items based on user role
+  const filteredNavigationGroups = navigationGroups.map(group => ({
+    ...group,
+    items: group.items.filter(item => {
+      if (!item.roles) return true; // No role restriction
+      if (!userRole) return false; // User has no role, hide restricted items
+      return item.roles.includes(userRole);
+    })
+  })).filter(group => group.items.length > 0); // Remove empty groups
+
   return (
+    <LocationProvider>
     <div className="flex h-screen bg-background">
       {/* Mobile sidebar backdrop */}
       {sidebarOpen && (
@@ -215,7 +245,7 @@ export default function DashboardLayout({
         {/* Navigation */}
         <ScrollArea className="flex-1 overflow-hidden">
           <nav className="space-y-4 px-2 py-4">
-            {navigationGroups.map((group, groupIndex) => (
+            {filteredNavigationGroups.map((group, groupIndex) => (
               <div key={group.heading} className={cn(groupIndex > 0 && "pt-2")}>
                 {/* Group Heading */}
                 <div className="px-3 mb-2">
@@ -318,7 +348,7 @@ export default function DashboardLayout({
 
             {/* Page Title - shown on mobile */}
             <h1 className="font-semibold text-lg lg:hidden">
-              {navigationGroups.flatMap(g => g.items).find(n => pathname === n.href || pathname.startsWith(n.href + "/"))?.name || "Dashboard"}
+              {filteredNavigationGroups.flatMap(g => g.items).find(n => pathname === n.href || pathname.startsWith(n.href + "/"))?.name || "Dashboard"}
             </h1>
 
             {/* Search - V6 Style */}
@@ -333,6 +363,10 @@ export default function DashboardLayout({
           </div>
 
           <div className="flex items-center gap-3">
+            {/* Location Selector */}
+            <div className="hidden sm:block">
+              <LocationSelector />
+            </div>
             {/* Quick actions */}
             <Link href="/dashboard/bookings/new">
               <Button size="sm" className="hidden sm:flex gap-2 gradient-primary border-0 rounded-xl shadow-lg shadow-primary/30">
@@ -414,5 +448,6 @@ export default function DashboardLayout({
         </main>
       </div>
     </div>
+    </LocationProvider>
   );
 }
