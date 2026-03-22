@@ -1,43 +1,40 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { useParams, useSearchParams } from "next/navigation";
+import { useState, useEffect, useCallback } from "react";
+import { useParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Calendar } from "@/components/ui/calendar";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import {
-  Ship,
   Clock,
-  Users,
-  DollarSign,
   ChevronRight,
   ChevronLeft,
   Calendar as CalendarIcon,
   Loader2,
   Check,
-  Star,
+  AlertCircle,
 } from "lucide-react";
-import { format, addDays } from "date-fns";
+import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 
 interface Tour {
   id: string;
   name: string;
   description: string;
-  duration: number;
-  price: number;
-  image?: string;
-  rating?: number;
-  reviewCount?: number;
+  short_description: string;
+  duration_minutes: number;
+  base_price: number;
+  images?: string[];
+  location?: string;
 }
 
 interface TimeSlot {
+  id: string;
   time: string;
+  end_time: string;
   available: number;
   price: number;
 }
@@ -54,70 +51,43 @@ interface WidgetConfig {
   collectNotes: boolean;
 }
 
-// Mock data
-const mockTours: Tour[] = [
-  {
-    id: "1",
-    name: "Sunset Cruise",
-    description: "Experience a breathtaking sunset on the water with complimentary drinks.",
-    duration: 120,
-    price: 89,
-    rating: 4.8,
-    reviewCount: 156,
-  },
-  {
-    id: "2",
-    name: "Morning Adventure",
-    description: "Start your day with an exciting boat adventure and dolphin watching.",
-    duration: 180,
-    price: 129,
-    rating: 4.9,
-    reviewCount: 89,
-  },
-  {
-    id: "3",
-    name: "Snorkel Experience",
-    description: "Discover underwater wonders at the best snorkeling spots.",
-    duration: 240,
-    price: 149,
-    rating: 4.7,
-    reviewCount: 234,
-  },
-];
-
-const mockSlots: TimeSlot[] = [
-  { time: "09:00 AM", available: 8, price: 129 },
-  { time: "11:00 AM", available: 4, price: 129 },
-  { time: "02:00 PM", available: 12, price: 119 },
-  { time: "05:30 PM", available: 2, price: 149 },
-];
+interface Guest {
+  first_name: string;
+  last_name: string;
+  email?: string;
+  type: "adult" | "child";
+}
 
 type Step = "tours" | "date" | "guests" | "details" | "confirm";
 
+const defaultConfig: WidgetConfig = {
+  primaryColor: "#0ea5e9",
+  fontFamily: "Inter, sans-serif",
+  borderRadius: "8px",
+  showPrices: true,
+  showAvailability: true,
+  showTourImages: true,
+  showDescription: true,
+  requirePhone: false,
+  collectNotes: true,
+};
+
 export default function EmbedWidget() {
   const params = useParams();
-  const searchParams = useSearchParams();
   const widgetKey = params.widgetKey as string;
 
   const [loading, setLoading] = useState(true);
-  const [config, setConfig] = useState<WidgetConfig>({
-    primaryColor: "#0ea5e9",
-    fontFamily: "Inter, sans-serif",
-    borderRadius: "8px",
-    showPrices: true,
-    showAvailability: true,
-    showTourImages: true,
-    showDescription: true,
-    requirePhone: false,
-    collectNotes: true,
-  });
+  const [error, setError] = useState<string | null>(null);
+  const [config, setConfig] = useState<WidgetConfig>(defaultConfig);
   const [step, setStep] = useState<Step>("tours");
   const [tours, setTours] = useState<Tour[]>([]);
   const [selectedTour, setSelectedTour] = useState<Tour | null>(null);
   const [selectedDate, setSelectedDate] = useState<Date | undefined>();
   const [selectedSlot, setSelectedSlot] = useState<TimeSlot | null>(null);
   const [slots, setSlots] = useState<TimeSlot[]>([]);
-  const [guests, setGuests] = useState({ adults: 2, children: 0 });
+  const [loadingSlots, setLoadingSlots] = useState(false);
+  const [guestCounts, setGuestCounts] = useState({ adults: 2, children: 0 });
+  const [guestDetails, setGuestDetails] = useState<Guest[]>([]);
   const [formData, setFormData] = useState({
     firstName: "",
     lastName: "",
@@ -129,22 +99,75 @@ export default function EmbedWidget() {
   const [bookingComplete, setBookingComplete] = useState(false);
   const [bookingRef, setBookingRef] = useState("");
 
+  // Fetch widget config and tours
   useEffect(() => {
-    // Simulate loading widget config and tours
-    setTimeout(() => {
-      setTours(mockTours);
-      setLoading(false);
-    }, 500);
+    async function loadWidget() {
+      try {
+        const res = await fetch(`/api/embed/${widgetKey}`);
+        if (!res.ok) {
+          throw new Error("Widget not found or inactive");
+        }
+        const data = await res.json();
+        setConfig({ ...defaultConfig, ...data.widget.theme });
+        setTours(data.tours || []);
+      } catch (err: any) {
+        setError(err.message || "Failed to load widget");
+      } finally {
+        setLoading(false);
+      }
+    }
+    loadWidget();
   }, [widgetKey]);
 
-  useEffect(() => {
-    if (selectedDate) {
-      setSlots(mockSlots);
+  // Fetch availabilities when date changes
+  const loadSlots = useCallback(async () => {
+    if (!selectedTour || !selectedDate) return;
+
+    setLoadingSlots(true);
+    try {
+      const dateStr = format(selectedDate, "yyyy-MM-dd");
+      const res = await fetch(
+        `/api/embed/${widgetKey}/availabilities?tour_id=${selectedTour.id}&date=${dateStr}`
+      );
+      if (res.ok) {
+        const data = await res.json();
+        setSlots(data.slots || []);
+      }
+    } catch (err) {
+      console.error("Failed to load slots:", err);
+    } finally {
+      setLoadingSlots(false);
     }
-  }, [selectedDate]);
+  }, [widgetKey, selectedTour, selectedDate]);
+
+  useEffect(() => {
+    if (selectedDate && selectedTour) {
+      loadSlots();
+    }
+  }, [selectedDate, selectedTour, loadSlots]);
+
+  // Initialize guest details when guest counts change
+  useEffect(() => {
+    const details: Guest[] = [];
+    for (let i = 0; i < guestCounts.adults; i++) {
+      details.push({
+        first_name: i === 0 ? formData.firstName : "",
+        last_name: i === 0 ? formData.lastName : "",
+        email: i === 0 ? formData.email : "",
+        type: "adult",
+      });
+    }
+    for (let i = 0; i < guestCounts.children; i++) {
+      details.push({ first_name: "", last_name: "", type: "child" });
+    }
+    setGuestDetails(details);
+  }, [guestCounts, formData.firstName, formData.lastName, formData.email]);
 
   const handleSelectTour = (tour: Tour) => {
     setSelectedTour(tour);
+    setSelectedDate(undefined);
+    setSelectedSlot(null);
+    setSlots([]);
     setStep("date");
   };
 
@@ -159,28 +182,61 @@ export default function EmbedWidget() {
   };
 
   const handleGuestChange = (type: "adults" | "children", delta: number) => {
-    setGuests((prev) => ({
+    setGuestCounts((prev) => ({
       ...prev,
       [type]: Math.max(type === "adults" ? 1 : 0, prev[type] + delta),
     }));
   };
 
   const handleSubmit = async () => {
+    if (!selectedSlot) return;
+
     setSubmitting(true);
+    try {
+      // Build guest list
+      const guests = guestDetails.map((g, i) => ({
+        first_name: i === 0 ? formData.firstName : g.first_name || `Guest ${i + 1}`,
+        last_name: i === 0 ? formData.lastName : g.last_name || "",
+        email: i === 0 ? formData.email : g.email,
+        type: g.type,
+      }));
 
-    // Simulate API call
-    await new Promise((r) => setTimeout(r, 2000));
+      const res = await fetch(`/api/embed/${widgetKey}/book`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          availability_id: selectedSlot.id,
+          customer: {
+            first_name: formData.firstName,
+            last_name: formData.lastName,
+            email: formData.email,
+            phone: formData.phone,
+          },
+          guests,
+          notes: formData.notes,
+        }),
+      });
 
-    setBookingRef(`BK-${Date.now().toString(36).toUpperCase()}`);
-    setBookingComplete(true);
-    setSubmitting(false);
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || "Booking failed");
+      }
+
+      setBookingRef(data.booking_reference);
+      setBookingComplete(true);
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const totalPrice = selectedSlot
-    ? selectedSlot.price * guests.adults + selectedSlot.price * 0.5 * guests.children
+    ? selectedSlot.price * guestCounts.adults + selectedSlot.price * 0.5 * guestCounts.children
     : 0;
 
-  const canProceedFromGuests = guests.adults >= 1;
+  const canProceedFromGuests = guestCounts.adults >= 1 && selectedSlot && guestCounts.adults + guestCounts.children <= selectedSlot.available;
   const canProceedFromDetails =
     formData.firstName &&
     formData.lastName &&
@@ -194,6 +250,23 @@ export default function EmbedWidget() {
         style={{ fontFamily: config.fontFamily }}
       >
         <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
+  if (error && !bookingComplete) {
+    return (
+      <div
+        className="min-h-[400px] flex items-center justify-center p-6"
+        style={{ fontFamily: config.fontFamily }}
+      >
+        <div className="text-center">
+          <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
+          <p className="text-lg font-medium">{error}</p>
+          <Button className="mt-4" onClick={() => window.location.reload()}>
+            Try Again
+          </Button>
+        </div>
       </div>
     );
   }
@@ -274,54 +347,48 @@ export default function EmbedWidget() {
         {step === "tours" && (
           <div className="space-y-4">
             <h3 className="text-lg font-semibold">Select a Tour</h3>
-            <div className="space-y-3">
-              {tours.map((tour) => (
-                <Card
-                  key={tour.id}
-                  className="cursor-pointer hover:border-primary transition-colors"
-                  onClick={() => handleSelectTour(tour)}
-                  style={
-                    {
-                      "--border-radius": config.borderRadius,
-                    } as React.CSSProperties
-                  }
-                >
-                  <CardContent className="p-4">
-                    <div className="flex items-start gap-4">
-                      <div className="flex-1">
-                        <h4 className="font-semibold">{tour.name}</h4>
-                        {config.showDescription && (
-                          <p className="text-sm text-muted-foreground mt-1 line-clamp-2">
-                            {tour.description}
-                          </p>
-                        )}
-                        <div className="flex items-center gap-4 mt-2 text-sm text-muted-foreground">
-                          <span className="flex items-center gap-1">
-                            <Clock className="h-4 w-4" />
-                            {Math.floor(tour.duration / 60)}h {tour.duration % 60}m
-                          </span>
-                          {tour.rating && (
-                            <span className="flex items-center gap-1">
-                              <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
-                              {tour.rating} ({tour.reviewCount})
-                            </span>
+            {tours.length === 0 ? (
+              <p className="text-muted-foreground">No tours available.</p>
+            ) : (
+              <div className="space-y-3">
+                {tours.map((tour) => (
+                  <Card
+                    key={tour.id}
+                    className="cursor-pointer hover:border-primary transition-colors"
+                    onClick={() => handleSelectTour(tour)}
+                  >
+                    <CardContent className="p-4">
+                      <div className="flex items-start gap-4">
+                        <div className="flex-1">
+                          <h4 className="font-semibold">{tour.name}</h4>
+                          {config.showDescription && (
+                            <p className="text-sm text-muted-foreground mt-1 line-clamp-2">
+                              {tour.short_description || tour.description}
+                            </p>
                           )}
+                          <div className="flex items-center gap-4 mt-2 text-sm text-muted-foreground">
+                            <span className="flex items-center gap-1">
+                              <Clock className="h-4 w-4" />
+                              {Math.floor(tour.duration_minutes / 60)}h{" "}
+                              {tour.duration_minutes % 60 > 0 ? `${tour.duration_minutes % 60}m` : ""}
+                            </span>
+                          </div>
                         </div>
+                        {config.showPrices && (
+                          <div className="text-right">
+                            <p className="text-lg font-bold" style={{ color: config.primaryColor }}>
+                              ${tour.base_price}
+                            </p>
+                            <p className="text-xs text-muted-foreground">per person</p>
+                          </div>
+                        )}
+                        <ChevronRight className="h-5 w-5 text-muted-foreground" />
                       </div>
-                      {config.showPrices && (
-                        <div className="text-right">
-                          <p className="text-lg font-bold" style={{ color: config.primaryColor }}>
-                            ${tour.price}
-                          </p>
-                          <p className="text-xs text-muted-foreground">per person</p>
-                        </div>
-                      )}
-                      <ChevronRight className="h-5 w-5 text-muted-foreground" />
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )}
           </div>
         )}
 
@@ -354,41 +421,51 @@ export default function EmbedWidget() {
                     <p className="text-sm font-medium">
                       Available times for {format(selectedDate, "MMMM d, yyyy")}
                     </p>
-                    {slots.map((slot) => (
-                      <Card
-                        key={slot.time}
-                        className={cn(
-                          "cursor-pointer transition-colors",
-                          selectedSlot?.time === slot.time
-                            ? "border-2"
-                            : "hover:border-primary"
-                        )}
-                        style={{
-                          borderColor:
-                            selectedSlot?.time === slot.time ? config.primaryColor : undefined,
-                        }}
-                        onClick={() => handleSelectSlot(slot)}
-                      >
-                        <CardContent className="p-3 flex items-center justify-between">
-                          <div>
-                            <p className="font-medium">{slot.time}</p>
-                            {config.showAvailability && (
-                              <p className="text-xs text-muted-foreground">
-                                {slot.available} spots left
+                    {loadingSlots ? (
+                      <div className="flex items-center justify-center py-8">
+                        <Loader2 className="h-6 w-6 animate-spin" />
+                      </div>
+                    ) : slots.length === 0 ? (
+                      <p className="text-muted-foreground text-sm">
+                        No available times for this date. Please select another date.
+                      </p>
+                    ) : (
+                      slots.map((slot) => (
+                        <Card
+                          key={slot.id}
+                          className={cn(
+                            "cursor-pointer transition-colors",
+                            selectedSlot?.id === slot.id
+                              ? "border-2"
+                              : "hover:border-primary"
+                          )}
+                          style={{
+                            borderColor:
+                              selectedSlot?.id === slot.id ? config.primaryColor : undefined,
+                          }}
+                          onClick={() => handleSelectSlot(slot)}
+                        >
+                          <CardContent className="p-3 flex items-center justify-between">
+                            <div>
+                              <p className="font-medium">{slot.time}</p>
+                              {config.showAvailability && (
+                                <p className="text-xs text-muted-foreground">
+                                  {slot.available} spots left
+                                </p>
+                              )}
+                            </div>
+                            {config.showPrices && (
+                              <p className="font-semibold" style={{ color: config.primaryColor }}>
+                                ${slot.price}
                               </p>
                             )}
-                          </div>
-                          {config.showPrices && (
-                            <p className="font-semibold" style={{ color: config.primaryColor }}>
-                              ${slot.price}
-                            </p>
-                          )}
-                        </CardContent>
-                      </Card>
-                    ))}
+                          </CardContent>
+                        </Card>
+                      ))
+                    )}
                   </>
                 ) : (
-                  <div className="flex items-center justify-center h-full text-muted-foreground">
+                  <div className="flex items-center justify-center h-full text-muted-foreground py-8">
                     <CalendarIcon className="h-8 w-8 mr-2" />
                     <span>Select a date to see available times</span>
                   </div>
@@ -420,15 +497,16 @@ export default function EmbedWidget() {
                       variant="outline"
                       size="icon"
                       onClick={() => handleGuestChange("adults", -1)}
-                      disabled={guests.adults <= 1}
+                      disabled={guestCounts.adults <= 1}
                     >
                       -
                     </Button>
-                    <span className="w-8 text-center font-medium">{guests.adults}</span>
+                    <span className="w-8 text-center font-medium">{guestCounts.adults}</span>
                     <Button
                       variant="outline"
                       size="icon"
                       onClick={() => handleGuestChange("adults", 1)}
+                      disabled={!!(selectedSlot && guestCounts.adults + guestCounts.children >= selectedSlot.available)}
                     >
                       +
                     </Button>
@@ -445,15 +523,16 @@ export default function EmbedWidget() {
                       variant="outline"
                       size="icon"
                       onClick={() => handleGuestChange("children", -1)}
-                      disabled={guests.children <= 0}
+                      disabled={guestCounts.children <= 0}
                     >
                       -
                     </Button>
-                    <span className="w-8 text-center font-medium">{guests.children}</span>
+                    <span className="w-8 text-center font-medium">{guestCounts.children}</span>
                     <Button
                       variant="outline"
                       size="icon"
                       onClick={() => handleGuestChange("children", 1)}
+                      disabled={!!(selectedSlot && guestCounts.adults + guestCounts.children >= selectedSlot.available)}
                     >
                       +
                     </Button>
@@ -462,17 +541,17 @@ export default function EmbedWidget() {
               </CardContent>
             </Card>
 
-            {config.showPrices && (
+            {config.showPrices && selectedSlot && (
               <Card>
                 <CardContent className="p-4">
                   <div className="flex justify-between text-sm">
-                    <span>{guests.adults} Adult(s) x ${selectedSlot?.price}</span>
-                    <span>${(selectedSlot?.price || 0) * guests.adults}</span>
+                    <span>{guestCounts.adults} Adult(s) x ${selectedSlot.price}</span>
+                    <span>${selectedSlot.price * guestCounts.adults}</span>
                   </div>
-                  {guests.children > 0 && (
+                  {guestCounts.children > 0 && (
                     <div className="flex justify-between text-sm mt-1">
-                      <span>{guests.children} Child(ren) x ${(selectedSlot?.price || 0) * 0.5}</span>
-                      <span>${(selectedSlot?.price || 0) * 0.5 * guests.children}</span>
+                      <span>{guestCounts.children} Child(ren) x ${selectedSlot.price * 0.5}</span>
+                      <span>${selectedSlot.price * 0.5 * guestCounts.children}</span>
                     </div>
                   )}
                   <div className="flex justify-between font-bold mt-3 pt-3 border-t">
@@ -559,8 +638,13 @@ export default function EmbedWidget() {
             <Card className="bg-muted/50">
               <CardContent className="p-4 space-y-2 text-sm">
                 <p className="font-semibold">{selectedTour?.name}</p>
-                <p>{format(selectedDate!, "EEEE, MMMM d, yyyy")} at {selectedSlot?.time}</p>
-                <p>{guests.adults} Adult(s){guests.children > 0 ? `, ${guests.children} Child(ren)` : ""}</p>
+                <p>
+                  {selectedDate && format(selectedDate, "EEEE, MMMM d, yyyy")} at {selectedSlot?.time}
+                </p>
+                <p>
+                  {guestCounts.adults} Adult(s)
+                  {guestCounts.children > 0 ? `, ${guestCounts.children} Child(ren)` : ""}
+                </p>
                 {config.showPrices && (
                   <p className="font-bold text-lg" style={{ color: config.primaryColor }}>
                     Total: ${totalPrice}

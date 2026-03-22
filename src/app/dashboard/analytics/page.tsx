@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -38,629 +38,617 @@ import {
   Loader2,
   PieChart,
   Activity,
+  AlertCircle,
 } from "lucide-react";
 import { format, subDays, startOfMonth, endOfMonth, subMonths } from "date-fns";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { StatCard } from "@/components/ui/stat-card";
 
-// Mock data
-const mockRevenueData = {
-  total: 48750,
-  previousTotal: 42300,
-  bookings: 312,
-  avgValue: 156.25,
-  refunds: 2450,
-  netRevenue: 46300,
-  byTour: [
-    { tour: "Sunset Cruise", revenue: 18500, bookings: 124 },
-    { tour: "Morning Adventure", revenue: 15200, bookings: 98 },
-    { tour: "Snorkel Experience", revenue: 10050, bookings: 62 },
-    { tour: "Private Charter", revenue: 5000, bookings: 8 },
-  ],
-  byDay: Array.from({ length: 30 }, (_, i) => ({
-    date: format(subDays(new Date(), 29 - i), "MMM d"),
-    revenue: Math.floor(Math.random() * 3000) + 500,
-    bookings: Math.floor(Math.random() * 15) + 5,
-  })),
-  paymentMethods: [
-    { method: "Credit Card", count: 245, amount: 38200 },
-    { method: "PayPal", count: 42, amount: 6500 },
-    { method: "Apple Pay", count: 25, amount: 4050 },
-  ],
-};
+interface RevenueData {
+  totalRevenue: number;
+  totalDiscounts: number;
+  bookingCount: number;
+  averageBookingValue: number;
+  dailyRevenue: { date: string; revenue: number; bookings: number }[];
+  revenueByTour: { name: string; revenue: number; bookings: number }[];
+}
 
-const mockBookingData = {
-  total: 312,
-  confirmed: 285,
-  cancelled: 27,
-  cancellationRate: 8.7,
-  avgLeadTime: 5.2,
-  avgGroupSize: 3.4,
-  byStatus: { confirmed: 245, completed: 40, cancelled: 27 },
-  bySource: [
-    { source: "Website", count: 198 },
-    { source: "Widget", count: 64 },
-    { source: "Phone", count: 32 },
-    { source: "Walk-in", count: 18 },
-  ],
-  leadTimeDistribution: [
-    { range: "Same/Next Day", count: 45 },
-    { range: "2-3 Days", count: 78 },
-    { range: "4-7 Days", count: 92 },
-    { range: "1-2 Weeks", count: 56 },
-    { range: "2-4 Weeks", count: 28 },
-    { range: "1+ Month", count: 13 },
-  ],
-};
+interface BookingData {
+  totalBookings: number;
+  totalGuests: number;
+  averageGroupSize: number;
+  statusCounts: Record<string, number>;
+  sourceBreakdown: { widget: number; affiliate: number; direct: number };
+  dayOfWeekCounts: number[];
+  hourCounts: number[];
+  bookingsByTour: { name: string; count: number; guests: number }[];
+  slotDistribution: { time: string; count: number }[];
+}
 
-const mockOperationsData = {
-  toursRun: 186,
-  totalGuests: 1248,
-  avgUtilization: 72.5,
-  boats: [
-    { name: "Sea Breeze", tours: 68, guests: 456, utilization: 78 },
-    { name: "Ocean Spirit", tours: 54, guests: 378, utilization: 72 },
-    { name: "Island Hopper", tours: 42, guests: 284, utilization: 68 },
-    { name: "Sunset Runner", tours: 22, guests: 130, utilization: 65 },
-  ],
-  captains: [
-    { name: "Captain Mike", tours: 52, guests: 348 },
-    { name: "Captain Sarah", tours: 48, guests: 312 },
-    { name: "Captain John", tours: 45, guests: 298 },
-    { name: "Captain Lisa", tours: 41, guests: 290 },
-  ],
-  peakHours: [
-    { hour: "9:00 AM", bookings: 42 },
-    { hour: "11:00 AM", bookings: 38 },
-    { hour: "2:00 PM", bookings: 35 },
-    { hour: "5:30 PM", bookings: 48 },
-    { hour: "7:00 PM", bookings: 23 },
-  ],
-  peakDays: [
-    { day: "Monday", bookings: 32 },
-    { day: "Tuesday", bookings: 28 },
-    { day: "Wednesday", bookings: 35 },
-    { day: "Thursday", bookings: 38 },
-    { day: "Friday", bookings: 52 },
-    { day: "Saturday", bookings: 68 },
-    { day: "Sunday", bookings: 59 },
-  ],
-};
+interface OperationsData {
+  boats: { total: number; active: number; byStatus: Record<string, number> };
+  tours: { total: number; active: number };
+  staff: { total: number; captains: number };
+  utilization: {
+    overall: number;
+    totalCapacity: number;
+    totalBooked: number;
+    byTour: { name: string; capacity: number; booked: number; utilization: number }[];
+  };
+  peakHours: { hour: number; count: number }[];
+  peakDays: { day: number; count: number }[];
+  totalSlots: number;
+  availableSlots: number;
+  fullSlots: number;
+}
 
-type DateRange = "7d" | "30d" | "90d" | "thisMonth" | "lastMonth" | "custom";
+const dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
 export default function AnalyticsPage() {
   const [loading, setLoading] = useState(true);
-  const [dateRange, setDateRange] = useState<DateRange>("30d");
-  const [activeTab, setActiveTab] = useState("revenue");
+  const [error, setError] = useState<string | null>(null);
+  const [dateRange, setDateRange] = useState("30");
+  const [revenueData, setRevenueData] = useState<RevenueData | null>(null);
+  const [bookingData, setBookingData] = useState<BookingData | null>(null);
+  const [operationsData, setOperationsData] = useState<OperationsData | null>(null);
   const [exporting, setExporting] = useState(false);
 
-  useEffect(() => {
-    setTimeout(() => setLoading(false), 500);
-  }, []);
+  const getDateRange = useCallback(() => {
+    const endDate = new Date();
+    let startDate: Date;
 
-  const getDateRangeLabel = () => {
     switch (dateRange) {
-      case "7d": return "Last 7 days";
-      case "30d": return "Last 30 days";
-      case "90d": return "Last 90 days";
-      case "thisMonth": return format(new Date(), "MMMM yyyy");
-      case "lastMonth": return format(subMonths(new Date(), 1), "MMMM yyyy");
-      default: return "Custom";
+      case "7":
+        startDate = subDays(endDate, 7);
+        break;
+      case "30":
+        startDate = subDays(endDate, 30);
+        break;
+      case "90":
+        startDate = subDays(endDate, 90);
+        break;
+      case "month":
+        startDate = startOfMonth(endDate);
+        break;
+      case "lastMonth":
+        startDate = startOfMonth(subMonths(endDate, 1));
+        break;
+      default:
+        startDate = subDays(endDate, 30);
+    }
+
+    return {
+      start: format(startDate, "yyyy-MM-dd"),
+      end: format(endDate, "yyyy-MM-dd"),
+    };
+  }, [dateRange]);
+
+  const fetchData = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      const { start, end } = getDateRange();
+
+      const [revenueRes, bookingRes, opsRes] = await Promise.all([
+        fetch(`/api/analytics/revenue?start_date=${start}&end_date=${end}`),
+        fetch(`/api/analytics/bookings?start_date=${start}&end_date=${end}`),
+        fetch(`/api/analytics/operations?start_date=${start}&end_date=${end}`),
+      ]);
+
+      if (!revenueRes.ok || !bookingRes.ok || !opsRes.ok) {
+        throw new Error("Failed to fetch analytics data");
+      }
+
+      const [revenueResult, bookingResult, opsResult] = await Promise.all([
+        revenueRes.json(),
+        bookingRes.json(),
+        opsRes.json(),
+      ]);
+
+      setRevenueData(revenueResult.data);
+      setBookingData(bookingResult.data);
+      setOperationsData(opsResult.data);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to load analytics");
+      console.error("Error fetching analytics:", err);
+    } finally {
+      setLoading(false);
+    }
+  }, [getDateRange]);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
+
+  const handleExport = async (format: "csv" | "pdf") => {
+    setExporting(true);
+    try {
+      // In a real implementation, call an API to generate the export
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      toast.success(`Analytics exported as ${format.toUpperCase()}`);
+    } catch (err) {
+      toast.error("Export failed");
+    } finally {
+      setExporting(false);
     }
   };
 
-  const handleExport = async (format: string) => {
-    setExporting(true);
-    await new Promise((r) => setTimeout(r, 1500));
-    setExporting(false);
-    toast.success(`Report exported as ${format.toUpperCase()}`, {
-      description: "Check your downloads folder.",
-    });
+  const formatCurrency = (value: number) => {
+    return new Intl.NumberFormat("en-US", {
+      style: "currency",
+      currency: "USD",
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+    }).format(value);
   };
-
-  const revenueChange = ((mockRevenueData.total - mockRevenueData.previousTotal) / mockRevenueData.previousTotal) * 100;
 
   if (loading) {
     return (
-      <div className="p-6 space-y-6">
-        <div className="animate-pulse space-y-6">
-          <div className="h-8 bg-muted rounded-xl w-48" />
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-5">
-            {[1, 2, 3, 4].map((i) => (
-              <div key={i} className="h-32 bg-muted rounded-2xl" />
-            ))}
-          </div>
-          <div className="h-96 bg-muted rounded-2xl" />
-        </div>
+      <div className="p-6 flex items-center justify-center min-h-[400px]">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="p-6 flex flex-col items-center justify-center min-h-[400px] gap-4">
+        <AlertCircle className="h-12 w-12 text-destructive" />
+        <p className="text-lg font-medium">Failed to load analytics</p>
+        <p className="text-muted-foreground">{error}</p>
+        <Button onClick={fetchData}>Try Again</Button>
       </div>
     );
   }
 
   return (
     <div className="p-6 space-y-6">
-      {/* V6 Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+      {/* Header */}
+      <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold">Analytics</h1>
+          <h1 className="text-3xl font-bold">Analytics</h1>
           <p className="text-muted-foreground">
-            Track performance, identify trends, and make data-driven decisions
+            Business insights and performance metrics
           </p>
         </div>
-
         <div className="flex items-center gap-2">
-          <Select value={dateRange} onValueChange={(v) => setDateRange(v as DateRange)}>
-            <SelectTrigger className="w-40 rounded-xl">
-              <SelectValue />
+          <Select value={dateRange} onValueChange={setDateRange}>
+            <SelectTrigger className="w-[180px]">
+              <SelectValue placeholder="Select range" />
             </SelectTrigger>
-            <SelectContent className="rounded-xl">
-              <SelectItem value="7d">Last 7 days</SelectItem>
-              <SelectItem value="30d">Last 30 days</SelectItem>
-              <SelectItem value="90d">Last 90 days</SelectItem>
-              <SelectItem value="thisMonth">This month</SelectItem>
-              <SelectItem value="lastMonth">Last month</SelectItem>
+            <SelectContent>
+              <SelectItem value="7">Last 7 Days</SelectItem>
+              <SelectItem value="30">Last 30 Days</SelectItem>
+              <SelectItem value="90">Last 90 Days</SelectItem>
+              <SelectItem value="month">This Month</SelectItem>
+              <SelectItem value="lastMonth">Last Month</SelectItem>
             </SelectContent>
           </Select>
 
+          <Button variant="outline" onClick={fetchData}>
+            <RefreshCw className="h-4 w-4 mr-2" />
+            Refresh
+          </Button>
+
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="outline" className="gap-2 rounded-xl" disabled={exporting}>
-                {exporting ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <Download className="h-4 w-4" />
-                )}
+              <Button variant="outline" disabled={exporting}>
+                {exporting ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Download className="h-4 w-4 mr-2" />}
                 Export
-                <ChevronDown className="h-4 w-4" />
+                <ChevronDown className="h-4 w-4 ml-2" />
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent className="rounded-xl">
-              <DropdownMenuItem onClick={() => handleExport("csv")} className="rounded-lg">
+            <DropdownMenuContent>
+              <DropdownMenuItem onClick={() => handleExport("csv")}>
                 <FileText className="h-4 w-4 mr-2" />
-                Export CSV
+                Export as CSV
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => handleExport("pdf")} className="rounded-lg">
+              <DropdownMenuItem onClick={() => handleExport("pdf")}>
                 <FileText className="h-4 w-4 mr-2" />
-                Export PDF
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => handleExport("xlsx")} className="rounded-lg">
-                <FileText className="h-4 w-4 mr-2" />
-                Export Excel
+                Export as PDF
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
       </div>
 
-      {/* V6 Tabs */}
-      <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="rounded-xl p-1">
-          <TabsTrigger value="revenue" className="gap-2 rounded-lg">
-            <DollarSign className="h-4 w-4" />
-            Revenue
-          </TabsTrigger>
-          <TabsTrigger value="bookings" className="gap-2 rounded-lg">
-            <Calendar className="h-4 w-4" />
-            Bookings
-          </TabsTrigger>
-          <TabsTrigger value="operations" className="gap-2 rounded-lg">
-            <Activity className="h-4 w-4" />
-            Operations
-          </TabsTrigger>
+      {/* Top Stats */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <StatCard
+          title="Total Revenue"
+          value={formatCurrency(revenueData?.totalRevenue || 0)}
+          icon={DollarSign}
+          description={`${revenueData?.bookingCount || 0} bookings`}
+        />
+        <StatCard
+          title="Total Bookings"
+          value={bookingData?.totalBookings?.toLocaleString() || "0"}
+          icon={Calendar}
+          description={`${bookingData?.totalGuests || 0} total guests`}
+        />
+        <StatCard
+          title="Avg Booking Value"
+          value={formatCurrency(revenueData?.averageBookingValue || 0)}
+          icon={TrendingUp}
+        />
+        <StatCard
+          title="Capacity Utilization"
+          value={`${operationsData?.utilization?.overall || 0}%`}
+          icon={Activity}
+          description={`${operationsData?.utilization?.totalBooked || 0} of ${operationsData?.utilization?.totalCapacity || 0} spots`}
+        />
+      </div>
+
+      {/* Tabs */}
+      <Tabs defaultValue="revenue" className="space-y-4">
+        <TabsList>
+          <TabsTrigger value="revenue">Revenue</TabsTrigger>
+          <TabsTrigger value="bookings">Bookings</TabsTrigger>
+          <TabsTrigger value="operations">Operations</TabsTrigger>
         </TabsList>
 
-        {/* Revenue Tab */}
-        <TabsContent value="revenue" className="space-y-6">
-          {/* V6 KPI Cards */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-            <StatCard
-              title="Total Revenue"
-              value={`$${mockRevenueData.total.toLocaleString()}`}
-              icon={<DollarSign className="h-5 w-5" />}
-              color="mint"
-              trend={{ value: Math.abs(revenueChange), isPositive: revenueChange >= 0 }}
-              className="animate-fade-in-up stagger-1"
-            />
-            <StatCard
-              title="Total Bookings"
-              value={mockRevenueData.bookings}
-              icon={<Calendar className="h-5 w-5" />}
-              color="sky"
-              className="animate-fade-in-up stagger-2"
-            />
-            <StatCard
-              title="Avg. Booking Value"
-              value={`$${mockRevenueData.avgValue.toFixed(2)}`}
-              icon={<TrendingUp className="h-5 w-5" />}
-              color="lavender"
-              className="animate-fade-in-up stagger-3"
-            />
-            <StatCard
-              title="Net Revenue"
-              value={`$${mockRevenueData.netRevenue.toLocaleString()}`}
-              icon={<DollarSign className="h-5 w-5" />}
-              color="peach"
-              trend={{ value: 5, isPositive: true }}
-              className="animate-fade-in-up stagger-4"
-            />
-          </div>
-
-          {/* V6 Charts */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* Revenue Trend Chart */}
-            <Card className="lg:col-span-2 rounded-2xl border shadow-sm animate-fade-in-up stagger-5">
+        <TabsContent value="revenue" className="space-y-4">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <Card>
               <CardHeader>
-                <CardTitle className="text-lg">Revenue Trend</CardTitle>
-                <CardDescription>{getDateRangeLabel()}</CardDescription>
+                <CardTitle>Revenue by Tour</CardTitle>
+                <CardDescription>Performance breakdown by tour type</CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="h-64 flex items-end gap-1.5">
-                  {mockRevenueData.byDay.slice(-14).map((day, i) => {
-                    const maxRevenue = Math.max(...mockRevenueData.byDay.map(d => d.revenue));
-                    const height = (day.revenue / maxRevenue) * 100;
-                    return (
-                      <div key={i} className="flex-1 flex flex-col items-center gap-1">
-                        <div
-                          className="w-full bg-gradient-to-t from-sky-dark to-lavender-dark rounded-t-lg hover:opacity-80 transition-opacity"
-                          style={{ height: `${height}%` }}
-                          title={`${day.date}: $${day.revenue}`}
-                        />
-                        <span className="text-xs text-muted-foreground rotate-45 origin-left whitespace-nowrap">
-                          {day.date}
-                        </span>
-                      </div>
-                    );
-                  })}
-                </div>
+                {revenueData?.revenueByTour && revenueData.revenueByTour.length > 0 ? (
+                  <div className="space-y-4">
+                    {revenueData.revenueByTour.slice(0, 5).map((tour, i) => {
+                      const maxRevenue = revenueData.revenueByTour[0]?.revenue || 1;
+                      const percentage = (tour.revenue / maxRevenue) * 100;
+                      return (
+                        <div key={i} className="space-y-2">
+                          <div className="flex justify-between items-center">
+                            <span className="font-medium truncate">{tour.name}</span>
+                            <span className="text-muted-foreground">
+                              {formatCurrency(tour.revenue)} ({tour.bookings} bookings)
+                            </span>
+                          </div>
+                          <Progress value={percentage} className="h-2" />
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div className="text-center py-8 text-muted-foreground">
+                    No revenue data for this period
+                  </div>
+                )}
               </CardContent>
             </Card>
 
-            {/* Revenue by Tour */}
-            <Card className="rounded-2xl border shadow-sm animate-fade-in-up stagger-5">
+            <Card>
               <CardHeader>
-                <CardTitle className="text-lg">Revenue by Tour</CardTitle>
+                <CardTitle>Daily Revenue Trend</CardTitle>
+                <CardDescription>Revenue over time</CardDescription>
               </CardHeader>
-              <CardContent className="space-y-4">
-                {mockRevenueData.byTour.map((tour, i) => {
-                  const percentage = (tour.revenue / mockRevenueData.total) * 100;
-                  const colors = ["bg-mint-dark", "bg-sky-dark", "bg-lavender-dark", "bg-peach-dark"];
-                  return (
-                    <div key={i}>
-                      <div className="flex justify-between text-sm mb-1">
-                        <span className="truncate">{tour.tour}</span>
-                        <span className="font-medium">${tour.revenue.toLocaleString()}</span>
-                      </div>
-                      <div className="h-2 bg-muted rounded-full overflow-hidden">
-                        <div
-                          className={cn("h-full rounded-full transition-all", colors[i % colors.length])}
-                          style={{ width: `${percentage}%` }}
-                        />
-                      </div>
-                      <p className="text-xs text-muted-foreground mt-1">
-                        {tour.bookings} bookings ({percentage.toFixed(1)}%)
-                      </p>
-                    </div>
-                  );
-                })}
+              <CardContent>
+                {revenueData?.dailyRevenue && revenueData.dailyRevenue.length > 0 ? (
+                  <div className="space-y-2">
+                    {revenueData.dailyRevenue.slice(-7).map((day, i) => {
+                      const maxRevenue = Math.max(...revenueData.dailyRevenue.map(d => d.revenue)) || 1;
+                      const percentage = (day.revenue / maxRevenue) * 100;
+                      return (
+                        <div key={i} className="flex items-center gap-4">
+                          <span className="text-sm w-20 text-muted-foreground">
+                            {format(new Date(day.date), "MMM d")}
+                          </span>
+                          <div className="flex-1">
+                            <Progress value={percentage} className="h-4" />
+                          </div>
+                          <span className="text-sm font-medium w-20 text-right">
+                            {formatCurrency(day.revenue)}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div className="text-center py-8 text-muted-foreground">
+                    No daily data for this period
+                  </div>
+                )}
               </CardContent>
             </Card>
           </div>
 
-          {/* Payment Methods */}
-          <Card className="rounded-2xl border shadow-sm">
+          <Card>
             <CardHeader>
-              <CardTitle className="text-lg">Payment Methods</CardTitle>
+              <CardTitle>Revenue Summary</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                {mockRevenueData.paymentMethods.map((pm, i) => {
-                  const colors = ["bg-mint", "bg-lavender", "bg-sky"];
-                  const textColors = ["text-mint-dark", "text-lavender-dark", "text-sky-dark"];
-                  return (
-                    <div key={i} className={cn("p-4 rounded-xl", colors[i % colors.length])}>
-                      <p className={cn("font-medium", textColors[i % textColors.length])}>{pm.method}</p>
-                      <p className={cn("text-2xl font-bold mt-1", textColors[i % textColors.length])}>${pm.amount.toLocaleString()}</p>
-                      <p className={cn("text-sm opacity-70", textColors[i % textColors.length])}>{pm.count} transactions</p>
-                    </div>
-                  );
-                })}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div className="text-center p-4 bg-muted/50 rounded-lg">
+                  <p className="text-sm text-muted-foreground">Total Revenue</p>
+                  <p className="text-3xl font-bold text-green-600">
+                    {formatCurrency(revenueData?.totalRevenue || 0)}
+                  </p>
+                </div>
+                <div className="text-center p-4 bg-muted/50 rounded-lg">
+                  <p className="text-sm text-muted-foreground">Discounts Given</p>
+                  <p className="text-3xl font-bold text-orange-600">
+                    {formatCurrency(revenueData?.totalDiscounts || 0)}
+                  </p>
+                </div>
+                <div className="text-center p-4 bg-muted/50 rounded-lg">
+                  <p className="text-sm text-muted-foreground">Avg Booking Value</p>
+                  <p className="text-3xl font-bold">
+                    {formatCurrency(revenueData?.averageBookingValue || 0)}
+                  </p>
+                </div>
               </div>
             </CardContent>
           </Card>
         </TabsContent>
 
-        {/* Bookings Tab */}
-        <TabsContent value="bookings" className="space-y-6">
-          {/* V6 KPI Cards */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-            <StatCard
-              title="Total Bookings"
-              value={mockBookingData.total}
-              icon={<Calendar className="h-5 w-5" />}
-              color="sky"
-              className="animate-fade-in-up stagger-1"
-            />
-            <StatCard
-              title="Cancellation Rate"
-              value={`${mockBookingData.cancellationRate}%`}
-              icon={<TrendingDown className="h-5 w-5" />}
-              color="peach"
-              className="animate-fade-in-up stagger-2"
-            />
-            <StatCard
-              title="Avg. Lead Time"
-              value={`${mockBookingData.avgLeadTime} days`}
-              icon={<Clock className="h-5 w-5" />}
-              color="lavender"
-              className="animate-fade-in-up stagger-3"
-            />
-            <StatCard
-              title="Avg. Group Size"
-              value={mockBookingData.avgGroupSize}
-              icon={<Users className="h-5 w-5" />}
-              color="mint"
-              className="animate-fade-in-up stagger-4"
-            />
-          </div>
-
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* Booking Sources */}
-            <Card className="rounded-2xl border shadow-sm animate-fade-in-up stagger-5">
+        <TabsContent value="bookings" className="space-y-4">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <Card>
               <CardHeader>
-                <CardTitle className="text-lg">Booking Sources</CardTitle>
+                <CardTitle>Booking Sources</CardTitle>
+                <CardDescription>Where bookings come from</CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="space-y-3">
-                  {mockBookingData.bySource.map((source, i) => {
-                    const percentage = (source.count / mockBookingData.total) * 100;
-                    const colors = ["bg-sky-dark", "bg-mint-dark", "bg-lavender-dark", "bg-peach-dark"];
-                    return (
-                      <div key={i} className="flex items-center gap-4">
-                        <div className="w-24 text-sm">{source.source}</div>
-                        <div className="flex-1">
-                          <div className="h-3 bg-muted rounded-full overflow-hidden">
+                {bookingData?.sourceBreakdown ? (
+                  <div className="space-y-4">
+                    {[
+                      { label: "Direct", count: bookingData.sourceBreakdown.direct, color: "bg-blue-500" },
+                      { label: "Widget", count: bookingData.sourceBreakdown.widget, color: "bg-green-500" },
+                      { label: "Affiliate", count: bookingData.sourceBreakdown.affiliate, color: "bg-purple-500" },
+                    ].map((source, i) => {
+                      const total = bookingData.sourceBreakdown.direct + bookingData.sourceBreakdown.widget + bookingData.sourceBreakdown.affiliate;
+                      const percentage = total > 0 ? (source.count / total) * 100 : 0;
+                      return (
+                        <div key={i} className="space-y-2">
+                          <div className="flex justify-between items-center">
+                            <span className="font-medium">{source.label}</span>
+                            <span className="text-muted-foreground">
+                              {source.count} ({percentage.toFixed(1)}%)
+                            </span>
+                          </div>
+                          <div className="h-2 bg-muted rounded-full overflow-hidden">
                             <div
-                              className={cn("h-full rounded-full transition-all", colors[i % colors.length])}
+                              className={cn("h-full rounded-full", source.color)}
                               style={{ width: `${percentage}%` }}
                             />
                           </div>
                         </div>
-                        <div className="w-16 text-right text-sm font-medium">
-                          {source.count} ({percentage.toFixed(0)}%)
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div className="text-center py-8 text-muted-foreground">
+                    No booking source data
+                  </div>
+                )}
               </CardContent>
             </Card>
 
-            {/* Lead Time Distribution */}
-            <Card className="rounded-2xl border shadow-sm animate-fade-in-up stagger-5">
+            <Card>
               <CardHeader>
-                <CardTitle className="text-lg">Lead Time Distribution</CardTitle>
-                <CardDescription>How far in advance customers book</CardDescription>
+                <CardTitle>Booking Status</CardTitle>
+                <CardDescription>Current booking statuses</CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="space-y-3">
-                  {mockBookingData.leadTimeDistribution.map((lt, i) => {
-                    const percentage = (lt.count / mockBookingData.total) * 100;
-                    return (
-                      <div key={i} className="flex items-center gap-4">
-                        <div className="w-28 text-sm">{lt.range}</div>
-                        <div className="flex-1">
-                          <div className="h-3 bg-muted rounded-full overflow-hidden">
+                {bookingData?.statusCounts ? (
+                  <div className="space-y-4">
+                    {Object.entries(bookingData.statusCounts).map(([status, count], i) => {
+                      const total = Object.values(bookingData.statusCounts).reduce((a, b) => a + b, 0);
+                      const percentage = total > 0 ? (count / total) * 100 : 0;
+                      const colors: Record<string, string> = {
+                        pending: "bg-yellow-500",
+                        confirmed: "bg-green-500",
+                        completed: "bg-blue-500",
+                        cancelled: "bg-red-500",
+                      };
+                      return (
+                        <div key={i} className="space-y-2">
+                          <div className="flex justify-between items-center">
+                            <span className="font-medium capitalize">{status}</span>
+                            <span className="text-muted-foreground">
+                              {count} ({percentage.toFixed(1)}%)
+                            </span>
+                          </div>
+                          <div className="h-2 bg-muted rounded-full overflow-hidden">
                             <div
-                              className="h-full rounded-full transition-all bg-lavender-dark"
+                              className={cn("h-full rounded-full", colors[status] || "bg-gray-500")}
                               style={{ width: `${percentage}%` }}
                             />
                           </div>
                         </div>
-                        <div className="w-12 text-right text-sm font-medium">
-                          {lt.count}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div className="text-center py-8 text-muted-foreground">
+                    No status data
+                  </div>
+                )}
               </CardContent>
             </Card>
           </div>
 
-          {/* Booking Status */}
-          <Card className="rounded-2xl border shadow-sm">
+          <Card>
             <CardHeader>
-              <CardTitle className="text-lg">Booking Status Breakdown</CardTitle>
+              <CardTitle>Bookings by Day of Week</CardTitle>
+              <CardDescription>When customers book most frequently</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="flex gap-4 flex-wrap">
-                {Object.entries(mockBookingData.byStatus).map(([status, count]) => {
-                  const statusColors: Record<string, string> = {
-                    confirmed: "bg-sky",
-                    completed: "bg-mint",
-                    cancelled: "bg-rose"
-                  };
-                  const textColors: Record<string, string> = {
-                    confirmed: "text-sky-dark",
-                    completed: "text-mint-dark",
-                    cancelled: "text-rose-dark"
-                  };
-                  return (
-                    <div key={status} className={cn("flex items-center gap-3 p-4 rounded-xl", statusColors[status] || "bg-muted")}>
-                      <div>
-                        <p className={cn("text-2xl font-bold", textColors[status] || "text-foreground")}>{count}</p>
-                        <p className={cn("text-sm capitalize opacity-70", textColors[status] || "text-muted-foreground")}>{status}</p>
+              {bookingData?.dayOfWeekCounts ? (
+                <div className="grid grid-cols-7 gap-2">
+                  {bookingData.dayOfWeekCounts.map((count, i) => {
+                    const max = Math.max(...bookingData.dayOfWeekCounts) || 1;
+                    const percentage = (count / max) * 100;
+                    return (
+                      <div key={i} className="text-center">
+                        <div className="mb-2 h-24 flex items-end justify-center">
+                          <div
+                            className="w-8 bg-primary rounded-t"
+                            style={{ height: `${Math.max(percentage, 5)}%` }}
+                          />
+                        </div>
+                        <p className="text-xs text-muted-foreground">{dayNames[i]}</p>
+                        <p className="text-sm font-medium">{count}</p>
                       </div>
-                    </div>
-                  );
-                })}
-              </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="text-center py-8 text-muted-foreground">
+                  No data available
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
 
-        {/* Operations Tab */}
-        <TabsContent value="operations" className="space-y-6">
-          {/* V6 KPI Cards */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
-            <StatCard
-              title="Tours Completed"
-              value={mockOperationsData.toursRun}
-              icon={<Ship className="h-5 w-5" />}
-              color="sky"
-              className="animate-fade-in-up stagger-1"
-            />
-            <StatCard
-              title="Total Guests"
-              value={mockOperationsData.totalGuests.toLocaleString()}
-              icon={<Users className="h-5 w-5" />}
-              color="mint"
-              className="animate-fade-in-up stagger-2"
-            />
-            <StatCard
-              title="Avg. Utilization"
-              value={`${mockOperationsData.avgUtilization}%`}
-              icon={<Activity className="h-5 w-5" />}
-              color="lavender"
-              className="animate-fade-in-up stagger-3"
-            />
-          </div>
-
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* Boat Performance */}
-            <Card className="rounded-2xl border shadow-sm animate-fade-in-up stagger-4">
-              <CardHeader>
-                <CardTitle className="text-lg flex items-center gap-2">
-                  <Anchor className="h-5 w-5" />
-                  Boat Performance
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  {mockOperationsData.boats.map((boat, i) => (
-                    <div key={i} className="p-3 border rounded-xl">
-                      <div className="flex justify-between items-start">
-                        <div>
-                          <p className="font-medium">{boat.name}</p>
-                          <p className="text-sm text-muted-foreground">
-                            {boat.tours} tours - {boat.guests} guests
-                          </p>
-                        </div>
-                        <Badge variant={boat.utilization >= 75 ? "mint" : boat.utilization >= 50 ? "peach" : "secondary"}>
-                          {boat.utilization}% utilized
-                        </Badge>
-                      </div>
-                      <div className="h-2 bg-muted rounded-full overflow-hidden mt-2">
-                        <div
-                          className={cn(
-                            "h-full rounded-full transition-all",
-                            boat.utilization >= 75 ? "bg-mint-dark" : boat.utilization >= 50 ? "bg-peach-dark" : "bg-muted-foreground"
-                          )}
-                          style={{ width: `${boat.utilization}%` }}
-                        />
-                      </div>
-                    </div>
-                  ))}
+        <TabsContent value="operations" className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <Card>
+              <CardContent className="pt-6">
+                <div className="flex items-center gap-4">
+                  <div className="p-3 bg-blue-100 rounded-full">
+                    <Ship className="h-6 w-6 text-blue-600" />
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">Active Boats</p>
+                    <p className="text-2xl font-bold">
+                      {operationsData?.boats?.active || 0} / {operationsData?.boats?.total || 0}
+                    </p>
+                  </div>
                 </div>
               </CardContent>
             </Card>
-
-            {/* Captain Performance */}
-            <Card className="rounded-2xl border shadow-sm animate-fade-in-up stagger-4">
-              <CardHeader>
-                <CardTitle className="text-lg flex items-center gap-2">
-                  <Users className="h-5 w-5" />
-                  Captain Performance
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  {mockOperationsData.captains.map((captain, i) => (
-                    <div key={i} className="flex items-center justify-between p-3 border rounded-xl">
-                      <div className="flex items-center gap-3">
-                        <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-sky to-lavender flex items-center justify-center font-medium text-sky-dark">
-                          {captain.name.split(" ").map(n => n[0]).join("")}
-                        </div>
-                        <div>
-                          <p className="font-medium">{captain.name}</p>
-                          <p className="text-sm text-muted-foreground">
-                            {captain.tours} tours
-                          </p>
-                        </div>
-                      </div>
-                      <div className="text-right">
-                        <p className="font-semibold">{captain.guests}</p>
-                        <p className="text-xs text-muted-foreground">guests served</p>
-                      </div>
-                    </div>
-                  ))}
+            <Card>
+              <CardContent className="pt-6">
+                <div className="flex items-center gap-4">
+                  <div className="p-3 bg-green-100 rounded-full">
+                    <Anchor className="h-6 w-6 text-green-600" />
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">Active Tours</p>
+                    <p className="text-2xl font-bold">
+                      {operationsData?.tours?.active || 0} / {operationsData?.tours?.total || 0}
+                    </p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="pt-6">
+                <div className="flex items-center gap-4">
+                  <div className="p-3 bg-purple-100 rounded-full">
+                    <Users className="h-6 w-6 text-purple-600" />
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">Captains</p>
+                    <p className="text-2xl font-bold">
+                      {operationsData?.staff?.captains || 0}
+                    </p>
+                  </div>
                 </div>
               </CardContent>
             </Card>
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* Peak Hours */}
-            <Card className="rounded-2xl border shadow-sm">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <Card>
               <CardHeader>
-                <CardTitle className="text-lg flex items-center gap-2">
-                  <Clock className="h-5 w-5" />
-                  Peak Hours
-                </CardTitle>
+                <CardTitle>Tour Utilization</CardTitle>
+                <CardDescription>Capacity usage by tour</CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="h-48 flex items-end gap-2">
-                  {mockOperationsData.peakHours.map((hour, i) => {
-                    const max = Math.max(...mockOperationsData.peakHours.map(h => h.bookings));
-                    const height = (hour.bookings / max) * 100;
-                    return (
-                      <div key={i} className="flex-1 flex flex-col items-center gap-1">
-                        <span className="text-xs font-medium">{hour.bookings}</span>
-                        <div
-                          className="w-full bg-gradient-to-t from-sky-dark to-lavender-dark rounded-t-lg"
-                          style={{ height: `${height}%` }}
-                        />
-                        <span className="text-xs text-muted-foreground whitespace-nowrap">
-                          {hour.hour}
-                        </span>
+                {operationsData?.utilization?.byTour && operationsData.utilization.byTour.length > 0 ? (
+                  <div className="space-y-4">
+                    {operationsData.utilization.byTour.slice(0, 5).map((tour, i) => (
+                      <div key={i} className="space-y-2">
+                        <div className="flex justify-between items-center">
+                          <span className="font-medium truncate">{tour.name}</span>
+                          <span className="text-muted-foreground">
+                            {tour.utilization}% ({tour.booked}/{tour.capacity})
+                          </span>
+                        </div>
+                        <Progress value={tour.utilization} className="h-2" />
                       </div>
-                    );
-                  })}
-                </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-8 text-muted-foreground">
+                    No utilization data
+                  </div>
+                )}
               </CardContent>
             </Card>
 
-            {/* Peak Days */}
-            <Card className="rounded-2xl border shadow-sm">
+            <Card>
               <CardHeader>
-                <CardTitle className="text-lg flex items-center gap-2">
-                  <Calendar className="h-5 w-5" />
-                  Peak Days
-                </CardTitle>
+                <CardTitle>Peak Hours</CardTitle>
+                <CardDescription>Most popular booking times</CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="h-48 flex items-end gap-2">
-                  {mockOperationsData.peakDays.map((day, i) => {
-                    const max = Math.max(...mockOperationsData.peakDays.map(d => d.bookings));
-                    const height = (day.bookings / max) * 100;
-                    return (
-                      <div key={i} className="flex-1 flex flex-col items-center gap-1">
-                        <span className="text-xs font-medium">{day.bookings}</span>
-                        <div
-                          className="w-full bg-mint-dark rounded-t-lg"
-                          style={{ height: `${height}%` }}
-                        />
-                        <span className="text-xs text-muted-foreground">
-                          {day.day.slice(0, 3)}
-                        </span>
-                      </div>
-                    );
-                  })}
-                </div>
+                {operationsData?.peakHours && operationsData.peakHours.length > 0 ? (
+                  <div className="space-y-3">
+                    {operationsData.peakHours.map((item, i) => {
+                      const maxCount = operationsData.peakHours[0]?.count || 1;
+                      const percentage = (item.count / maxCount) * 100;
+                      return (
+                        <div key={i} className="flex items-center gap-4">
+                          <div className="flex items-center gap-2 w-20">
+                            <Clock className="h-4 w-4 text-muted-foreground" />
+                            <span className="text-sm">
+                              {item.hour.toString().padStart(2, "0")}:00
+                            </span>
+                          </div>
+                          <div className="flex-1">
+                            <Progress value={percentage} className="h-3" />
+                          </div>
+                          <span className="text-sm font-medium w-12 text-right">
+                            {item.count}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div className="text-center py-8 text-muted-foreground">
+                    No peak hour data
+                  </div>
+                )}
               </CardContent>
             </Card>
           </div>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Slot Overview</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div className="text-center p-4 bg-muted/50 rounded-lg">
+                  <p className="text-sm text-muted-foreground">Total Slots</p>
+                  <p className="text-3xl font-bold">{operationsData?.totalSlots || 0}</p>
+                </div>
+                <div className="text-center p-4 bg-green-50 rounded-lg">
+                  <p className="text-sm text-green-600">Available</p>
+                  <p className="text-3xl font-bold text-green-600">
+                    {operationsData?.availableSlots || 0}
+                  </p>
+                </div>
+                <div className="text-center p-4 bg-orange-50 rounded-lg">
+                  <p className="text-sm text-orange-600">Full</p>
+                  <p className="text-3xl font-bold text-orange-600">
+                    {operationsData?.fullSlots || 0}
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
         </TabsContent>
       </Tabs>
     </div>

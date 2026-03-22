@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useLocation } from '@/lib/location/context';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -61,6 +61,8 @@ import {
   Moon,
   Calendar as CalendarDays,
   MapPin,
+  Loader2,
+  AlertCircle,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
@@ -76,7 +78,7 @@ interface PricingRule {
   name: string;
   type: 'seasonal' | 'day_of_week' | 'time_of_day' | 'capacity' | 'early_bird' | 'last_minute' | 'group';
   tour_id: string | null;
-  tour_name: string | null;
+  tour?: { id: string; name: string } | null;
   adjustment_type: 'percentage' | 'fixed';
   adjustment_value: number;
   conditions: Record<string, unknown>;
@@ -94,6 +96,7 @@ interface PromoCode {
   discount_type: 'percentage' | 'fixed';
   discount_value: number;
   min_booking_value: number | null;
+  max_discount: number | null;
   max_uses: number | null;
   current_uses: number;
   tour_ids: string[] | null;
@@ -101,195 +104,6 @@ interface PromoCode {
   valid_from: string;
   valid_until: string | null;
 }
-
-// Mock data
-const mockTours: Tour[] = [
-  { id: '1', name: 'Sunset Sailing Tour', base_price: 89 },
-  { id: '2', name: 'Morning Dolphin Watch', base_price: 65 },
-  { id: '3', name: 'Private Charter', base_price: 450 },
-  { id: '4', name: 'Snorkeling Adventure', base_price: 95 },
-];
-
-const mockPricingRules: PricingRule[] = [
-  {
-    id: '1',
-    name: 'Peak Season Summer',
-    type: 'seasonal',
-    tour_id: null,
-    tour_name: null,
-    adjustment_type: 'percentage',
-    adjustment_value: 20,
-    conditions: { months: [6, 7, 8] },
-    priority: 1,
-    is_active: true,
-    valid_from: '2024-06-01',
-    valid_until: '2024-08-31',
-    created_at: '2024-01-15T10:00:00Z',
-  },
-  {
-    id: '2',
-    name: 'Weekend Premium',
-    type: 'day_of_week',
-    tour_id: null,
-    tour_name: null,
-    adjustment_type: 'percentage',
-    adjustment_value: 15,
-    conditions: { days: [0, 6] },
-    priority: 2,
-    is_active: true,
-    valid_from: null,
-    valid_until: null,
-    created_at: '2024-01-15T10:00:00Z',
-  },
-  {
-    id: '3',
-    name: 'Sunset Tour Premium',
-    type: 'time_of_day',
-    tour_id: '1',
-    tour_name: 'Sunset Sailing Tour',
-    adjustment_type: 'fixed',
-    adjustment_value: 10,
-    conditions: { after_time: '17:00' },
-    priority: 3,
-    is_active: true,
-    valid_from: null,
-    valid_until: null,
-    created_at: '2024-01-20T10:00:00Z',
-  },
-  {
-    id: '4',
-    name: 'Early Bird Discount',
-    type: 'early_bird',
-    tour_id: null,
-    tour_name: null,
-    adjustment_type: 'percentage',
-    adjustment_value: -10,
-    conditions: { days_before: 14 },
-    priority: 4,
-    is_active: true,
-    valid_from: null,
-    valid_until: null,
-    created_at: '2024-02-01T10:00:00Z',
-  },
-  {
-    id: '5',
-    name: 'Last Minute Deal',
-    type: 'last_minute',
-    tour_id: null,
-    tour_name: null,
-    adjustment_type: 'percentage',
-    adjustment_value: -15,
-    conditions: { hours_before: 24, min_capacity_remaining: 50 },
-    priority: 5,
-    is_active: true,
-    valid_from: null,
-    valid_until: null,
-    created_at: '2024-02-01T10:00:00Z',
-  },
-  {
-    id: '6',
-    name: 'Group Discount (6+)',
-    type: 'group',
-    tour_id: null,
-    tour_name: null,
-    adjustment_type: 'percentage',
-    adjustment_value: -10,
-    conditions: { min_guests: 6 },
-    priority: 6,
-    is_active: true,
-    valid_from: null,
-    valid_until: null,
-    created_at: '2024-02-01T10:00:00Z',
-  },
-  {
-    id: '7',
-    name: 'Low Capacity Boost',
-    type: 'capacity',
-    tour_id: null,
-    tour_name: null,
-    adjustment_type: 'percentage',
-    adjustment_value: -20,
-    conditions: { min_capacity_remaining: 70 },
-    priority: 7,
-    is_active: false,
-    valid_from: null,
-    valid_until: null,
-    created_at: '2024-02-15T10:00:00Z',
-  },
-];
-
-const mockPromoCodes: PromoCode[] = [
-  {
-    id: '1',
-    code: 'SUMMER24',
-    description: 'Summer 2024 promotion',
-    discount_type: 'percentage',
-    discount_value: 15,
-    min_booking_value: 100,
-    max_uses: 500,
-    current_uses: 234,
-    tour_ids: null,
-    is_active: true,
-    valid_from: '2024-06-01',
-    valid_until: '2024-08-31',
-  },
-  {
-    id: '2',
-    code: 'WELCOME10',
-    description: 'First-time customer discount',
-    discount_type: 'percentage',
-    discount_value: 10,
-    min_booking_value: null,
-    max_uses: null,
-    current_uses: 1250,
-    tour_ids: null,
-    is_active: true,
-    valid_from: '2024-01-01',
-    valid_until: null,
-  },
-  {
-    id: '3',
-    code: 'DOLPHIN20',
-    description: '$20 off Dolphin Watch tours',
-    discount_type: 'fixed',
-    discount_value: 20,
-    min_booking_value: 65,
-    max_uses: 100,
-    current_uses: 45,
-    tour_ids: ['2'],
-    is_active: true,
-    valid_from: '2024-03-01',
-    valid_until: '2024-04-30',
-  },
-  {
-    id: '4',
-    code: 'VIP50',
-    description: 'VIP customer exclusive',
-    discount_type: 'fixed',
-    discount_value: 50,
-    min_booking_value: 200,
-    max_uses: 50,
-    current_uses: 12,
-    tour_ids: null,
-    is_active: true,
-    valid_from: '2024-01-01',
-    valid_until: '2024-12-31',
-  },
-  {
-    id: '5',
-    code: 'EXPIRED2023',
-    description: 'Old promotion',
-    discount_type: 'percentage',
-    discount_value: 25,
-    min_booking_value: null,
-    max_uses: 100,
-    current_uses: 100,
-    tour_ids: null,
-    is_active: false,
-    valid_from: '2023-11-01',
-    valid_until: '2023-12-31',
-  },
-];
 
 const ruleTypeIcons: Record<string, React.ReactNode> = {
   seasonal: <Sun className="h-4 w-4" />,
@@ -313,10 +127,15 @@ const ruleTypeLabels: Record<string, string> = {
 
 export default function PricingPage() {
   const { selectedLocation } = useLocation();
-  const [pricingRules, setPricingRules] = useState<PricingRule[]>(mockPricingRules);
-  const [promoCodes, setPromoCodes] = useState<PromoCode[]>(mockPromoCodes);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [tours, setTours] = useState<Tour[]>([]);
+  const [pricingRules, setPricingRules] = useState<PricingRule[]>([]);
+  const [promoCodes, setPromoCodes] = useState<PromoCode[]>([]);
   const [isAddRuleOpen, setIsAddRuleOpen] = useState(false);
   const [isAddPromoOpen, setIsAddPromoOpen] = useState(false);
+  const [savingRule, setSavingRule] = useState(false);
+  const [savingPromo, setSavingPromo] = useState(false);
 
   const [newRule, setNewRule] = useState({
     name: '',
@@ -338,102 +157,242 @@ export default function PricingPage() {
     valid_until: null as Date | null,
   });
 
-  const handleAddRule = () => {
+  const fetchData = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      const [toursRes, rulesRes, promosRes] = await Promise.all([
+        fetch('/api/tours'),
+        fetch('/api/pricing-rules'),
+        fetch('/api/promo-codes'),
+      ]);
+
+      if (!toursRes.ok || !rulesRes.ok || !promosRes.ok) {
+        throw new Error('Failed to fetch data');
+      }
+
+      const [toursData, rulesData, promosData] = await Promise.all([
+        toursRes.json(),
+        rulesRes.json(),
+        promosRes.json(),
+      ]);
+
+      setTours(toursData.data || []);
+      setPricingRules(rulesData.data || []);
+      setPromoCodes(promosData.data || []);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load data');
+      console.error('Error fetching pricing data:', err);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
+
+  const handleAddRule = async () => {
     if (!newRule.name || !newRule.type || !newRule.adjustment_value) {
       toast.error('Please fill in all required fields');
       return;
     }
 
-    const tour = newRule.tour_id !== 'all' ? mockTours.find(t => t.id === newRule.tour_id) : null;
+    setSavingRule(true);
+    try {
+      const response = await fetch('/api/pricing-rules', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: newRule.name,
+          type: newRule.type,
+          tour_id: newRule.tour_id !== 'all' ? newRule.tour_id : null,
+          adjustment_type: newRule.adjustment_type,
+          adjustment_value: parseFloat(newRule.adjustment_value),
+          priority: parseInt(newRule.priority),
+          conditions: {},
+          is_active: true,
+        }),
+      });
 
-    const rule: PricingRule = {
-      id: Date.now().toString(),
-      name: newRule.name,
-      type: newRule.type as PricingRule['type'],
-      tour_id: tour?.id || null,
-      tour_name: tour?.name || null,
-      adjustment_type: newRule.adjustment_type,
-      adjustment_value: parseFloat(newRule.adjustment_value),
-      conditions: {},
-      priority: parseInt(newRule.priority),
-      is_active: true,
-      valid_from: null,
-      valid_until: null,
-      created_at: new Date().toISOString(),
-    };
+      const result = await response.json();
 
-    setPricingRules([...pricingRules, rule]);
-    setIsAddRuleOpen(false);
-    setNewRule({
-      name: '',
-      type: '',
-      tour_id: 'all',
-      adjustment_type: 'percentage',
-      adjustment_value: '',
-      priority: '10',
-    });
-    toast.success('Pricing rule created');
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to create rule');
+      }
+
+      setPricingRules([...pricingRules, result.data]);
+      setIsAddRuleOpen(false);
+      setNewRule({
+        name: '',
+        type: '',
+        tour_id: 'all',
+        adjustment_type: 'percentage',
+        adjustment_value: '',
+        priority: '10',
+      });
+      toast.success('Pricing rule created');
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to create rule');
+    } finally {
+      setSavingRule(false);
+    }
   };
 
-  const handleAddPromo = () => {
+  const handleAddPromo = async () => {
     if (!newPromo.code || !newPromo.discount_value) {
       toast.error('Please fill in all required fields');
       return;
     }
 
-    const promo: PromoCode = {
-      id: Date.now().toString(),
-      code: newPromo.code.toUpperCase(),
-      description: newPromo.description,
-      discount_type: newPromo.discount_type,
-      discount_value: parseFloat(newPromo.discount_value),
-      min_booking_value: newPromo.min_booking_value ? parseFloat(newPromo.min_booking_value) : null,
-      max_uses: newPromo.max_uses ? parseInt(newPromo.max_uses) : null,
-      current_uses: 0,
-      tour_ids: null,
-      is_active: true,
-      valid_from: format(newPromo.valid_from, 'yyyy-MM-dd'),
-      valid_until: newPromo.valid_until ? format(newPromo.valid_until, 'yyyy-MM-dd') : null,
-    };
+    setSavingPromo(true);
+    try {
+      const response = await fetch('/api/promo-codes', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          code: newPromo.code.toUpperCase(),
+          description: newPromo.description,
+          discount_type: newPromo.discount_type,
+          discount_value: parseFloat(newPromo.discount_value),
+          min_booking_value: newPromo.min_booking_value ? parseFloat(newPromo.min_booking_value) : null,
+          max_uses: newPromo.max_uses ? parseInt(newPromo.max_uses) : null,
+          valid_from: format(newPromo.valid_from, 'yyyy-MM-dd'),
+          valid_until: newPromo.valid_until ? format(newPromo.valid_until, 'yyyy-MM-dd') : null,
+          is_active: true,
+        }),
+      });
 
-    setPromoCodes([...promoCodes, promo]);
-    setIsAddPromoOpen(false);
-    setNewPromo({
-      code: '',
-      description: '',
-      discount_type: 'percentage',
-      discount_value: '',
-      min_booking_value: '',
-      max_uses: '',
-      valid_from: new Date(),
-      valid_until: null,
-    });
-    toast.success('Promo code created');
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to create promo code');
+      }
+
+      setPromoCodes([...promoCodes, result.data]);
+      setIsAddPromoOpen(false);
+      setNewPromo({
+        code: '',
+        description: '',
+        discount_type: 'percentage',
+        discount_value: '',
+        min_booking_value: '',
+        max_uses: '',
+        valid_from: new Date(),
+        valid_until: null,
+      });
+      toast.success('Promo code created');
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to create promo code');
+    } finally {
+      setSavingPromo(false);
+    }
   };
 
-  const handleToggleRule = (id: string) => {
-    setPricingRules(rules => rules.map(r => r.id === id ? { ...r, is_active: !r.is_active } : r));
-    toast.success('Rule updated');
+  const handleToggleRule = async (id: string, currentState: boolean) => {
+    try {
+      const response = await fetch(`/api/pricing-rules/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ is_active: !currentState }),
+      });
+
+      if (!response.ok) {
+        const result = await response.json();
+        throw new Error(result.error || 'Failed to update rule');
+      }
+
+      setPricingRules(rules => rules.map(r => r.id === id ? { ...r, is_active: !currentState } : r));
+      toast.success('Rule updated');
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to update rule');
+    }
   };
 
-  const handleTogglePromo = (id: string) => {
-    setPromoCodes(codes => codes.map(c => c.id === id ? { ...c, is_active: !c.is_active } : c));
-    toast.success('Promo code updated');
+  const handleTogglePromo = async (id: string, currentState: boolean) => {
+    try {
+      const response = await fetch(`/api/promo-codes/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ is_active: !currentState }),
+      });
+
+      if (!response.ok) {
+        const result = await response.json();
+        throw new Error(result.error || 'Failed to update promo code');
+      }
+
+      setPromoCodes(codes => codes.map(c => c.id === id ? { ...c, is_active: !currentState } : c));
+      toast.success('Promo code updated');
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to update promo code');
+    }
   };
 
-  const handleDeleteRule = (id: string) => {
-    setPricingRules(rules => rules.filter(r => r.id !== id));
-    toast.success('Rule deleted');
+  const handleDeleteRule = async (id: string) => {
+    try {
+      const response = await fetch(`/api/pricing-rules/${id}`, {
+        method: 'DELETE',
+      });
+
+      if (!response.ok) {
+        const result = await response.json();
+        throw new Error(result.error || 'Failed to delete rule');
+      }
+
+      setPricingRules(rules => rules.filter(r => r.id !== id));
+      toast.success('Rule deleted');
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to delete rule');
+    }
   };
 
-  const handleDeletePromo = (id: string) => {
-    setPromoCodes(codes => codes.filter(c => c.id !== id));
-    toast.success('Promo code deleted');
+  const handleDeletePromo = async (id: string) => {
+    try {
+      const response = await fetch(`/api/promo-codes/${id}`, {
+        method: 'DELETE',
+      });
+
+      if (!response.ok) {
+        const result = await response.json();
+        throw new Error(result.error || 'Failed to delete promo code');
+      }
+
+      setPromoCodes(codes => codes.filter(c => c.id !== id));
+      toast.success('Promo code deleted');
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to delete promo code');
+    }
+  };
+
+  const copyToClipboard = async (text: string) => {
+    await navigator.clipboard.writeText(text);
+    toast.success('Copied to clipboard');
   };
 
   const activeRules = pricingRules.filter(r => r.is_active).length;
   const activeCodes = promoCodes.filter(c => c.is_active).length;
   const totalRedemptions = promoCodes.reduce((acc, c) => acc + c.current_uses, 0);
+
+  if (loading) {
+    return (
+      <div className="p-6 flex items-center justify-center min-h-[400px]">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="p-6 flex flex-col items-center justify-center min-h-[400px] gap-4">
+        <AlertCircle className="h-12 w-12 text-destructive" />
+        <p className="text-lg font-medium">Failed to load pricing data</p>
+        <p className="text-muted-foreground">{error}</p>
+        <Button onClick={fetchData}>Try Again</Button>
+      </div>
+    );
+  }
 
   return (
     <div className="p-6 space-y-6">
@@ -502,8 +461,8 @@ export default function PricingPage() {
                 <DollarSign className="h-6 w-6 text-purple-600" />
               </div>
               <div>
-                <p className="text-sm text-muted-foreground">Avg Discount</p>
-                <p className="text-2xl font-bold">12%</p>
+                <p className="text-sm text-muted-foreground">Total Tours</p>
+                <p className="text-2xl font-bold">{tours.length}</p>
               </div>
             </div>
           </CardContent>
@@ -576,7 +535,7 @@ export default function PricingPage() {
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="all">All Tours</SelectItem>
-                        {mockTours.map(tour => (
+                        {tours.map(tour => (
                           <SelectItem key={tour.id} value={tour.id}>{tour.name}</SelectItem>
                         ))}
                       </SelectContent>
@@ -621,100 +580,113 @@ export default function PricingPage() {
                 </div>
                 <DialogFooter>
                   <Button variant="outline" onClick={() => setIsAddRuleOpen(false)}>Cancel</Button>
-                  <Button onClick={handleAddRule}>Create Rule</Button>
+                  <Button onClick={handleAddRule} disabled={savingRule}>
+                    {savingRule && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                    Create Rule
+                  </Button>
                 </DialogFooter>
               </DialogContent>
             </Dialog>
           </div>
 
-          <div className="space-y-4">
-            {pricingRules
-              .sort((a, b) => a.priority - b.priority)
-              .map((rule) => (
-              <Card key={rule.id} className={!rule.is_active ? 'opacity-60' : ''}>
-                <CardContent className="pt-6">
-                  <div className="flex items-start justify-between">
-                    <div className="flex items-start gap-4">
-                      <div className={`p-3 rounded-full ${
-                        rule.adjustment_value >= 0 ? 'bg-red-100' : 'bg-green-100'
-                      }`}>
-                        {rule.adjustment_value >= 0 ? (
-                          <TrendingUp className={`h-5 w-5 ${rule.adjustment_value >= 0 ? 'text-red-600' : 'text-green-600'}`} />
-                        ) : (
-                          <TrendingDown className="h-5 w-5 text-green-600" />
-                        )}
-                      </div>
-                      <div className="space-y-1">
-                        <div className="flex items-center gap-2">
-                          <h3 className="font-semibold">{rule.name}</h3>
-                          <Badge variant="outline" className="gap-1">
-                            {ruleTypeIcons[rule.type]}
-                            {ruleTypeLabels[rule.type]}
-                          </Badge>
-                          {rule.is_active ? (
-                            <Badge className="bg-green-100 text-green-800">Active</Badge>
+          {pricingRules.length === 0 ? (
+            <Card>
+              <CardContent className="p-12 text-center">
+                <Zap className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                <p className="text-lg font-medium">No pricing rules yet</p>
+                <p className="text-muted-foreground mb-4">Create your first rule to set up dynamic pricing</p>
+                <Button onClick={() => setIsAddRuleOpen(true)}>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Add Rule
+                </Button>
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="space-y-4">
+              {pricingRules
+                .sort((a, b) => a.priority - b.priority)
+                .map((rule) => (
+                <Card key={rule.id} className={!rule.is_active ? 'opacity-60' : ''}>
+                  <CardContent className="pt-6">
+                    <div className="flex items-start justify-between">
+                      <div className="flex items-start gap-4">
+                        <div className={`p-3 rounded-full ${
+                          rule.adjustment_value >= 0 ? 'bg-red-100' : 'bg-green-100'
+                        }`}>
+                          {rule.adjustment_value >= 0 ? (
+                            <TrendingUp className={`h-5 w-5 ${rule.adjustment_value >= 0 ? 'text-red-600' : 'text-green-600'}`} />
                           ) : (
-                            <Badge variant="secondary">Inactive</Badge>
+                            <TrendingDown className="h-5 w-5 text-green-600" />
                           )}
                         </div>
-                        <p className="text-sm text-muted-foreground">
-                          {rule.tour_name ? `Applies to: ${rule.tour_name}` : 'Applies to: All Tours'}
-                        </p>
-                        <p className="text-sm font-medium">
-                          {rule.adjustment_value >= 0 ? '+' : ''}
-                          {rule.adjustment_value}
-                          {rule.adjustment_type === 'percentage' ? '%' : '$'}
-                          {rule.adjustment_value >= 0 ? ' increase' : ' discount'}
-                        </p>
-                        {(rule.valid_from || rule.valid_until) && (
-                          <p className="text-xs text-muted-foreground">
-                            Valid: {rule.valid_from ? format(new Date(rule.valid_from), 'MMM d, yyyy') : 'Any'}
-                            {' - '}
-                            {rule.valid_until ? format(new Date(rule.valid_until), 'MMM d, yyyy') : 'Ongoing'}
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-2">
+                            <h3 className="font-semibold">{rule.name}</h3>
+                            <Badge variant="outline" className="gap-1">
+                              {ruleTypeIcons[rule.type]}
+                              {ruleTypeLabels[rule.type]}
+                            </Badge>
+                            {rule.is_active ? (
+                              <Badge className="bg-green-100 text-green-800">Active</Badge>
+                            ) : (
+                              <Badge variant="secondary">Inactive</Badge>
+                            )}
+                          </div>
+                          <p className="text-sm text-muted-foreground">
+                            {rule.tour?.name ? `Applies to: ${rule.tour.name}` : 'Applies to: All Tours'}
                           </p>
-                        )}
+                          <p className="text-sm font-medium">
+                            {rule.adjustment_value >= 0 ? '+' : ''}
+                            {rule.adjustment_value}
+                            {rule.adjustment_type === 'percentage' ? '%' : '$'}
+                            {rule.adjustment_value >= 0 ? ' increase' : ' discount'}
+                          </p>
+                          {(rule.valid_from || rule.valid_until) && (
+                            <p className="text-xs text-muted-foreground">
+                              Valid: {rule.valid_from ? format(new Date(rule.valid_from), 'MMM d, yyyy') : 'Any'}
+                              {' - '}
+                              {rule.valid_until ? format(new Date(rule.valid_until), 'MMM d, yyyy') : 'Ongoing'}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 mr-2">
+                          <Label htmlFor={`rule-${rule.id}`} className="text-sm">Active</Label>
+                          <Switch
+                            id={`rule-${rule.id}`}
+                            checked={rule.is_active}
+                            onCheckedChange={() => handleToggleRule(rule.id, rule.is_active)}
+                          />
+                        </div>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon">
+                              <MoreHorizontal className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem>
+                              <Pencil className="h-4 w-4 mr-2" />
+                              Edit
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem
+                              className="text-destructive"
+                              onClick={() => handleDeleteRule(rule.id)}
+                            >
+                              <Trash2 className="h-4 w-4 mr-2" />
+                              Delete
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
                       </div>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <div className="flex items-center gap-2 mr-2">
-                        <Label htmlFor={`rule-${rule.id}`} className="text-sm">Active</Label>
-                        <Switch
-                          id={`rule-${rule.id}`}
-                          checked={rule.is_active}
-                          onCheckedChange={() => handleToggleRule(rule.id)}
-                        />
-                      </div>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon">
-                            <MoreHorizontal className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem>
-                            <Pencil className="h-4 w-4 mr-2" />
-                            Edit
-                          </DropdownMenuItem>
-                          <DropdownMenuItem>
-                            <Copy className="h-4 w-4 mr-2" />
-                            Duplicate
-                          </DropdownMenuItem>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem
-                            className="text-destructive"
-                            onClick={() => handleDeleteRule(rule.id)}
-                          >
-                            <Trash2 className="h-4 w-4 mr-2" />
-                            Delete
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
         </TabsContent>
 
         <TabsContent value="promos">
@@ -828,91 +800,102 @@ export default function PricingPage() {
                     </div>
                     <DialogFooter>
                       <Button variant="outline" onClick={() => setIsAddPromoOpen(false)}>Cancel</Button>
-                      <Button onClick={handleAddPromo}>Create Code</Button>
+                      <Button onClick={handleAddPromo} disabled={savingPromo}>
+                        {savingPromo && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                        Create Code
+                      </Button>
                     </DialogFooter>
                   </DialogContent>
                 </Dialog>
               </div>
             </CardHeader>
             <CardContent>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Code</TableHead>
-                    <TableHead>Description</TableHead>
-                    <TableHead>Discount</TableHead>
-                    <TableHead>Usage</TableHead>
-                    <TableHead>Valid Period</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead className="w-[80px]">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {promoCodes.map((promo) => (
-                    <TableRow key={promo.id} className={!promo.is_active ? 'opacity-60' : ''}>
-                      <TableCell>
-                        <code className="px-2 py-1 bg-muted rounded font-mono font-bold">
-                          {promo.code}
-                        </code>
-                      </TableCell>
-                      <TableCell className="text-muted-foreground">{promo.description}</TableCell>
-                      <TableCell>
-                        <span className="font-medium text-green-600">
-                          {promo.discount_type === 'percentage' ? `${promo.discount_value}%` : `$${promo.discount_value}`}
-                        </span>
-                        {promo.min_booking_value && (
-                          <span className="text-xs text-muted-foreground block">
-                            Min ${promo.min_booking_value}
-                          </span>
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        {promo.current_uses}
-                        {promo.max_uses && (
-                          <span className="text-muted-foreground">/{promo.max_uses}</span>
-                        )}
-                      </TableCell>
-                      <TableCell className="text-sm text-muted-foreground">
-                        {format(new Date(promo.valid_from), 'MMM d')}
-                        {promo.valid_until && ` - ${format(new Date(promo.valid_until), 'MMM d')}`}
-                      </TableCell>
-                      <TableCell>
-                        <Switch
-                          checked={promo.is_active}
-                          onCheckedChange={() => handleTogglePromo(promo.id)}
-                        />
-                      </TableCell>
-                      <TableCell>
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon">
-                              <MoreHorizontal className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem>
-                              <Pencil className="h-4 w-4 mr-2" />
-                              Edit
-                            </DropdownMenuItem>
-                            <DropdownMenuItem>
-                              <Copy className="h-4 w-4 mr-2" />
-                              Copy Code
-                            </DropdownMenuItem>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem
-                              className="text-destructive"
-                              onClick={() => handleDeletePromo(promo.id)}
-                            >
-                              <Trash2 className="h-4 w-4 mr-2" />
-                              Delete
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </TableCell>
+              {promoCodes.length === 0 ? (
+                <div className="text-center py-12">
+                  <Tag className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                  <p className="text-lg font-medium">No promo codes yet</p>
+                  <p className="text-muted-foreground">Create your first promo code</p>
+                </div>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Code</TableHead>
+                      <TableHead>Description</TableHead>
+                      <TableHead>Discount</TableHead>
+                      <TableHead>Usage</TableHead>
+                      <TableHead>Valid Period</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead className="w-[80px]">Actions</TableHead>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+                  </TableHeader>
+                  <TableBody>
+                    {promoCodes.map((promo) => (
+                      <TableRow key={promo.id} className={!promo.is_active ? 'opacity-60' : ''}>
+                        <TableCell>
+                          <code className="px-2 py-1 bg-muted rounded font-mono font-bold">
+                            {promo.code}
+                          </code>
+                        </TableCell>
+                        <TableCell className="text-muted-foreground">{promo.description || '-'}</TableCell>
+                        <TableCell>
+                          <span className="font-medium text-green-600">
+                            {promo.discount_type === 'percentage' ? `${promo.discount_value}%` : `$${promo.discount_value}`}
+                          </span>
+                          {promo.min_booking_value && (
+                            <span className="text-xs text-muted-foreground block">
+                              Min ${promo.min_booking_value}
+                            </span>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          {promo.current_uses}
+                          {promo.max_uses && (
+                            <span className="text-muted-foreground">/{promo.max_uses}</span>
+                          )}
+                        </TableCell>
+                        <TableCell className="text-sm text-muted-foreground">
+                          {format(new Date(promo.valid_from), 'MMM d')}
+                          {promo.valid_until && ` - ${format(new Date(promo.valid_until), 'MMM d')}`}
+                        </TableCell>
+                        <TableCell>
+                          <Switch
+                            checked={promo.is_active}
+                            onCheckedChange={() => handleTogglePromo(promo.id, promo.is_active)}
+                          />
+                        </TableCell>
+                        <TableCell>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="icon">
+                                <MoreHorizontal className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem>
+                                <Pencil className="h-4 w-4 mr-2" />
+                                Edit
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => copyToClipboard(promo.code)}>
+                                <Copy className="h-4 w-4 mr-2" />
+                                Copy Code
+                              </DropdownMenuItem>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem
+                                className="text-destructive"
+                                onClick={() => handleDeletePromo(promo.id)}
+                              >
+                                <Trash2 className="h-4 w-4 mr-2" />
+                                Delete
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
@@ -924,54 +907,62 @@ export default function PricingPage() {
               <CardDescription>Default pricing for each tour before any rules are applied</CardDescription>
             </CardHeader>
             <CardContent>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Tour</TableHead>
-                    <TableHead>Base Price</TableHead>
-                    <TableHead>Active Rules</TableHead>
-                    <TableHead className="w-[100px]">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {mockTours.map((tour) => {
-                    const tourRules = pricingRules.filter(
-                      r => r.is_active && (r.tour_id === tour.id || r.tour_id === null)
-                    );
-                    return (
-                      <TableRow key={tour.id}>
-                        <TableCell className="font-medium">{tour.name}</TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-1">
-                            <DollarSign className="h-4 w-4 text-muted-foreground" />
-                            <span className="text-lg font-semibold">{tour.base_price}</span>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex flex-wrap gap-1">
-                            {tourRules.slice(0, 3).map(rule => (
-                              <Badge key={rule.id} variant="outline" className="text-xs">
-                                {rule.name}
-                              </Badge>
-                            ))}
-                            {tourRules.length > 3 && (
-                              <Badge variant="secondary" className="text-xs">
-                                +{tourRules.length - 3} more
-                              </Badge>
-                            )}
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <Button variant="ghost" size="sm">
-                            <Pencil className="h-4 w-4 mr-1" />
-                            Edit
-                          </Button>
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })}
-                </TableBody>
-              </Table>
+              {tours.length === 0 ? (
+                <div className="text-center py-12">
+                  <DollarSign className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                  <p className="text-lg font-medium">No tours found</p>
+                  <p className="text-muted-foreground">Create tours to configure base pricing</p>
+                </div>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Tour</TableHead>
+                      <TableHead>Base Price</TableHead>
+                      <TableHead>Active Rules</TableHead>
+                      <TableHead className="w-[100px]">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {tours.map((tour) => {
+                      const tourRules = pricingRules.filter(
+                        r => r.is_active && (r.tour_id === tour.id || r.tour_id === null)
+                      );
+                      return (
+                        <TableRow key={tour.id}>
+                          <TableCell className="font-medium">{tour.name}</TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-1">
+                              <DollarSign className="h-4 w-4 text-muted-foreground" />
+                              <span className="text-lg font-semibold">{tour.base_price}</span>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex flex-wrap gap-1">
+                              {tourRules.slice(0, 3).map(rule => (
+                                <Badge key={rule.id} variant="outline" className="text-xs">
+                                  {rule.name}
+                                </Badge>
+                              ))}
+                              {tourRules.length > 3 && (
+                                <Badge variant="secondary" className="text-xs">
+                                  +{tourRules.length - 3} more
+                                </Badge>
+                              )}
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <Button variant="ghost" size="sm">
+                              <Pencil className="h-4 w-4 mr-1" />
+                              Edit
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              )}
             </CardContent>
           </Card>
         </TabsContent>

@@ -1,6 +1,6 @@
 import { createClient } from '@/lib/supabase/server';
 import { NextResponse } from 'next/server';
-import { UserRole, ADMIN_ROLES, STAFF_ROLES } from './roles';
+import { UserRole, ADMIN_ROLES, MANAGER_ROLES, STAFF_ROLES } from './roles';
 
 export interface AuthResult {
   authenticated: boolean;
@@ -8,6 +8,7 @@ export interface AuthResult {
   role?: UserRole;
   staffId?: string;
   customerId?: string;
+  locationId?: string;
   error?: string;
 }
 
@@ -23,7 +24,7 @@ export async function getAuthUser(): Promise<AuthResult> {
   // Check if user is staff
   const { data: staffData } = await supabase
     .from('staff')
-    .select('id, role, is_active')
+    .select('id, role, is_active, location_id')
     .eq('user_id', user.id)
     .single();
 
@@ -33,6 +34,7 @@ export async function getAuthUser(): Promise<AuthResult> {
       userId: user.id,
       role: staffData.role as UserRole,
       staffId: staffData.id,
+      locationId: staffData.location_id,
     };
   }
 
@@ -106,6 +108,72 @@ export async function requireCaptain(): Promise<AuthResult> {
 
   if (auth.role !== 'captain') {
     throw new Error('Forbidden: Captain access required');
+  }
+
+  return auth;
+}
+
+export async function requireManager(): Promise<AuthResult> {
+  const auth = await getAuthUser();
+
+  if (!auth.authenticated) {
+    throw new Error('Unauthorized');
+  }
+
+  if (!auth.role || !MANAGER_ROLES.includes(auth.role)) {
+    throw new Error('Forbidden: Manager access required');
+  }
+
+  return auth;
+}
+
+export async function requireFrontDesk(): Promise<AuthResult> {
+  const auth = await getAuthUser();
+
+  if (!auth.authenticated) {
+    throw new Error('Unauthorized');
+  }
+
+  const frontDeskRoles: UserRole[] = ['admin', 'location_manager', 'front_desk'];
+  if (!auth.role || !frontDeskRoles.includes(auth.role)) {
+    throw new Error('Forbidden: Front desk access required');
+  }
+
+  return auth;
+}
+
+// Check if user can manage a specific role (role hierarchy)
+export function canManageRole(managerRole: UserRole | undefined, targetRole: UserRole): boolean {
+  if (!managerRole) return false;
+
+  // Admin can manage anyone
+  if (managerRole === 'admin') return true;
+
+  // Location manager can manage front_desk, captain, affiliate
+  if (managerRole === 'location_manager') {
+    return ['front_desk', 'captain', 'affiliate'].includes(targetRole);
+  }
+
+  // No one else can manage staff
+  return false;
+}
+
+// Check if user can access a specific location's data
+export async function requireLocationAccess(locationId: string): Promise<AuthResult> {
+  const auth = await getAuthUser();
+
+  if (!auth.authenticated) {
+    throw new Error('Unauthorized');
+  }
+
+  // Admins can access all locations
+  if (auth.role === 'admin') {
+    return auth;
+  }
+
+  // Other staff can only access their assigned location
+  if (auth.locationId !== locationId) {
+    throw new Error('Forbidden: No access to this location');
   }
 
   return auth;

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -28,6 +28,7 @@ import {
   Globe,
   Check,
   Loader2,
+  AlertCircle,
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -37,6 +38,7 @@ interface Widget {
   name: string;
   widgetKey: string;
   allowedDomains: string[];
+  tourIds: string[] | null;
   theme: {
     primaryColor: string;
     borderRadius: string;
@@ -44,61 +46,84 @@ interface Widget {
     showAvailability: boolean;
   };
   isActive: boolean;
-  embedCount: number;
+  viewCount: number;
   bookingCount: number;
   createdAt: string;
 }
 
-const mockWidgets: Widget[] = [
-  {
-    id: "1",
-    name: "Main Website Widget",
-    widgetKey: "wgt_abc123def456",
-    allowedDomains: ["example.com", "www.example.com"],
+interface ApiWidget {
+  id: string;
+  name: string;
+  widget_key: string;
+  allowed_domains: string[] | null;
+  tour_ids: string[] | null;
+  theme: {
+    primaryColor?: string;
+    borderRadius?: string;
+    showPrices?: boolean;
+    showAvailability?: boolean;
+  } | null;
+  is_active: boolean;
+  created_at: string;
+  view_count?: number;
+  booking_count?: number;
+}
+
+function transformWidget(apiWidget: ApiWidget): Widget {
+  return {
+    id: apiWidget.id,
+    name: apiWidget.name,
+    widgetKey: apiWidget.widget_key,
+    allowedDomains: apiWidget.allowed_domains || ["*"],
+    tourIds: apiWidget.tour_ids,
     theme: {
-      primaryColor: "#0ea5e9",
-      borderRadius: "8px",
-      showPrices: true,
-      showAvailability: true,
+      primaryColor: apiWidget.theme?.primaryColor || "#0ea5e9",
+      borderRadius: apiWidget.theme?.borderRadius || "8px",
+      showPrices: apiWidget.theme?.showPrices ?? true,
+      showAvailability: apiWidget.theme?.showAvailability ?? true,
     },
-    isActive: true,
-    embedCount: 1250,
-    bookingCount: 89,
-    createdAt: "2024-01-15T10:00:00Z",
-  },
-  {
-    id: "2",
-    name: "Partner Hotel Widget",
-    widgetKey: "wgt_xyz789ghi012",
-    allowedDomains: ["hotelpartner.com"],
-    theme: {
-      primaryColor: "#8b5cf6",
-      borderRadius: "12px",
-      showPrices: true,
-      showAvailability: false,
-    },
-    isActive: true,
-    embedCount: 456,
-    bookingCount: 23,
-    createdAt: "2024-02-01T14:30:00Z",
-  },
-];
+    isActive: apiWidget.is_active,
+    viewCount: apiWidget.view_count || 0,
+    bookingCount: apiWidget.booking_count || 0,
+    createdAt: apiWidget.created_at,
+  };
+}
 
 export default function WidgetsPage() {
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [widgets, setWidgets] = useState<Widget[]>([]);
   const [selectedWidget, setSelectedWidget] = useState<Widget | null>(null);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [newWidgetName, setNewWidgetName] = useState("");
   const [creating, setCreating] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState<string | null>(null);
+  const [toggling, setToggling] = useState<string | null>(null);
+
+  const fetchWidgets = useCallback(async () => {
+    try {
+      setError(null);
+      const response = await fetch("/api/widgets");
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || "Failed to fetch widgets");
+      }
+
+      const transformedWidgets = (result.data || []).map(transformWidget);
+      setWidgets(transformedWidgets);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to load widgets");
+      console.error("Error fetching widgets:", err);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
-    setTimeout(() => {
-      setWidgets(mockWidgets);
-      setLoading(false);
-    }, 500);
-  }, []);
+    fetchWidgets();
+  }, [fetchWidgets]);
 
   const baseUrl = typeof window !== "undefined" ? window.location.origin : "";
 
@@ -129,49 +154,142 @@ export default function WidgetsPage() {
     if (!newWidgetName.trim()) return;
 
     setCreating(true);
-    await new Promise((r) => setTimeout(r, 1000));
+    try {
+      const response = await fetch("/api/widgets", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: newWidgetName,
+          theme: {
+            primaryColor: "#0ea5e9",
+            borderRadius: "8px",
+            showPrices: true,
+            showAvailability: true,
+          },
+        }),
+      });
 
-    const newWidget: Widget = {
-      id: Date.now().toString(),
-      name: newWidgetName,
-      widgetKey: `wgt_${Math.random().toString(36).substring(2, 15)}`,
-      allowedDomains: ["*"],
-      theme: {
-        primaryColor: "#0ea5e9",
-        borderRadius: "8px",
-        showPrices: true,
-        showAvailability: true,
-      },
-      isActive: true,
-      embedCount: 0,
-      bookingCount: 0,
-      createdAt: new Date().toISOString(),
-    };
+      const result = await response.json();
 
-    setWidgets((prev) => [...prev, newWidget]);
-    setNewWidgetName("");
-    setShowCreateDialog(false);
-    setCreating(false);
-    toast.success("Widget created", { description: "Your new widget is ready to embed." });
+      if (!response.ok) {
+        throw new Error(result.error || "Failed to create widget");
+      }
+
+      const newWidget = transformWidget(result.data);
+      setWidgets((prev) => [...prev, newWidget]);
+      setNewWidgetName("");
+      setShowCreateDialog(false);
+      toast.success("Widget created", { description: "Your new widget is ready to embed." });
+    } catch (err) {
+      toast.error("Failed to create widget", {
+        description: err instanceof Error ? err.message : "Unknown error",
+      });
+    } finally {
+      setCreating(false);
+    }
   };
 
-  const handleToggleActive = (widgetId: string) => {
-    setWidgets((prev) =>
-      prev.map((w) =>
-        w.id === widgetId ? { ...w, isActive: !w.isActive } : w
-      )
-    );
+  const handleToggleActive = async (widgetId: string, currentState: boolean) => {
+    setToggling(widgetId);
+    try {
+      const response = await fetch(`/api/widgets/${widgetId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ is_active: !currentState }),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || "Failed to update widget");
+      }
+
+      setWidgets((prev) =>
+        prev.map((w) =>
+          w.id === widgetId ? { ...w, isActive: !currentState } : w
+        )
+      );
+      toast.success(`Widget ${!currentState ? "activated" : "deactivated"}`);
+    } catch (err) {
+      toast.error("Failed to update widget", {
+        description: err instanceof Error ? err.message : "Unknown error",
+      });
+    } finally {
+      setToggling(null);
+    }
   };
 
-  const handleDeleteWidget = (widgetId: string) => {
-    setWidgets((prev) => prev.filter((w) => w.id !== widgetId));
-    toast.success("Widget deleted");
+  const handleDeleteWidget = async (widgetId: string) => {
+    setDeleting(widgetId);
+    try {
+      const response = await fetch(`/api/widgets/${widgetId}`, {
+        method: "DELETE",
+      });
+
+      if (!response.ok) {
+        const result = await response.json();
+        throw new Error(result.error || "Failed to delete widget");
+      }
+
+      setWidgets((prev) => prev.filter((w) => w.id !== widgetId));
+      toast.success("Widget deleted");
+    } catch (err) {
+      toast.error("Failed to delete widget", {
+        description: err instanceof Error ? err.message : "Unknown error",
+      });
+    } finally {
+      setDeleting(null);
+    }
+  };
+
+  const handleUpdateWidgetSettings = async (
+    widgetId: string,
+    updates: Partial<{
+      theme: Widget["theme"];
+      allowed_domains: string[];
+    }>
+  ) => {
+    try {
+      const response = await fetch(`/api/widgets/${widgetId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(updates),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || "Failed to update widget");
+      }
+
+      const updatedWidget = transformWidget(result.data);
+      setWidgets((prev) =>
+        prev.map((w) => (w.id === widgetId ? updatedWidget : w))
+      );
+      setSelectedWidget(updatedWidget);
+      toast.success("Widget settings updated");
+    } catch (err) {
+      toast.error("Failed to update settings", {
+        description: err instanceof Error ? err.message : "Unknown error",
+      });
+    }
   };
 
   if (loading) {
     return (
       <div className="p-6 flex items-center justify-center min-h-[400px]">
         <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="p-6 flex flex-col items-center justify-center min-h-[400px] gap-4">
+        <AlertCircle className="h-12 w-12 text-destructive" />
+        <p className="text-lg font-medium">Failed to load widgets</p>
+        <p className="text-muted-foreground">{error}</p>
+        <Button onClick={fetchWidgets}>Try Again</Button>
       </div>
     );
   }
@@ -210,7 +328,7 @@ export default function WidgetsPage() {
           <CardContent className="p-6">
             <p className="text-sm text-muted-foreground">Total Views</p>
             <p className="text-3xl font-bold mt-1">
-              {widgets.reduce((sum, w) => sum + w.embedCount, 0).toLocaleString()}
+              {widgets.reduce((sum, w) => sum + w.viewCount, 0).toLocaleString()}
             </p>
           </CardContent>
         </Card>
@@ -265,7 +383,7 @@ export default function WidgetsPage() {
                       <div className="flex items-center gap-4 mt-2 text-sm text-muted-foreground">
                         <span className="flex items-center gap-1">
                           <Eye className="h-4 w-4" />
-                          {widget.embedCount.toLocaleString()} views
+                          {widget.viewCount.toLocaleString()} views
                         </span>
                         <span className="flex items-center gap-1">
                           <BarChart3 className="h-4 w-4" />
@@ -284,7 +402,8 @@ export default function WidgetsPage() {
                   <div className="flex items-center gap-2">
                     <Switch
                       checked={widget.isActive}
-                      onCheckedChange={() => handleToggleActive(widget.id)}
+                      onCheckedChange={() => handleToggleActive(widget.id, widget.isActive)}
+                      disabled={toggling === widget.id}
                     />
                     <Button
                       variant="outline"
@@ -308,8 +427,13 @@ export default function WidgetsPage() {
                       variant="ghost"
                       size="icon"
                       onClick={() => handleDeleteWidget(widget.id)}
+                      disabled={deleting === widget.id}
                     >
-                      <Trash2 className="h-4 w-4 text-muted-foreground hover:text-red-500" />
+                      {deleting === widget.id ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <Trash2 className="h-4 w-4 text-muted-foreground hover:text-red-500" />
+                      )}
                     </Button>
                   </div>
                 </div>
@@ -424,12 +548,22 @@ export default function WidgetsPage() {
                       type="color"
                       value={selectedWidget.theme.primaryColor}
                       className="w-12 h-10 p-1"
-                      readOnly
+                      onChange={(e) => {
+                        handleUpdateWidgetSettings(selectedWidget.id, {
+                          theme: { ...selectedWidget.theme, primaryColor: e.target.value },
+                        });
+                      }}
                     />
                     <Input
                       value={selectedWidget.theme.primaryColor}
                       className="font-mono"
-                      readOnly
+                      onChange={(e) => {
+                        if (/^#[0-9A-Fa-f]{6}$/.test(e.target.value)) {
+                          handleUpdateWidgetSettings(selectedWidget.id, {
+                            theme: { ...selectedWidget.theme, primaryColor: e.target.value },
+                          });
+                        }
+                      }}
                     />
                   </div>
                 </div>
@@ -440,6 +574,17 @@ export default function WidgetsPage() {
                     value={selectedWidget.allowedDomains.join(", ")}
                     placeholder="example.com, partner.com"
                     className="mt-1"
+                    onBlur={(e) => {
+                      const domains = e.target.value
+                        .split(",")
+                        .map((d) => d.trim())
+                        .filter(Boolean);
+                      if (domains.length > 0) {
+                        handleUpdateWidgetSettings(selectedWidget.id, {
+                          allowed_domains: domains,
+                        });
+                      }
+                    }}
                   />
                   <p className="text-xs text-muted-foreground mt-1">
                     Use * to allow all domains. Separate multiple domains with commas.
@@ -449,11 +594,25 @@ export default function WidgetsPage() {
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
                     <Label>Show Prices</Label>
-                    <Switch checked={selectedWidget.theme.showPrices} />
+                    <Switch
+                      checked={selectedWidget.theme.showPrices}
+                      onCheckedChange={(checked) => {
+                        handleUpdateWidgetSettings(selectedWidget.id, {
+                          theme: { ...selectedWidget.theme, showPrices: checked },
+                        });
+                      }}
+                    />
                   </div>
                   <div className="flex items-center justify-between">
                     <Label>Show Availability</Label>
-                    <Switch checked={selectedWidget.theme.showAvailability} />
+                    <Switch
+                      checked={selectedWidget.theme.showAvailability}
+                      onCheckedChange={(checked) => {
+                        handleUpdateWidgetSettings(selectedWidget.id, {
+                          theme: { ...selectedWidget.theme, showAvailability: checked },
+                        });
+                      }}
+                    />
                   </div>
                 </div>
               </TabsContent>

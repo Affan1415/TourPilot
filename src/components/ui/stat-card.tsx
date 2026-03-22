@@ -1,7 +1,7 @@
 "use client";
 
 import { cn } from "@/lib/utils";
-import { ArrowUp, ArrowDown } from "lucide-react";
+import { ArrowUp, ArrowDown, LucideIcon } from "lucide-react";
 import { ReactNode } from "react";
 
 type ColorVariant = "mint" | "lavender" | "peach" | "sky" | "rose";
@@ -9,11 +9,12 @@ type ColorVariant = "mint" | "lavender" | "peach" | "sky" | "rose";
 interface StatCardProps {
   title: string;
   value: string | number;
-  icon: ReactNode;
+  icon: ReactNode | LucideIcon;
   trend?: {
     value: number;
     isPositive: boolean;
   };
+  description?: string;
   color?: ColorVariant;
   className?: string;
 }
@@ -49,12 +50,22 @@ const colorClasses: Record<ColorVariant, { bg: string; iconBg: string; iconColor
 export function StatCard({
   title,
   value,
-  icon,
+  icon: IconProp,
   trend,
+  description,
   color = "mint",
   className,
 }: StatCardProps) {
   const colors = colorClasses[color];
+
+  // Handle both ReactNode and LucideIcon component
+  const renderIcon = () => {
+    if (typeof IconProp === "function") {
+      const Icon = IconProp as LucideIcon;
+      return <Icon className="h-5 w-5" />;
+    }
+    return IconProp;
+  };
 
   return (
     <div
@@ -68,6 +79,9 @@ export function StatCard({
         <div>
           <div className="text-xl font-bold text-foreground">{value}</div>
           <div className="text-sm text-muted-foreground mt-0.5">{title}</div>
+          {description && (
+            <div className="text-xs text-muted-foreground mt-1">{description}</div>
+          )}
         </div>
         <button className="text-muted-foreground hover:text-foreground transition-colors">
           <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
@@ -86,7 +100,7 @@ export function StatCard({
             colors.iconColor
           )}
         >
-          {icon}
+          {renderIcon()}
         </div>
 
         {trend && (

@@ -139,7 +139,7 @@ export async function POST(request: NextRequest) {
       customerId = newCustomer.id;
     }
 
-    // 2. Get availability to check capacity and update booked_count
+    // 2. Get availability info (for tour data)
     const { data: availability, error: availabilityError } = await adminClient
       .from("availabilities")
       .select(`
@@ -149,7 +149,9 @@ export async function POST(request: NextRequest) {
         booked_count,
         capacity_override,
         status,
+        tour_id,
         tours (
+          id,
           name,
           max_capacity,
           meeting_point,
@@ -171,15 +173,25 @@ export async function POST(request: NextRequest) {
       meeting_point: string;
       requires_waiver: boolean;
     } | null;
-    const maxCapacity = availability.capacity_override || tourData?.max_capacity || 10;
-    const availableSpots = maxCapacity - availability.booked_count;
 
-    if (guest_count > availableSpots) {
-      return NextResponse.json({ error: `Only ${availableSpots} spots available` }, { status: 400 });
+    // 2b. Use atomic capacity reservation to prevent race conditions
+    const { data: reservationResult, error: reservationError } = await adminClient
+      .rpc('reserve_availability_capacity', {
+        p_availability_id: availability_id,
+        p_guest_count: guest_count
+      });
+
+    if (reservationError) {
+      console.error("Capacity reservation error:", reservationError);
+      return NextResponse.json({ error: "Failed to reserve capacity" }, { status: 500 });
     }
 
-    if (availability.status !== "available") {
-      return NextResponse.json({ error: "This time slot is no longer available" }, { status: 400 });
+    const reservation = reservationResult?.[0];
+    if (!reservation?.success) {
+      return NextResponse.json(
+        { error: reservation?.error_message || "This time slot is no longer available" },
+        { status: 400 }
+      );
     }
 
     // 3. Create booking
@@ -209,6 +221,11 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (bookingError) {
+      // Rollback: release the reserved capacity
+      await adminClient.rpc('release_availability_capacity', {
+        p_availability_id: availability_id,
+        p_guest_count: guest_count
+      });
       return NextResponse.json({ error: bookingError.message }, { status: 500 });
     }
 
@@ -272,15 +289,8 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // 6. Update availability booked count
-    const newBookedCount = availability.booked_count + guest_count;
-    await adminClient
-      .from("availabilities")
-      .update({
-        booked_count: newBookedCount,
-        status: newBookedCount >= maxCapacity ? "full" : "available",
-      })
-      .eq("id", availability_id);
+    // 6. Capacity was already reserved atomically in step 2b
+    // No need to update availability booked_count here
 
     // 7. Create affiliate referral record if affiliate code was used
     if (affiliateData) {

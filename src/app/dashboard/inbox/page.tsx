@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -12,6 +12,12 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import {
   Search,
   Send,
@@ -26,20 +32,23 @@ import {
   MessageCircle,
   Phone,
   Mail,
+  MoreVertical,
+  UserPlus,
+  Tag,
+  Sparkles,
 } from "lucide-react";
 import { format, isToday, isYesterday } from "date-fns";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
-import Image from "next/image";
 
 // Channel configuration
 const channels = [
-  { id: "instagram", icon: Instagram, label: "Instagram", bgColor: "bg-gradient-to-br from-purple-500 via-pink-500 to-orange-400", unread: 3 },
-  { id: "telegram", icon: Send, label: "Telegram", bgColor: "bg-[#0088cc]", unread: 0 },
-  { id: "whatsapp", icon: MessageCircle, label: "WhatsApp", bgColor: "bg-[#25D366]", unread: 5 },
-  { id: "messenger", icon: MessageSquare, label: "Messenger", bgColor: "bg-[#0084FF]", unread: 2 },
+  { id: "all", icon: MessageSquare, label: "All", bgColor: "bg-gray-500", unread: 0 },
+  { id: "instagram", icon: Instagram, label: "Instagram", bgColor: "bg-gradient-to-br from-purple-500 via-pink-500 to-orange-400", unread: 0 },
+  { id: "whatsapp", icon: MessageCircle, label: "WhatsApp", bgColor: "bg-[#25D366]", unread: 0 },
+  { id: "messenger", icon: MessageSquare, label: "Messenger", bgColor: "bg-[#0084FF]", unread: 0 },
   { id: "sms", icon: Phone, label: "SMS", bgColor: "bg-purple-500", unread: 0 },
-  { id: "email", icon: Mail, label: "Email", bgColor: "bg-gray-500", unread: 1 },
+  { id: "email", icon: Mail, label: "Email", bgColor: "bg-gray-500", unread: 0 },
 ];
 
 const channelConfig: Record<string, { icon: any; label: string; bgColor: string }> = {
@@ -54,15 +63,22 @@ const channelConfig: Record<string, { icon: any; label: string; bgColor: string 
 interface Conversation {
   id: string;
   channel: string;
+  subject?: string;
+  status: string;
   customer: {
     id: string;
     name: string;
-    username?: string;
+    email?: string;
+    phone?: string;
     avatar?: string;
   } | null;
   lastMessageAt: string;
   lastMessagePreview: string;
   unreadCount: number;
+  assignedTo?: {
+    id: string;
+    name: string;
+  } | null;
 }
 
 interface Message {
@@ -71,127 +87,130 @@ interface Message {
   status: string;
   senderName: string;
   content: string;
+  contentType: string;
+  attachments?: any[];
   createdAt: string;
 }
 
-// Mock data for demo
-const mockConversations: Conversation[] = [
-  {
-    id: "1",
-    channel: "instagram",
-    customer: { id: "c1", name: "John Smith", username: "@johnsmith" },
-    lastMessageAt: new Date().toISOString(),
-    lastMessagePreview: "Hi, I wanted to check availability",
-    unreadCount: 2,
-  },
-  {
-    id: "2",
-    channel: "instagram",
-    customer: { id: "c2", name: "Emma Wilson", username: "@emmaw" },
-    lastMessageAt: new Date(Date.now() - 1800000).toISOString(),
-    lastMessagePreview: "Thanks for the quick response!",
-    unreadCount: 1,
-  },
-  {
-    id: "3",
-    channel: "whatsapp",
-    customer: { id: "c3", name: "Sarah Johnson", username: "+1 234 567 8900" },
-    lastMessageAt: new Date(Date.now() - 3600000).toISOString(),
-    lastMessagePreview: "Can I book for tomorrow?",
-    unreadCount: 3,
-  },
-  {
-    id: "4",
-    channel: "whatsapp",
-    customer: { id: "c4", name: "Mike Davis", username: "+1 987 654 3210" },
-    lastMessageAt: new Date(Date.now() - 7200000).toISOString(),
-    lastMessagePreview: "What time does it start?",
-    unreadCount: 2,
-  },
-  {
-    id: "5",
-    channel: "messenger",
-    customer: { id: "c5", name: "Lisa Brown", username: "@lisab" },
-    lastMessageAt: new Date(Date.now() - 10800000).toISOString(),
-    lastMessagePreview: "Is there parking available?",
-    unreadCount: 2,
-  },
-  {
-    id: "6",
-    channel: "email",
-    customer: { id: "c6", name: "David Lee", username: "david@example.com" },
-    lastMessageAt: new Date(Date.now() - 86400000).toISOString(),
-    lastMessagePreview: "Re: Booking Confirmation",
-    unreadCount: 1,
-  },
-];
+interface QuickReply {
+  id: string;
+  shortcut: string;
+  content: string;
+}
 
-const mockMessages: Message[] = [
-  {
-    id: "m1",
-    direction: "inbound",
-    status: "read",
-    senderName: "John Smith",
-    content: "Hi! I saw your post. Is the service available?",
-    createdAt: new Date(Date.now() - 7200000).toISOString(),
-  },
-  {
-    id: "m2",
-    direction: "outbound",
-    status: "delivered",
-    senderName: "You",
-    content: "Hello! Yes, we're available. Would you like to book?",
-    createdAt: new Date(Date.now() - 5400000).toISOString(),
-  },
-  {
-    id: "m3",
-    direction: "inbound",
-    status: "read",
-    senderName: "John Smith",
-    content: "Hi, I wanted to check availability",
-    createdAt: new Date().toISOString(),
-  },
-];
-
-export default function YettiInboxPage() {
+export default function InboxPage() {
   const [loading, setLoading] = useState(true);
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [selectedConversation, setSelectedConversation] = useState<Conversation | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
+  const [messagesLoading, setMessagesLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
-  const [activeChannel, setActiveChannel] = useState<string>("instagram");
+  const [activeChannel, setActiveChannel] = useState<string>("all");
   const [newMessage, setNewMessage] = useState("");
   const [sending, setSending] = useState(false);
+  const [quickReplies, setQuickReplies] = useState<QuickReply[]>([]);
+  const [showQuickReplies, setShowQuickReplies] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const pollingRef = useRef<NodeJS.Timeout | null>(null);
 
-  useEffect(() => {
-    setTimeout(() => {
-      setConversations(mockConversations);
+  // Fetch conversations
+  const fetchConversations = useCallback(async () => {
+    try {
+      const params = new URLSearchParams();
+      if (activeChannel !== "all") params.set("channel", activeChannel);
+
+      const res = await fetch(`/api/inbox/conversations?${params}`);
+      if (res.ok) {
+        const { data } = await res.json();
+        setConversations(data || []);
+      }
+    } catch (error) {
+      console.error("Failed to fetch conversations:", error);
+    } finally {
       setLoading(false);
-    }, 500);
+    }
+  }, [activeChannel]);
+
+  // Fetch messages for selected conversation
+  const fetchMessages = useCallback(async (conversationId: string) => {
+    setMessagesLoading(true);
+    try {
+      const res = await fetch(`/api/inbox/conversations/${conversationId}/messages`);
+      if (res.ok) {
+        const { data } = await res.json();
+        setMessages(data || []);
+      }
+    } catch (error) {
+      console.error("Failed to fetch messages:", error);
+    } finally {
+      setMessagesLoading(false);
+    }
   }, []);
 
+  // Fetch quick replies
+  const fetchQuickReplies = useCallback(async () => {
+    try {
+      const res = await fetch("/api/inbox/quick-replies");
+      if (res.ok) {
+        const { data } = await res.json();
+        setQuickReplies(data || []);
+      }
+    } catch (error) {
+      console.error("Failed to fetch quick replies:", error);
+    }
+  }, []);
+
+  // Initial load
+  useEffect(() => {
+    fetchConversations();
+    fetchQuickReplies();
+  }, [fetchConversations, fetchQuickReplies]);
+
+  // Refetch when channel changes
+  useEffect(() => {
+    setLoading(true);
+    fetchConversations();
+  }, [activeChannel, fetchConversations]);
+
+  // Load messages when conversation selected
   useEffect(() => {
     if (selectedConversation) {
-      setMessages(mockMessages);
+      fetchMessages(selectedConversation.id);
+
+      // Mark as read in local state
       setConversations(prev =>
         prev.map(c =>
           c.id === selectedConversation.id ? { ...c, unreadCount: 0 } : c
         )
       );
     }
-  }, [selectedConversation]);
+  }, [selectedConversation, fetchMessages]);
 
+  // Auto-scroll to bottom on new messages
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
+  // Polling for new messages
+  useEffect(() => {
+    if (selectedConversation) {
+      pollingRef.current = setInterval(() => {
+        fetchMessages(selectedConversation.id);
+      }, 10000); // Poll every 10 seconds
+    }
+
+    return () => {
+      if (pollingRef.current) {
+        clearInterval(pollingRef.current);
+      }
+    };
+  }, [selectedConversation, fetchMessages]);
+
   const filteredConversations = conversations.filter((conv) => {
     const matchesSearch =
       conv.customer?.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      conv.lastMessagePreview.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesChannel = conv.channel === activeChannel;
-    return matchesSearch && matchesChannel;
+      conv.lastMessagePreview?.toLowerCase().includes(searchQuery.toLowerCase());
+    return matchesSearch;
   });
 
   const formatMessageTime = (dateString: string) => {
@@ -208,34 +227,96 @@ export default function YettiInboxPage() {
     if (!newMessage.trim() || !selectedConversation) return;
 
     setSending(true);
+    const messageContent = newMessage;
+    setNewMessage("");
 
+    // Optimistic update
     const optimisticMessage: Message = {
       id: `temp-${Date.now()}`,
       direction: "outbound",
       status: "pending",
       senderName: "You",
-      content: newMessage,
+      content: messageContent,
+      contentType: "text",
       createdAt: new Date().toISOString(),
     };
-
     setMessages(prev => [...prev, optimisticMessage]);
-    setNewMessage("");
 
-    setTimeout(() => {
-      setMessages(prev =>
-        prev.map(m =>
-          m.id === optimisticMessage.id ? { ...m, status: "delivered" } : m
-        )
-      );
+    try {
+      const res = await fetch(`/api/inbox/conversations/${selectedConversation.id}/messages`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ content: messageContent }),
+      });
+
+      if (res.ok) {
+        const { messageId } = await res.json();
+        // Update optimistic message with real ID and status
+        setMessages(prev =>
+          prev.map(m =>
+            m.id === optimisticMessage.id
+              ? { ...m, id: messageId, status: "sent" }
+              : m
+          )
+        );
+        toast.success("Message sent");
+      } else {
+        const { error } = await res.json();
+        toast.error(error || "Failed to send message");
+        // Remove optimistic message on failure
+        setMessages(prev => prev.filter(m => m.id !== optimisticMessage.id));
+        setNewMessage(messageContent);
+      }
+    } catch (error) {
+      toast.error("Failed to send message");
+      setMessages(prev => prev.filter(m => m.id !== optimisticMessage.id));
+      setNewMessage(messageContent);
+    } finally {
       setSending(false);
-      toast.success("Message sent");
-    }, 1000);
+    }
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       handleSendMessage();
+    }
+  };
+
+  const handleQuickReply = (reply: QuickReply) => {
+    setNewMessage(reply.content);
+    setShowQuickReplies(false);
+  };
+
+  const handleGetAISuggestion = async () => {
+    if (!selectedConversation || messages.length === 0) return;
+
+    toast.info("Getting AI suggestions...");
+
+    try {
+      const res = await fetch("/api/ai/smart-replies", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          message: messages[messages.length - 1]?.content || "",
+          conversation_history: messages.slice(-5).map(m => ({
+            role: m.direction === "inbound" ? "user" : "assistant",
+            content: m.content,
+          })),
+        }),
+      });
+
+      if (res.ok) {
+        const { replies } = await res.json();
+        if (replies && replies.length > 0) {
+          setNewMessage(replies[0]);
+          toast.success("AI suggestion applied");
+        }
+      } else {
+        toast.error("Failed to get AI suggestion");
+      }
+    } catch (error) {
+      toast.error("Failed to get AI suggestion");
     }
   };
 
@@ -257,6 +338,9 @@ export default function YettiInboxPage() {
           {channels.map((channel) => {
             const Icon = channel.icon;
             const isActive = activeChannel === channel.id;
+            const unreadCount = channel.id === "all"
+              ? conversations.reduce((sum, c) => sum + c.unreadCount, 0)
+              : conversations.filter(c => c.channel === channel.id).reduce((sum, c) => sum + c.unreadCount, 0);
 
             return (
               <TooltipProvider key={channel.id}>
@@ -274,9 +358,9 @@ export default function YettiInboxPage() {
                       <div className={cn("w-8 h-8 rounded-lg flex items-center justify-center", channel.bgColor)}>
                         <Icon className="h-4 w-4 text-white" />
                       </div>
-                      {channel.unread > 0 && (
+                      {unreadCount > 0 && (
                         <span className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center">
-                          {channel.unread}
+                          {unreadCount > 9 ? "9+" : unreadCount}
                         </span>
                       )}
                     </button>
@@ -289,7 +373,6 @@ export default function YettiInboxPage() {
             );
           })}
         </div>
-
       </div>
 
       {/* Chat List Panel */}
@@ -305,7 +388,7 @@ export default function YettiInboxPage() {
                   <div className={cn("w-6 h-6 rounded-lg flex items-center justify-center", channel?.bgColor)}>
                     <Icon className="h-3.5 w-3.5 text-white" />
                   </div>
-                  <h1 className="text-lg font-semibold text-gray-900">{channel?.label || "Chat"}</h1>
+                  <h1 className="text-lg font-semibold text-gray-900">{channel?.label || "Inbox"}</h1>
                 </>
               );
             })()}
@@ -335,12 +418,13 @@ export default function YettiInboxPage() {
               <div className="w-16 h-16 rounded-full bg-gray-50 flex items-center justify-center mb-4">
                 <MessageSquare className="h-7 w-7 text-gray-300" />
               </div>
-              <p className="text-gray-400 text-sm">No chat found</p>
+              <p className="text-gray-400 text-sm">No conversations yet</p>
             </div>
           ) : (
             <div className="px-2">
               {filteredConversations.map((conversation) => {
                 const isSelected = selectedConversation?.id === conversation.id;
+                const channelInfo = channelConfig[conversation.channel];
 
                 return (
                   <div
@@ -353,14 +437,21 @@ export default function YettiInboxPage() {
                     )}
                     onClick={() => setSelectedConversation(conversation)}
                   >
-                    <Avatar className="h-11 w-11 border border-gray-100">
-                      <AvatarFallback className="bg-gradient-to-br from-[#3b82f6] to-[#60a5fa] text-white text-sm font-medium">
-                        {conversation.customer?.name
-                          .split(" ")
-                          .map((n) => n[0])
-                          .join("") || "?"}
-                      </AvatarFallback>
-                    </Avatar>
+                    <div className="relative">
+                      <Avatar className="h-11 w-11 border border-gray-100">
+                        <AvatarFallback className="bg-gradient-to-br from-[#3b82f6] to-[#60a5fa] text-white text-sm font-medium">
+                          {conversation.customer?.name
+                            .split(" ")
+                            .map((n) => n[0])
+                            .join("") || "?"}
+                        </AvatarFallback>
+                      </Avatar>
+                      {channelInfo && (
+                        <div className={cn("absolute -bottom-1 -right-1 w-5 h-5 rounded-full flex items-center justify-center", channelInfo.bgColor)}>
+                          <channelInfo.icon className="h-2.5 w-2.5 text-white" />
+                        </div>
+                      )}
+                    </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between">
                         <span className={cn(
@@ -380,7 +471,7 @@ export default function YettiInboxPage() {
                             ? "text-gray-600 font-medium"
                             : "text-gray-400"
                         )}>
-                          {conversation.lastMessagePreview}
+                          {conversation.lastMessagePreview || "No messages yet"}
                         </p>
                         {conversation.unreadCount > 0 && (
                           <span className="flex-shrink-0 w-5 h-5 rounded-full bg-[#3b82f6] text-white text-xs flex items-center justify-center font-medium">
@@ -416,60 +507,101 @@ export default function YettiInboxPage() {
                   {selectedConversation.customer?.name || "Unknown"}
                 </h3>
                 <p className="text-xs text-gray-400">
-                  {selectedConversation.customer?.username || "via " + channelConfig[selectedConversation.channel]?.label}
+                  {selectedConversation.customer?.email || selectedConversation.customer?.phone || `via ${channelConfig[selectedConversation.channel]?.label}`}
                 </p>
               </div>
             </div>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon" className="h-8 w-8">
+                  <MoreVertical className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem>
+                  <UserPlus className="h-4 w-4 mr-2" />
+                  Assign to team member
+                </DropdownMenuItem>
+                <DropdownMenuItem>
+                  <Tag className="h-4 w-4 mr-2" />
+                  Add tags
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
 
           {/* Messages */}
           <ScrollArea className="flex-1 px-6 py-4">
-            <div className="space-y-4 max-w-2xl mx-auto">
-              {messages.map((message) => (
-                <div
-                  key={message.id}
-                  className={cn(
-                    "flex",
-                    message.direction === "outbound" ? "justify-end" : "justify-start"
-                  )}
-                >
+            {messagesLoading ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
+              </div>
+            ) : (
+              <div className="space-y-4 max-w-2xl mx-auto">
+                {messages.map((message) => (
                   <div
+                    key={message.id}
                     className={cn(
-                      "max-w-[70%] rounded-2xl px-4 py-3",
-                      message.direction === "outbound"
-                        ? "bg-[#3b82f6] text-white"
-                        : "bg-gray-100 text-gray-900"
+                      "flex",
+                      message.direction === "outbound" ? "justify-end" : "justify-start"
                     )}
                   >
-                    <p className="text-sm leading-relaxed">{message.content}</p>
                     <div
                       className={cn(
-                        "flex items-center gap-1.5 mt-1.5 text-xs",
+                        "max-w-[70%] rounded-2xl px-4 py-3",
                         message.direction === "outbound"
-                          ? "text-white/70"
-                          : "text-gray-400"
+                          ? "bg-[#3b82f6] text-white"
+                          : "bg-gray-100 text-gray-900"
                       )}
                     >
-                      <span>{format(new Date(message.createdAt), "h:mm a")}</span>
-                      {message.direction === "outbound" && (
-                        <>
-                          {message.status === "pending" && <Clock className="h-3 w-3" />}
-                          {message.status === "sent" && <Check className="h-3 w-3" />}
-                          {message.status === "delivered" && <CheckCheck className="h-3 w-3" />}
-                          {message.status === "read" && <CheckCheck className="h-3 w-3 text-blue-200" />}
-                        </>
-                      )}
+                      <p className="text-sm leading-relaxed whitespace-pre-wrap">{message.content}</p>
+                      <div
+                        className={cn(
+                          "flex items-center gap-1.5 mt-1.5 text-xs",
+                          message.direction === "outbound"
+                            ? "text-white/70"
+                            : "text-gray-400"
+                        )}
+                      >
+                        <span>{format(new Date(message.createdAt), "h:mm a")}</span>
+                        {message.direction === "outbound" && (
+                          <>
+                            {message.status === "pending" && <Clock className="h-3 w-3" />}
+                            {message.status === "sent" && <Check className="h-3 w-3" />}
+                            {message.status === "delivered" && <CheckCheck className="h-3 w-3" />}
+                            {message.status === "read" && <CheckCheck className="h-3 w-3 text-blue-200" />}
+                          </>
+                        )}
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
-              <div ref={messagesEndRef} />
-            </div>
+                ))}
+                <div ref={messagesEndRef} />
+              </div>
+            )}
           </ScrollArea>
 
           {/* Compose Area */}
           <div className="px-6 py-4 border-t border-gray-100">
             <div className="max-w-2xl mx-auto">
+              {/* Quick Replies */}
+              {showQuickReplies && quickReplies.length > 0 && (
+                <div className="mb-3 p-2 bg-gray-50 rounded-xl">
+                  <p className="text-xs text-gray-500 mb-2 px-2">Quick Replies</p>
+                  <div className="flex flex-wrap gap-2">
+                    {quickReplies.slice(0, 6).map((reply) => (
+                      <button
+                        key={reply.id}
+                        onClick={() => handleQuickReply(reply)}
+                        className="px-3 py-1.5 text-sm bg-white rounded-lg border border-gray-200 hover:border-blue-300 hover:bg-blue-50 transition-colors"
+                      >
+                        {reply.shortcut}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               <div className="flex items-end gap-3">
                 <div className="flex-1 relative">
                   <Textarea
@@ -477,12 +609,23 @@ export default function YettiInboxPage() {
                     value={newMessage}
                     onChange={(e) => setNewMessage(e.target.value)}
                     onKeyDown={handleKeyDown}
-                    className="min-h-[48px] max-h-32 resize-none rounded-2xl border-gray-200 bg-gray-50 pr-24 text-sm placeholder:text-gray-400 focus-visible:ring-1 focus-visible:ring-[#3b82f6]"
+                    className="min-h-[48px] max-h-32 resize-none rounded-2xl border-gray-200 bg-gray-50 pr-28 text-sm placeholder:text-gray-400 focus-visible:ring-1 focus-visible:ring-[#3b82f6]"
                     rows={1}
                   />
                   <div className="absolute right-3 bottom-3 flex items-center gap-1">
-                    <button className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors">
+                    <button
+                      onClick={() => setShowQuickReplies(!showQuickReplies)}
+                      className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors"
+                      title="Quick Replies"
+                    >
                       <Smile className="h-5 w-5 text-gray-400" />
+                    </button>
+                    <button
+                      onClick={handleGetAISuggestion}
+                      className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors"
+                      title="AI Suggestion"
+                    >
+                      <Sparkles className="h-5 w-5 text-purple-400" />
                     </button>
                     <button className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors">
                       <Paperclip className="h-5 w-5 text-gray-400" />
@@ -503,13 +646,11 @@ export default function YettiInboxPage() {
               </div>
             </div>
           </div>
-
         </div>
       ) : (
-        /* Empty State - Select a Chat */
+        /* Empty State */
         <div className="flex-1 flex flex-col items-center justify-center bg-white relative">
           <div className="text-center">
-            {/* Chat Icon with Glow */}
             <div className="relative mx-auto mb-6">
               <div className="absolute inset-0 bg-[#3b82f6]/10 rounded-full blur-2xl scale-150" />
               <div className="relative w-24 h-24 rounded-full bg-gradient-to-br from-[#eff6ff] to-white border border-[#dbeafe] flex items-center justify-center">
@@ -518,15 +659,14 @@ export default function YettiInboxPage() {
             </div>
 
             <h2 className="text-2xl font-semibold text-gray-900 mb-3">
-              Select a Chat
+              Select a Conversation
             </h2>
             <p className="text-gray-500 max-w-sm mb-8">
-              Choose a chat from the sidebar to view their conversation and manage your potential customers.
+              Choose a conversation from the sidebar to view messages and respond to customers.
             </p>
 
-            {/* Channel Quick Links */}
             <div className="flex items-center justify-center gap-2 flex-wrap max-w-md">
-              {channels.slice(0, 4).map((channel) => {
+              {channels.slice(1, 5).map((channel) => {
                 const Icon = channel.icon;
                 return (
                   <button

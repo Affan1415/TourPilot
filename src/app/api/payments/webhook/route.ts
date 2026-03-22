@@ -1,9 +1,36 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { stripe } from '@/lib/stripe';
 import { createClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/admin';
 import Stripe from 'stripe';
 
 const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
+
+// Check if event was already processed (idempotency)
+async function isEventProcessed(supabase: any, eventId: string): Promise<boolean> {
+  const { data } = await supabase
+    .from('payment_events')
+    .select('id')
+    .eq('stripe_event_id', eventId)
+    .single();
+  return !!data;
+}
+
+// Record processed event
+async function recordEvent(
+  supabase: any,
+  eventId: string,
+  eventType: string,
+  bookingId: string | null,
+  payload: any
+): Promise<void> {
+  await supabase.from('payment_events').insert({
+    stripe_event_id: eventId,
+    event_type: eventType,
+    booking_id: bookingId,
+    payload,
+  });
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -29,7 +56,15 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const supabase = await createClient();
+    // Use admin client to bypass RLS for webhook processing
+    const adminClient = createAdminClient();
+
+    // Check idempotency - skip if already processed
+    const alreadyProcessed = await isEventProcessed(adminClient, event.id);
+    if (alreadyProcessed) {
+      console.log(`Event ${event.id} already processed, skipping`);
+      return NextResponse.json({ received: true, skipped: true });
+    }
 
     switch (event.type) {
       case 'payment_intent.succeeded': {
@@ -38,13 +73,20 @@ export async function POST(request: NextRequest) {
 
         if (bookingId) {
           // Update booking payment status
-          await supabase
+          await adminClient
             .from('bookings')
             .update({
               payment_status: 'paid',
               status: 'confirmed',
+              payment_intent_id: paymentIntent.id,
             })
             .eq('id', bookingId);
+
+          // Record the event for idempotency
+          await recordEvent(adminClient, event.id, event.type, bookingId, {
+            payment_intent_id: paymentIntent.id,
+            amount: paymentIntent.amount,
+          });
 
           console.log(`Payment succeeded for booking ${bookingId}`);
         }
@@ -56,12 +98,17 @@ export async function POST(request: NextRequest) {
         const bookingId = paymentIntent.metadata.booking_id;
 
         if (bookingId) {
-          await supabase
+          await adminClient
             .from('bookings')
             .update({
               payment_status: 'failed',
             })
             .eq('id', bookingId);
+
+          await recordEvent(adminClient, event.id, event.type, bookingId, {
+            payment_intent_id: paymentIntent.id,
+            error: paymentIntent.last_payment_error?.message,
+          });
 
           console.log(`Payment failed for booking ${bookingId}`);
         }
@@ -74,20 +121,33 @@ export async function POST(request: NextRequest) {
 
         if (paymentIntentId) {
           // Find booking by payment intent ID
-          const { data: booking } = await supabase
+          const { data: booking } = await adminClient
             .from('bookings')
-            .select('id')
+            .select('id, guest_count, availability_id')
             .eq('payment_intent_id', paymentIntentId)
             .single();
 
           if (booking) {
-            await supabase
+            await adminClient
               .from('bookings')
               .update({
                 payment_status: 'refunded',
                 status: 'cancelled',
               })
               .eq('id', booking.id);
+
+            // Release capacity when refunded
+            if (booking.availability_id && booking.guest_count) {
+              await adminClient.rpc('release_availability_capacity', {
+                p_availability_id: booking.availability_id,
+                p_guest_count: booking.guest_count
+              });
+            }
+
+            await recordEvent(adminClient, event.id, event.type, booking.id, {
+              charge_id: charge.id,
+              amount_refunded: charge.amount_refunded,
+            });
 
             console.log(`Refund processed for booking ${booking.id}`);
           }
@@ -96,6 +156,8 @@ export async function POST(request: NextRequest) {
       }
 
       default:
+        // Record unhandled events too for debugging
+        await recordEvent(adminClient, event.id, event.type, null, event.data.object);
         console.log(`Unhandled event type: ${event.type}`);
     }
 

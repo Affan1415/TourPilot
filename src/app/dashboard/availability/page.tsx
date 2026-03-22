@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -39,7 +39,6 @@ import {
 } from '@/components/ui/table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Switch } from '@/components/ui/switch';
-import { Checkbox } from '@/components/ui/checkbox';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import {
@@ -59,6 +58,8 @@ import {
   CheckCircle,
   XCircle,
   Repeat,
+  Loader2,
+  Play,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { format, addDays, startOfWeek, endOfWeek, eachDayOfInterval, isSameDay, addWeeks, subWeeks } from 'date-fns';
@@ -74,146 +75,46 @@ interface Tour {
 interface TimeSlot {
   id: string;
   tour_id: string;
-  tour_name: string;
+  tour?: { id: string; name: string; base_price: number; max_capacity: number } | null;
   date: string;
   start_time: string;
   end_time: string;
-  capacity: number;
+  capacity_override: number | null;
+  price_override: number | null;
   booked_count: number;
-  price: number;
   status: 'available' | 'full' | 'cancelled';
 }
 
 interface RecurringSchedule {
   id: string;
   tour_id: string;
-  tour_name: string;
+  tour?: { id: string; name: string; base_price: number; max_capacity: number } | null;
+  name: string | null;
   days_of_week: number[];
   start_time: string;
   end_time: string;
-  capacity: number | null;
+  capacity_override: number | null;
   price_override: number | null;
   is_active: boolean;
   valid_from: string;
   valid_until: string | null;
 }
 
-// Mock data
-const mockTours: Tour[] = [
-  { id: '1', name: 'Sunset Sailing Tour', duration_minutes: 120, base_price: 89, max_capacity: 12 },
-  { id: '2', name: 'Morning Dolphin Watch', duration_minutes: 90, base_price: 65, max_capacity: 20 },
-  { id: '3', name: 'Private Charter', duration_minutes: 180, base_price: 450, max_capacity: 6 },
-  { id: '4', name: 'Snorkeling Adventure', duration_minutes: 150, base_price: 95, max_capacity: 15 },
-];
-
-const generateMockSlots = (): TimeSlot[] => {
-  const slots: TimeSlot[] = [];
-  const today = new Date();
-
-  for (let i = 0; i < 14; i++) {
-    const date = addDays(today, i);
-    const dateStr = format(date, 'yyyy-MM-dd');
-
-    // Morning Dolphin Watch - every day at 8am
-    slots.push({
-      id: `slot-${i}-1`,
-      tour_id: '2',
-      tour_name: 'Morning Dolphin Watch',
-      date: dateStr,
-      start_time: '08:00',
-      end_time: '09:30',
-      capacity: 20,
-      booked_count: Math.floor(Math.random() * 15),
-      price: 65,
-      status: 'available',
-    });
-
-    // Sunset Sailing - every day at 5pm
-    slots.push({
-      id: `slot-${i}-2`,
-      tour_id: '1',
-      tour_name: 'Sunset Sailing Tour',
-      date: dateStr,
-      start_time: '17:00',
-      end_time: '19:00',
-      capacity: 12,
-      booked_count: Math.floor(Math.random() * 12),
-      price: 89,
-      status: Math.random() > 0.8 ? 'full' : 'available',
-    });
-
-    // Snorkeling - weekends only
-    if (date.getDay() === 0 || date.getDay() === 6) {
-      slots.push({
-        id: `slot-${i}-3`,
-        tour_id: '4',
-        tour_name: 'Snorkeling Adventure',
-        date: dateStr,
-        start_time: '10:00',
-        end_time: '12:30',
-        capacity: 15,
-        booked_count: Math.floor(Math.random() * 10),
-        price: 95,
-        status: 'available',
-      });
-    }
-  }
-
-  return slots;
-};
-
-const mockRecurringSchedules: RecurringSchedule[] = [
-  {
-    id: '1',
-    tour_id: '2',
-    tour_name: 'Morning Dolphin Watch',
-    days_of_week: [0, 1, 2, 3, 4, 5, 6],
-    start_time: '08:00',
-    end_time: '09:30',
-    capacity: null,
-    price_override: null,
-    is_active: true,
-    valid_from: '2024-01-01',
-    valid_until: null,
-  },
-  {
-    id: '2',
-    tour_id: '1',
-    tour_name: 'Sunset Sailing Tour',
-    days_of_week: [0, 1, 2, 3, 4, 5, 6],
-    start_time: '17:00',
-    end_time: '19:00',
-    capacity: null,
-    price_override: null,
-    is_active: true,
-    valid_from: '2024-01-01',
-    valid_until: null,
-  },
-  {
-    id: '3',
-    tour_id: '4',
-    tour_name: 'Snorkeling Adventure',
-    days_of_week: [0, 6],
-    start_time: '10:00',
-    end_time: '12:30',
-    capacity: null,
-    price_override: null,
-    is_active: true,
-    valid_from: '2024-03-01',
-    valid_until: '2024-09-30',
-  },
-];
-
 const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
 export default function AvailabilityPage() {
-  const [slots, setSlots] = useState<TimeSlot[]>(generateMockSlots());
-  const [schedules, setSchedules] = useState<RecurringSchedule[]>(mockRecurringSchedules);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [tours, setTours] = useState<Tour[]>([]);
+  const [slots, setSlots] = useState<TimeSlot[]>([]);
+  const [schedules, setSchedules] = useState<RecurringSchedule[]>([]);
   const [selectedTour, setSelectedTour] = useState<string>('all');
   const [currentWeek, setCurrentWeek] = useState(new Date());
   const [isAddSlotOpen, setIsAddSlotOpen] = useState(false);
   const [isAddScheduleOpen, setIsAddScheduleOpen] = useState(false);
-  const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
+  const [savingSlot, setSavingSlot] = useState(false);
+  const [savingSchedule, setSavingSchedule] = useState(false);
+  const [generatingSlots, setGeneratingSlots] = useState<string | null>(null);
 
   const [newSlot, setNewSlot] = useState({
     tour_id: '',
@@ -239,6 +140,45 @@ export default function AvailabilityPage() {
   const weekEnd = endOfWeek(currentWeek, { weekStartsOn: 0 });
   const weekDays = eachDayOfInterval({ start: weekStart, end: weekEnd });
 
+  const fetchData = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      const startDate = format(weekStart, 'yyyy-MM-dd');
+      const endDate = format(addDays(weekEnd, 14), 'yyyy-MM-dd');
+
+      const [toursRes, slotsRes, schedulesRes] = await Promise.all([
+        fetch('/api/tours'),
+        fetch(`/api/availabilities?start_date=${startDate}&end_date=${endDate}`),
+        fetch('/api/recurring-schedules'),
+      ]);
+
+      if (!toursRes.ok || !slotsRes.ok || !schedulesRes.ok) {
+        throw new Error('Failed to fetch data');
+      }
+
+      const [toursData, slotsData, schedulesData] = await Promise.all([
+        toursRes.json(),
+        slotsRes.json(),
+        schedulesRes.json(),
+      ]);
+
+      setTours(toursData.data || []);
+      setSlots(slotsData.data || []);
+      setSchedules(schedulesData.data || []);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load data');
+      console.error('Error fetching availability data:', err);
+    } finally {
+      setLoading(false);
+    }
+  }, [weekStart, weekEnd]);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
+
   const filteredSlots = slots.filter(slot =>
     selectedTour === 'all' || slot.tour_id === selectedTour
   );
@@ -248,41 +188,58 @@ export default function AvailabilityPage() {
     return filteredSlots.filter(slot => slot.date === dateStr);
   };
 
-  const handleAddSlot = () => {
-    const tour = mockTours.find(t => t.id === newSlot.tour_id);
+  const getTourName = (slot: TimeSlot) => slot.tour?.name || 'Unknown Tour';
+  const getCapacity = (slot: TimeSlot) => slot.capacity_override || slot.tour?.max_capacity || 10;
+  const getPrice = (slot: TimeSlot) => slot.price_override || slot.tour?.base_price || 0;
+
+  const handleAddSlot = async () => {
+    const tour = tours.find(t => t.id === newSlot.tour_id);
     if (!tour) {
       toast.error('Please select a tour');
       return;
     }
 
-    const slot: TimeSlot = {
-      id: Date.now().toString(),
-      tour_id: newSlot.tour_id,
-      tour_name: tour.name,
-      date: format(newSlot.date, 'yyyy-MM-dd'),
-      start_time: newSlot.start_time,
-      end_time: newSlot.end_time,
-      capacity: parseInt(newSlot.capacity) || tour.max_capacity,
-      booked_count: 0,
-      price: parseFloat(newSlot.price) || tour.base_price,
-      status: 'available',
-    };
+    setSavingSlot(true);
+    try {
+      const response = await fetch('/api/availabilities', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          tour_id: newSlot.tour_id,
+          date: format(newSlot.date, 'yyyy-MM-dd'),
+          start_time: newSlot.start_time,
+          end_time: newSlot.end_time,
+          capacity_override: newSlot.capacity ? parseInt(newSlot.capacity) : null,
+          price_override: newSlot.price ? parseFloat(newSlot.price) : null,
+        }),
+      });
 
-    setSlots([...slots, slot]);
-    setIsAddSlotOpen(false);
-    setNewSlot({
-      tour_id: '',
-      date: new Date(),
-      start_time: '09:00',
-      end_time: '11:00',
-      capacity: '',
-      price: '',
-    });
-    toast.success('Time slot added');
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to create time slot');
+      }
+
+      setSlots([...slots, result.data]);
+      setIsAddSlotOpen(false);
+      setNewSlot({
+        tour_id: '',
+        date: new Date(),
+        start_time: '09:00',
+        end_time: '11:00',
+        capacity: '',
+        price: '',
+      });
+      toast.success('Time slot added');
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to create time slot');
+    } finally {
+      setSavingSlot(false);
+    }
   };
 
-  const handleAddSchedule = () => {
-    const tour = mockTours.find(t => t.id === newSchedule.tour_id);
+  const handleAddSchedule = async () => {
+    const tour = tours.find(t => t.id === newSchedule.tour_id);
     if (!tour) {
       toast.error('Please select a tour');
       return;
@@ -292,49 +249,182 @@ export default function AvailabilityPage() {
       return;
     }
 
-    const schedule: RecurringSchedule = {
-      id: Date.now().toString(),
-      tour_id: newSchedule.tour_id,
-      tour_name: tour.name,
-      days_of_week: newSchedule.days_of_week,
-      start_time: newSchedule.start_time,
-      end_time: newSchedule.end_time,
-      capacity: newSchedule.capacity ? parseInt(newSchedule.capacity) : null,
-      price_override: newSchedule.price_override ? parseFloat(newSchedule.price_override) : null,
-      is_active: true,
-      valid_from: format(newSchedule.valid_from, 'yyyy-MM-dd'),
-      valid_until: newSchedule.valid_until ? format(newSchedule.valid_until, 'yyyy-MM-dd') : null,
-    };
+    setSavingSchedule(true);
+    try {
+      const response = await fetch('/api/recurring-schedules', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          tour_id: newSchedule.tour_id,
+          days_of_week: newSchedule.days_of_week,
+          start_time: newSchedule.start_time,
+          end_time: newSchedule.end_time,
+          capacity_override: newSchedule.capacity ? parseInt(newSchedule.capacity) : null,
+          price_override: newSchedule.price_override ? parseFloat(newSchedule.price_override) : null,
+          valid_from: format(newSchedule.valid_from, 'yyyy-MM-dd'),
+          valid_until: newSchedule.valid_until ? format(newSchedule.valid_until, 'yyyy-MM-dd') : null,
+          is_active: true,
+        }),
+      });
 
-    setSchedules([...schedules, schedule]);
-    setIsAddScheduleOpen(false);
-    toast.success('Recurring schedule created');
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to create schedule');
+      }
+
+      setSchedules([...schedules, result.data]);
+      setIsAddScheduleOpen(false);
+      setNewSchedule({
+        tour_id: '',
+        days_of_week: [],
+        start_time: '09:00',
+        end_time: '11:00',
+        capacity: '',
+        price_override: '',
+        valid_from: new Date(),
+        valid_until: null,
+      });
+      toast.success('Recurring schedule created');
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to create schedule');
+    } finally {
+      setSavingSchedule(false);
+    }
   };
 
-  const handleDeleteSlot = (id: string) => {
-    setSlots(slots.filter(s => s.id !== id));
-    toast.success('Time slot deleted');
+  const handleDeleteSlot = async (id: string) => {
+    try {
+      const response = await fetch(`/api/availabilities/${id}`, {
+        method: 'DELETE',
+      });
+
+      if (!response.ok) {
+        const result = await response.json();
+        throw new Error(result.error || 'Failed to delete slot');
+      }
+
+      setSlots(slots.filter(s => s.id !== id));
+      toast.success('Time slot deleted');
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to delete slot');
+    }
   };
 
-  const handleCancelSlot = (id: string) => {
-    setSlots(slots.map(s => s.id === id ? { ...s, status: 'cancelled' as const } : s));
-    toast.success('Time slot cancelled');
+  const handleCancelSlot = async (id: string) => {
+    try {
+      const response = await fetch(`/api/availabilities/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'cancelled' }),
+      });
+
+      if (!response.ok) {
+        const result = await response.json();
+        throw new Error(result.error || 'Failed to cancel slot');
+      }
+
+      setSlots(slots.map(s => s.id === id ? { ...s, status: 'cancelled' as const } : s));
+      toast.success('Time slot cancelled');
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to cancel slot');
+    }
   };
 
-  const handleToggleSchedule = (id: string) => {
-    setSchedules(schedules.map(s => s.id === id ? { ...s, is_active: !s.is_active } : s));
-    toast.success('Schedule updated');
+  const handleToggleSchedule = async (id: string, currentState: boolean) => {
+    try {
+      const response = await fetch(`/api/recurring-schedules/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ is_active: !currentState }),
+      });
+
+      if (!response.ok) {
+        const result = await response.json();
+        throw new Error(result.error || 'Failed to update schedule');
+      }
+
+      setSchedules(schedules.map(s => s.id === id ? { ...s, is_active: !currentState } : s));
+      toast.success('Schedule updated');
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to update schedule');
+    }
+  };
+
+  const handleDeleteSchedule = async (id: string) => {
+    try {
+      const response = await fetch(`/api/recurring-schedules/${id}`, {
+        method: 'DELETE',
+      });
+
+      if (!response.ok) {
+        const result = await response.json();
+        throw new Error(result.error || 'Failed to delete schedule');
+      }
+
+      setSchedules(schedules.filter(s => s.id !== id));
+      toast.success('Schedule deleted');
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to delete schedule');
+    }
+  };
+
+  const handleGenerateSlots = async (scheduleId: string) => {
+    setGeneratingSlots(scheduleId);
+    try {
+      const startDate = format(new Date(), 'yyyy-MM-dd');
+      const endDate = format(addDays(new Date(), 30), 'yyyy-MM-dd');
+
+      const response = await fetch(`/api/recurring-schedules/${scheduleId}/generate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ start_date: startDate, end_date: endDate }),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to generate slots');
+      }
+
+      toast.success(`Generated ${result.count} time slots`);
+      fetchData();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to generate slots');
+    } finally {
+      setGeneratingSlots(null);
+    }
   };
 
   const getStatusBadge = (slot: TimeSlot) => {
     if (slot.status === 'cancelled') {
       return <Badge variant="destructive"><XCircle className="h-3 w-3 mr-1" />Cancelled</Badge>;
     }
-    if (slot.status === 'full' || slot.booked_count >= slot.capacity) {
+    const capacity = getCapacity(slot);
+    if (slot.status === 'full' || slot.booked_count >= capacity) {
       return <Badge className="bg-orange-100 text-orange-800"><AlertCircle className="h-3 w-3 mr-1" />Full</Badge>;
     }
     return <Badge className="bg-green-100 text-green-800"><CheckCircle className="h-3 w-3 mr-1" />Available</Badge>;
   };
+
+  if (loading) {
+    return (
+      <div className="p-6 flex items-center justify-center min-h-[400px]">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="p-6 flex flex-col items-center justify-center min-h-[400px] gap-4">
+        <AlertCircle className="h-12 w-12 text-destructive" />
+        <p className="text-lg font-medium">Failed to load availability data</p>
+        <p className="text-muted-foreground">{error}</p>
+        <Button onClick={fetchData}>Try Again</Button>
+      </div>
+    );
+  }
 
   return (
     <div className="p-6 space-y-6">
@@ -370,7 +460,7 @@ export default function AvailabilityPage() {
                       <SelectValue placeholder="Select tour" />
                     </SelectTrigger>
                     <SelectContent>
-                      {mockTours.map(tour => (
+                      {tours.map(tour => (
                         <SelectItem key={tour.id} value={tour.id}>{tour.name}</SelectItem>
                       ))}
                     </SelectContent>
@@ -468,7 +558,10 @@ export default function AvailabilityPage() {
               </div>
               <DialogFooter>
                 <Button variant="outline" onClick={() => setIsAddScheduleOpen(false)}>Cancel</Button>
-                <Button onClick={handleAddSchedule}>Create Schedule</Button>
+                <Button onClick={handleAddSchedule} disabled={savingSchedule}>
+                  {savingSchedule && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                  Create Schedule
+                </Button>
               </DialogFooter>
             </DialogContent>
           </Dialog>
@@ -498,7 +591,7 @@ export default function AvailabilityPage() {
                       <SelectValue placeholder="Select tour" />
                     </SelectTrigger>
                     <SelectContent>
-                      {mockTours.map(tour => (
+                      {tours.map(tour => (
                         <SelectItem key={tour.id} value={tour.id}>{tour.name}</SelectItem>
                       ))}
                     </SelectContent>
@@ -566,7 +659,10 @@ export default function AvailabilityPage() {
               </div>
               <DialogFooter>
                 <Button variant="outline" onClick={() => setIsAddSlotOpen(false)}>Cancel</Button>
-                <Button onClick={handleAddSlot}>Add Slot</Button>
+                <Button onClick={handleAddSlot} disabled={savingSlot}>
+                  {savingSlot && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                  Add Slot
+                </Button>
               </DialogFooter>
             </DialogContent>
           </Dialog>
@@ -588,7 +684,7 @@ export default function AvailabilityPage() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Tours</SelectItem>
-              {mockTours.map(tour => (
+              {tours.map(tour => (
                 <SelectItem key={tour.id} value={tour.id}>{tour.name}</SelectItem>
               ))}
             </SelectContent>
@@ -628,31 +724,31 @@ export default function AvailabilityPage() {
                         {format(day, 'EEE d')}
                       </div>
                       <div className="space-y-1">
-                        {daySlots.map((slot) => (
-                          <div
-                            key={slot.id}
-                            className={`text-xs p-2 rounded cursor-pointer hover:opacity-80 ${
-                              slot.status === 'cancelled'
-                                ? 'bg-red-100 text-red-800 line-through'
-                                : slot.booked_count >= slot.capacity
-                                ? 'bg-orange-100 text-orange-800'
-                                : 'bg-blue-100 text-blue-800'
-                            }`}
-                            onClick={() => {
-                              setSelectedDate(day);
-                            }}
-                          >
-                            <div className="font-medium truncate">{slot.tour_name}</div>
-                            <div className="flex items-center gap-1 mt-1">
-                              <Clock className="h-3 w-3" />
-                              {slot.start_time}
+                        {daySlots.map((slot) => {
+                          const capacity = getCapacity(slot);
+                          return (
+                            <div
+                              key={slot.id}
+                              className={`text-xs p-2 rounded cursor-pointer hover:opacity-80 ${
+                                slot.status === 'cancelled'
+                                  ? 'bg-red-100 text-red-800 line-through'
+                                  : slot.booked_count >= capacity
+                                  ? 'bg-orange-100 text-orange-800'
+                                  : 'bg-blue-100 text-blue-800'
+                              }`}
+                            >
+                              <div className="font-medium truncate">{getTourName(slot)}</div>
+                              <div className="flex items-center gap-1 mt-1">
+                                <Clock className="h-3 w-3" />
+                                {slot.start_time?.slice(0, 5)}
+                              </div>
+                              <div className="flex items-center gap-1">
+                                <Users className="h-3 w-3" />
+                                {slot.booked_count}/{capacity}
+                              </div>
                             </div>
-                            <div className="flex items-center gap-1">
-                              <Users className="h-3 w-3" />
-                              {slot.booked_count}/{slot.capacity}
-                            </div>
-                          </div>
-                        ))}
+                          );
+                        })}
                         {daySlots.length === 0 && (
                           <div className="text-xs text-muted-foreground text-center py-4">
                             No slots
@@ -674,84 +770,88 @@ export default function AvailabilityPage() {
               <CardDescription>View and manage individual availability slots</CardDescription>
             </CardHeader>
             <CardContent>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Date</TableHead>
-                    <TableHead>Tour</TableHead>
-                    <TableHead>Time</TableHead>
-                    <TableHead>Capacity</TableHead>
-                    <TableHead>Price</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead className="w-[80px]">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredSlots
-                    .sort((a, b) => a.date.localeCompare(b.date) || a.start_time.localeCompare(b.start_time))
-                    .slice(0, 20)
-                    .map((slot) => (
-                    <TableRow key={slot.id}>
-                      <TableCell>
-                        {format(new Date(slot.date), 'EEE, MMM d')}
-                      </TableCell>
-                      <TableCell className="font-medium">{slot.tour_name}</TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-1 text-muted-foreground">
-                          <Clock className="h-4 w-4" />
-                          {slot.start_time} - {slot.end_time}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-1">
-                          <Users className="h-4 w-4 text-muted-foreground" />
-                          {slot.booked_count}/{slot.capacity}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-1">
-                          <DollarSign className="h-4 w-4 text-muted-foreground" />
-                          {slot.price}
-                        </div>
-                      </TableCell>
-                      <TableCell>{getStatusBadge(slot)}</TableCell>
-                      <TableCell>
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon">
-                              <MoreHorizontal className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem>
-                              <Pencil className="h-4 w-4 mr-2" />
-                              Edit
-                            </DropdownMenuItem>
-                            <DropdownMenuItem>
-                              <Copy className="h-4 w-4 mr-2" />
-                              Duplicate
-                            </DropdownMenuItem>
-                            {slot.status !== 'cancelled' && (
-                              <DropdownMenuItem onClick={() => handleCancelSlot(slot.id)}>
-                                <XCircle className="h-4 w-4 mr-2" />
-                                Cancel Slot
-                              </DropdownMenuItem>
-                            )}
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem
-                              className="text-destructive"
-                              onClick={() => handleDeleteSlot(slot.id)}
-                            >
-                              <Trash2 className="h-4 w-4 mr-2" />
-                              Delete
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </TableCell>
+              {filteredSlots.length === 0 ? (
+                <div className="text-center py-12">
+                  <CalendarDays className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                  <p className="text-lg font-medium">No time slots found</p>
+                  <p className="text-muted-foreground">Create a time slot or set up recurring schedules</p>
+                </div>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Date</TableHead>
+                      <TableHead>Tour</TableHead>
+                      <TableHead>Time</TableHead>
+                      <TableHead>Capacity</TableHead>
+                      <TableHead>Price</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead className="w-[80px]">Actions</TableHead>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredSlots
+                      .sort((a, b) => a.date.localeCompare(b.date) || (a.start_time || '').localeCompare(b.start_time || ''))
+                      .slice(0, 20)
+                      .map((slot) => (
+                      <TableRow key={slot.id}>
+                        <TableCell>
+                          {format(new Date(slot.date), 'EEE, MMM d')}
+                        </TableCell>
+                        <TableCell className="font-medium">{getTourName(slot)}</TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-1 text-muted-foreground">
+                            <Clock className="h-4 w-4" />
+                            {slot.start_time?.slice(0, 5)} - {slot.end_time?.slice(0, 5)}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-1">
+                            <Users className="h-4 w-4 text-muted-foreground" />
+                            {slot.booked_count}/{getCapacity(slot)}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-1">
+                            <DollarSign className="h-4 w-4 text-muted-foreground" />
+                            {getPrice(slot)}
+                          </div>
+                        </TableCell>
+                        <TableCell>{getStatusBadge(slot)}</TableCell>
+                        <TableCell>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="icon">
+                                <MoreHorizontal className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem>
+                                <Pencil className="h-4 w-4 mr-2" />
+                                Edit
+                              </DropdownMenuItem>
+                              {slot.status !== 'cancelled' && (
+                                <DropdownMenuItem onClick={() => handleCancelSlot(slot.id)}>
+                                  <XCircle className="h-4 w-4 mr-2" />
+                                  Cancel Slot
+                                </DropdownMenuItem>
+                              )}
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem
+                                className="text-destructive"
+                                onClick={() => handleDeleteSlot(slot.id)}
+                              >
+                                <Trash2 className="h-4 w-4 mr-2" />
+                                Delete
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
@@ -765,77 +865,97 @@ export default function AvailabilityPage() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="space-y-4">
-                {schedules.map((schedule) => (
-                  <div
-                    key={schedule.id}
-                    className={`border rounded-lg p-4 ${!schedule.is_active ? 'opacity-60' : ''}`}
-                  >
-                    <div className="flex items-start justify-between">
-                      <div className="space-y-2">
+              {schedules.length === 0 ? (
+                <div className="text-center py-12">
+                  <Repeat className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                  <p className="text-lg font-medium">No recurring schedules</p>
+                  <p className="text-muted-foreground">Create a schedule to auto-generate time slots</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {schedules.map((schedule) => (
+                    <div
+                      key={schedule.id}
+                      className={`border rounded-lg p-4 ${!schedule.is_active ? 'opacity-60' : ''}`}
+                    >
+                      <div className="flex items-start justify-between">
+                        <div className="space-y-2">
+                          <div className="flex items-center gap-2">
+                            <h3 className="font-semibold">{schedule.tour?.name || 'Unknown Tour'}</h3>
+                            {schedule.is_active ? (
+                              <Badge className="bg-green-100 text-green-800">Active</Badge>
+                            ) : (
+                              <Badge variant="secondary">Inactive</Badge>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                            <div className="flex items-center gap-1">
+                              <Clock className="h-4 w-4" />
+                              {schedule.start_time?.slice(0, 5)} - {schedule.end_time?.slice(0, 5)}
+                            </div>
+                            <div className="flex items-center gap-1">
+                              <CalendarDays className="h-4 w-4" />
+                              {schedule.days_of_week.map(d => dayNames[d]).join(', ')}
+                            </div>
+                          </div>
+                          <div className="flex gap-4 text-sm">
+                            {schedule.capacity_override && (
+                              <span>Capacity: {schedule.capacity_override}</span>
+                            )}
+                            {schedule.price_override && (
+                              <span>Price: ${schedule.price_override}</span>
+                            )}
+                            <span>
+                              Valid: {format(new Date(schedule.valid_from), 'MMM d, yyyy')}
+                              {schedule.valid_until && ` - ${format(new Date(schedule.valid_until), 'MMM d, yyyy')}`}
+                            </span>
+                          </div>
+                        </div>
                         <div className="flex items-center gap-2">
-                          <h3 className="font-semibold">{schedule.tour_name}</h3>
-                          {schedule.is_active ? (
-                            <Badge className="bg-green-100 text-green-800">Active</Badge>
-                          ) : (
-                            <Badge variant="secondary">Inactive</Badge>
-                          )}
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleGenerateSlots(schedule.id)}
+                            disabled={generatingSlots === schedule.id || !schedule.is_active}
+                          >
+                            {generatingSlots === schedule.id ? (
+                              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                            ) : (
+                              <Play className="h-4 w-4 mr-2" />
+                            )}
+                            Generate 30 Days
+                          </Button>
+                          <Switch
+                            checked={schedule.is_active}
+                            onCheckedChange={() => handleToggleSchedule(schedule.id, schedule.is_active)}
+                          />
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="icon">
+                                <MoreHorizontal className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem>
+                                <Pencil className="h-4 w-4 mr-2" />
+                                Edit
+                              </DropdownMenuItem>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem
+                                className="text-destructive"
+                                onClick={() => handleDeleteSchedule(schedule.id)}
+                              >
+                                <Trash2 className="h-4 w-4 mr-2" />
+                                Delete
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
                         </div>
-                        <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                          <div className="flex items-center gap-1">
-                            <Clock className="h-4 w-4" />
-                            {schedule.start_time} - {schedule.end_time}
-                          </div>
-                          <div className="flex items-center gap-1">
-                            <CalendarDays className="h-4 w-4" />
-                            {schedule.days_of_week.map(d => dayNames[d]).join(', ')}
-                          </div>
-                        </div>
-                        <div className="flex gap-4 text-sm">
-                          {schedule.capacity && (
-                            <span>Capacity: {schedule.capacity}</span>
-                          )}
-                          {schedule.price_override && (
-                            <span>Price: ${schedule.price_override}</span>
-                          )}
-                          <span>
-                            Valid: {format(new Date(schedule.valid_from), 'MMM d, yyyy')}
-                            {schedule.valid_until && ` - ${format(new Date(schedule.valid_until), 'MMM d, yyyy')}`}
-                          </span>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Switch
-                          checked={schedule.is_active}
-                          onCheckedChange={() => handleToggleSchedule(schedule.id)}
-                        />
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon">
-                              <MoreHorizontal className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem>
-                              <Pencil className="h-4 w-4 mr-2" />
-                              Edit
-                            </DropdownMenuItem>
-                            <DropdownMenuItem>
-                              <Copy className="h-4 w-4 mr-2" />
-                              Duplicate
-                            </DropdownMenuItem>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem className="text-destructive">
-                              <Trash2 className="h-4 w-4 mr-2" />
-                              Delete
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
                       </div>
                     </div>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
