@@ -104,7 +104,29 @@ export default function BookingPage() {
   const [bookingId, setBookingId] = useState<string | null>(null);
   const [bookingReference, setBookingReference] = useState<string | null>(null);
 
-  const totalPrice = pricePerPerson * guestCount;
+  // Promo/Affiliate code state
+  const [promoCode, setPromoCode] = useState("");
+  const [affiliateCode, setAffiliateCode] = useState(searchParams.get("ref") || "");
+  const [appliedPromo, setAppliedPromo] = useState<{code: string; discount_type: string; discount_value: number} | null>(null);
+  const [appliedAffiliate, setAppliedAffiliate] = useState<{code: string; affiliate_id: string; discount_percent: number} | null>(null);
+  const [applyingCode, setApplyingCode] = useState(false);
+  const [codeError, setCodeError] = useState<string | null>(null);
+
+  const basePrice = pricePerPerson * guestCount;
+
+  // Calculate discount
+  const promoDiscount = appliedPromo
+    ? appliedPromo.discount_type === 'percentage'
+      ? (basePrice * appliedPromo.discount_value / 100)
+      : appliedPromo.discount_value
+    : 0;
+
+  const affiliateDiscount = appliedAffiliate
+    ? (basePrice * appliedAffiliate.discount_percent / 100)
+    : 0;
+
+  const totalDiscount = promoDiscount + affiliateDiscount;
+  const totalPrice = Math.max(0, basePrice - totalDiscount);
 
   // Fetch tour and availability data
   useEffect(() => {
@@ -170,6 +192,76 @@ export default function BookingPage() {
     setAdditionalGuests(newGuests);
   };
 
+  const applyPromoCode = async () => {
+    if (!promoCode.trim()) return;
+
+    setApplyingCode(true);
+    setCodeError(null);
+
+    try {
+      const response = await fetch('/api/promo-codes/validate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          code: promoCode.trim(),
+          tour_id: tourData.tour?.id,
+          booking_amount: basePrice,
+        }),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        setCodeError(result.error || 'Invalid promo code');
+        return;
+      }
+
+      setAppliedPromo({
+        code: result.data.code,
+        discount_type: result.data.discount_type,
+        discount_value: result.data.discount_value,
+      });
+      setPromoCode("");
+    } catch (err) {
+      setCodeError('Failed to validate promo code');
+    } finally {
+      setApplyingCode(false);
+    }
+  };
+
+  const applyAffiliateCode = async () => {
+    if (!affiliateCode.trim()) return;
+
+    setApplyingCode(true);
+    setCodeError(null);
+
+    try {
+      const response = await fetch('/api/affiliates/validate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code: affiliateCode.trim() }),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        setCodeError(result.error || 'Invalid affiliate code');
+        return;
+      }
+
+      setAppliedAffiliate({
+        code: result.data.referral_code,
+        affiliate_id: result.data.id,
+        discount_percent: result.data.discount_percent || 0,
+      });
+      setAffiliateCode("");
+    } catch (err) {
+      setCodeError('Failed to validate affiliate code');
+    } finally {
+      setApplyingCode(false);
+    }
+  };
+
   // Create booking and payment intent when moving to step 2
   const handleProceedToPayment = async () => {
     if (!tourData.availability) return;
@@ -204,6 +296,10 @@ export default function BookingPage() {
           availability_id: tourData.availability.id,
           guest_count: guestCount,
           total_price: totalPrice,
+          original_price: basePrice,
+          discount_amount: totalDiscount,
+          promo_code: appliedPromo?.code || undefined,
+          affiliate_id: appliedAffiliate?.affiliate_id || undefined,
           customer: {
             first_name: primaryGuest.firstName,
             last_name: primaryGuest.lastName,
@@ -722,16 +818,87 @@ export default function BookingPage() {
 
                 <Separator />
 
+                {/* Promo/Affiliate Code Input */}
+                <div className="space-y-3">
+                  <div className="flex gap-2">
+                    <Input
+                      placeholder="Promo or affiliate code"
+                      value={promoCode || affiliateCode}
+                      onChange={(e) => {
+                        const value = e.target.value.toUpperCase();
+                        if (value.startsWith('AFF')) {
+                          setAffiliateCode(value);
+                          setPromoCode("");
+                        } else {
+                          setPromoCode(value);
+                          setAffiliateCode("");
+                        }
+                      }}
+                      disabled={!!appliedPromo || !!appliedAffiliate}
+                    />
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => affiliateCode ? applyAffiliateCode() : applyPromoCode()}
+                      disabled={applyingCode || (!promoCode && !affiliateCode) || !!appliedPromo || !!appliedAffiliate}
+                    >
+                      {applyingCode ? <Loader2 className="h-4 w-4 animate-spin" /> : "Apply"}
+                    </Button>
+                  </div>
+                  {codeError && (
+                    <p className="text-sm text-destructive flex items-center gap-1">
+                      <AlertCircle className="h-3 w-3" />
+                      {codeError}
+                    </p>
+                  )}
+                  {appliedPromo && (
+                    <div className="flex items-center justify-between text-sm bg-green-50 p-2 rounded-lg">
+                      <span className="text-green-700 flex items-center gap-1">
+                        <Check className="h-3 w-3" />
+                        {appliedPromo.code}
+                      </span>
+                      <button
+                        className="text-xs text-muted-foreground hover:text-destructive"
+                        onClick={() => setAppliedPromo(null)}
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  )}
+                  {appliedAffiliate && (
+                    <div className="flex items-center justify-between text-sm bg-blue-50 p-2 rounded-lg">
+                      <span className="text-blue-700 flex items-center gap-1">
+                        <Check className="h-3 w-3" />
+                        Referral: {appliedAffiliate.discount_percent}% off
+                      </span>
+                      <button
+                        className="text-xs text-muted-foreground hover:text-destructive"
+                        onClick={() => setAppliedAffiliate(null)}
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  )}
+                </div>
+
+                <Separator />
+
                 <div className="space-y-2">
                   <div className="flex justify-between text-sm">
                     <span className="text-muted-foreground">
                       ${pricePerPerson} x {guestCount} guests
                     </span>
-                    <span>${totalPrice}</span>
+                    <span>${basePrice}</span>
                   </div>
+                  {totalDiscount > 0 && (
+                    <div className="flex justify-between text-sm text-green-600">
+                      <span>Discount</span>
+                      <span>-${totalDiscount.toFixed(2)}</span>
+                    </div>
+                  )}
                   <div className="flex justify-between font-semibold text-lg pt-2 border-t">
                     <span>Total</span>
-                    <span className="text-primary">${totalPrice}</span>
+                    <span className="text-primary">${totalPrice.toFixed(2)}</span>
                   </div>
                 </div>
 

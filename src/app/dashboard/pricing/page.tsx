@@ -83,6 +83,7 @@ interface PricingRule {
   adjustment_value: number;
   conditions: Record<string, unknown>;
   priority: number;
+  is_stackable: boolean;
   is_active: boolean;
   valid_from: string | null;
   valid_until: string | null;
@@ -144,6 +145,8 @@ export default function PricingPage() {
     adjustment_type: 'percentage' as 'percentage' | 'fixed',
     adjustment_value: '',
     priority: '10',
+    is_stackable: false,
+    conditions: {} as Record<string, unknown>,
   });
 
   const [newPromo, setNewPromo] = useState({
@@ -211,7 +214,8 @@ export default function PricingPage() {
           adjustment_type: newRule.adjustment_type,
           adjustment_value: parseFloat(newRule.adjustment_value),
           priority: parseInt(newRule.priority),
-          conditions: {},
+          conditions: newRule.conditions,
+          is_stackable: newRule.is_stackable,
           is_active: true,
         }),
       });
@@ -231,6 +235,8 @@ export default function PricingPage() {
         adjustment_type: 'percentage',
         adjustment_value: '',
         priority: '10',
+        is_stackable: false,
+        conditions: {},
       });
       toast.success('Pricing rule created');
     } catch (err) {
@@ -569,14 +575,89 @@ export default function PricingPage() {
                     </div>
                   </div>
 
-                  <div className="space-y-2">
-                    <Label>Priority (lower = higher priority)</Label>
-                    <Input
-                      type="number"
-                      value={newRule.priority}
-                      onChange={(e) => setNewRule({ ...newRule, priority: e.target.value })}
-                    />
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label>Priority (lower = higher priority)</Label>
+                      <Input
+                        type="number"
+                        value={newRule.priority}
+                        onChange={(e) => setNewRule({ ...newRule, priority: e.target.value })}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Stackable</Label>
+                      <div className="flex items-center gap-2 pt-2">
+                        <Switch
+                          checked={newRule.is_stackable}
+                          onCheckedChange={(checked) => setNewRule({ ...newRule, is_stackable: checked })}
+                        />
+                        <span className="text-sm text-muted-foreground">
+                          Can combine with other rules
+                        </span>
+                      </div>
+                    </div>
                   </div>
+
+                  {/* Day of Week conditions */}
+                  {newRule.type === 'day_of_week' && (
+                    <div className="space-y-2">
+                      <Label>Apply on days</Label>
+                      <div className="flex flex-wrap gap-2">
+                        {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day, idx) => (
+                          <Button
+                            key={day}
+                            type="button"
+                            variant={(newRule.conditions.days as number[] || []).includes(idx) ? 'default' : 'outline'}
+                            size="sm"
+                            onClick={() => {
+                              const currentDays = (newRule.conditions.days as number[]) || [];
+                              const newDays = currentDays.includes(idx)
+                                ? currentDays.filter(d => d !== idx)
+                                : [...currentDays, idx];
+                              setNewRule({
+                                ...newRule,
+                                conditions: { ...newRule.conditions, days: newDays }
+                              });
+                            }}
+                          >
+                            {day}
+                          </Button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Group conditions */}
+                  {newRule.type === 'group' && (
+                    <div className="space-y-2">
+                      <Label>Minimum guests</Label>
+                      <Input
+                        type="number"
+                        placeholder="e.g., 6"
+                        value={(newRule.conditions.min_guests as number) || ''}
+                        onChange={(e) => setNewRule({
+                          ...newRule,
+                          conditions: { ...newRule.conditions, min_guests: parseInt(e.target.value) || 0 }
+                        })}
+                      />
+                    </div>
+                  )}
+
+                  {/* Early bird conditions */}
+                  {newRule.type === 'early_bird' && (
+                    <div className="space-y-2">
+                      <Label>Days before departure</Label>
+                      <Input
+                        type="number"
+                        placeholder="e.g., 14"
+                        value={(newRule.conditions.days_before as number) || ''}
+                        onChange={(e) => setNewRule({
+                          ...newRule,
+                          conditions: { ...newRule.conditions, days_before: parseInt(e.target.value) || 0 }
+                        })}
+                      />
+                    </div>
+                  )}
                 </div>
                 <DialogFooter>
                   <Button variant="outline" onClick={() => setIsAddRuleOpen(false)}>Cancel</Button>

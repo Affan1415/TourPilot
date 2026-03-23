@@ -7,12 +7,26 @@ type UserRole = 'admin' | 'location_manager' | 'captain' | 'front_desk' | 'affil
 const ROUTE_PERMISSIONS: Record<string, UserRole[]> = {
   // Admin-only routes
   '/dashboard/settings': ['admin'],
+  '/dashboard/locations': ['admin'],
+  '/dashboard/super-admin': ['admin'],
+  '/dashboard/audit': ['admin'],
 
   // Admin and Location Manager routes
   '/dashboard/tours': ['admin', 'location_manager'],
   '/dashboard/staff': ['admin', 'location_manager'],
   '/dashboard/reports': ['admin', 'location_manager'],
   '/dashboard/communications': ['admin', 'location_manager'],
+  '/dashboard/analytics': ['admin', 'location_manager'],
+  '/dashboard/pricing': ['admin', 'location_manager'],
+  '/dashboard/availability': ['admin', 'location_manager'],
+  '/dashboard/fleet': ['admin', 'location_manager'],
+  '/dashboard/checklists': ['admin', 'location_manager'],
+  '/dashboard/compliance': ['admin', 'location_manager'],
+  '/dashboard/waivers': ['admin', 'location_manager'],
+  '/dashboard/widgets': ['admin', 'location_manager'],
+  '/dashboard/reviews': ['admin', 'location_manager'],
+  '/dashboard/inbox': ['admin', 'location_manager'],
+  '/dashboard/ota': ['admin', 'location_manager'],
   '/dashboard/customers': ['admin', 'location_manager', 'front_desk'],
   '/dashboard/bookings/new': ['admin', 'location_manager', 'front_desk'],
 

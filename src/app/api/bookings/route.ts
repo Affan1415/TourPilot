@@ -4,6 +4,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { nanoid } from "nanoid";
 import { resend, FROM_EMAIL, COMPANY_NAME, APP_URL } from "@/lib/email/resend";
 import { BookingConfirmationEmail } from "@/lib/email/templates/booking-confirmation";
+import { getAuthUser } from "@/lib/auth/api-auth";
 
 function generateBookingReference(): string {
   const timestamp = Date.now().toString(36).toUpperCase();
@@ -14,10 +15,18 @@ function generateBookingReference(): string {
 export async function GET(request: NextRequest) {
   try {
     const supabase = await createClient();
+    const auth = await getAuthUser();
+
+    // Require authentication
+    if (!auth.authenticated || !auth.role) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     const searchParams = request.nextUrl.searchParams;
     const date = searchParams.get("date");
     const status = searchParams.get("status");
     const tourId = searchParams.get("tour_id");
+    const locationId = searchParams.get("location_id");
 
     let query = supabase
       .from("bookings")
@@ -26,7 +35,7 @@ export async function GET(request: NextRequest) {
         customer:customers(*),
         availability:availabilities(
           *,
-          tour:tours(*)
+          tour:tours(*, location_id)
         ),
         guests:booking_guests(*),
         waivers(*)
@@ -55,6 +64,21 @@ export async function GET(request: NextRequest) {
     if (tourId) {
       filteredData = filteredData?.filter(
         (booking: any) => booking.availability?.tour_id === tourId
+      );
+    }
+
+    // Location-based filtering: non-admin users can only see their location's bookings
+    if (auth.role !== "admin") {
+      const userLocationId = auth.locationId;
+      if (userLocationId) {
+        filteredData = filteredData?.filter(
+          (booking: any) => booking.availability?.tour?.location_id === userLocationId
+        );
+      }
+    } else if (locationId) {
+      // Admin can filter by specific location if provided
+      filteredData = filteredData?.filter(
+        (booking: any) => booking.availability?.tour?.location_id === locationId
       );
     }
 

@@ -53,11 +53,20 @@ import {
   Loader2,
   Star,
   Globe,
+  Users,
+  UserPlus,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";
 import type { Location } from "@/types";
+
+interface StaffMember {
+  id: string;
+  name: string;
+  role: string;
+  location_id: string | null;
+}
 
 const timezones = [
   { value: "America/New_York", label: "Eastern Time (ET)" },
@@ -111,9 +120,14 @@ export default function LocationsPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState<LocationFormData>(defaultFormData);
   const [editingLocation, setEditingLocation] = useState<Location | null>(null);
+  const [locationManagers, setLocationManagers] = useState<Record<string, StaffMember[]>>({});
+  const [availableManagers, setAvailableManagers] = useState<StaffMember[]>([]);
+  const [isAssignManagerOpen, setIsAssignManagerOpen] = useState(false);
+  const [selectedLocationForManager, setSelectedLocationForManager] = useState<Location | null>(null);
 
   useEffect(() => {
     fetchLocations();
+    fetchManagers();
   }, []);
 
   const fetchLocations = async () => {
@@ -132,6 +146,40 @@ export default function LocationsPage() {
       toast.error("Failed to load locations");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchManagers = async () => {
+    try {
+      const supabase = createClient();
+      const { data, error } = await supabase
+        .from("staff")
+        .select("id, name, role, location_id")
+        .eq("role", "location_manager")
+        .eq("is_active", true)
+        .order("name");
+
+      if (error) throw error;
+
+      // Group managers by location
+      const grouped: Record<string, StaffMember[]> = {};
+      const unassigned: StaffMember[] = [];
+
+      (data || []).forEach((manager) => {
+        if (manager.location_id) {
+          if (!grouped[manager.location_id]) {
+            grouped[manager.location_id] = [];
+          }
+          grouped[manager.location_id].push(manager);
+        } else {
+          unassigned.push(manager);
+        }
+      });
+
+      setLocationManagers(grouped);
+      setAvailableManagers(unassigned);
+    } catch (error) {
+      console.error("Error fetching managers:", error);
     }
   };
 
@@ -319,6 +367,50 @@ export default function LocationsPage() {
     } catch (error: any) {
       console.error("Error deleting location:", error);
       toast.error("Failed to delete location", { description: error.message });
+    }
+  };
+
+  const handleAssignManager = async (managerId: string) => {
+    if (!selectedLocationForManager) return;
+
+    try {
+      const supabase = createClient();
+      const { error } = await supabase
+        .from("staff")
+        .update({ location_id: selectedLocationForManager.id })
+        .eq("id", managerId);
+
+      if (error) throw error;
+
+      await fetchManagers();
+      setIsAssignManagerOpen(false);
+      setSelectedLocationForManager(null);
+      toast.success("Manager assigned", {
+        description: `Manager has been assigned to ${selectedLocationForManager.name}`,
+      });
+    } catch (error: any) {
+      console.error("Error assigning manager:", error);
+      toast.error("Failed to assign manager", { description: error.message });
+    }
+  };
+
+  const handleUnassignManager = async (managerId: string, managerName: string) => {
+    if (!confirm(`Remove ${managerName} from this location?`)) return;
+
+    try {
+      const supabase = createClient();
+      const { error } = await supabase
+        .from("staff")
+        .update({ location_id: null })
+        .eq("id", managerId);
+
+      if (error) throw error;
+
+      await fetchManagers();
+      toast.success("Manager unassigned");
+    } catch (error: any) {
+      console.error("Error unassigning manager:", error);
+      toast.error("Failed to unassign manager", { description: error.message });
     }
   };
 
@@ -576,6 +668,7 @@ export default function LocationsPage() {
               <TableRow>
                 <TableHead>Location</TableHead>
                 <TableHead>Address</TableHead>
+                <TableHead>Manager(s)</TableHead>
                 <TableHead>Contact</TableHead>
                 <TableHead>Timezone</TableHead>
                 <TableHead>Status</TableHead>
@@ -585,7 +678,7 @@ export default function LocationsPage() {
             <TableBody>
               {filteredLocations.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center py-8">
+                  <TableCell colSpan={7} className="text-center py-8">
                     <p className="text-muted-foreground">No locations match your search</p>
                   </TableCell>
                 </TableRow>
@@ -617,6 +710,39 @@ export default function LocationsPage() {
                       ) : (
                         <span className="text-muted-foreground">—</span>
                       )}
+                    </TableCell>
+                    <TableCell>
+                      <div className="space-y-1">
+                        {locationManagers[location.id]?.map((manager) => (
+                          <div
+                            key={manager.id}
+                            className="flex items-center gap-1 text-sm group"
+                          >
+                            <Users className="h-3 w-3 text-muted-foreground" />
+                            <span>{manager.name}</span>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-4 w-4 opacity-0 group-hover:opacity-100"
+                              onClick={() => handleUnassignManager(manager.id, manager.name)}
+                            >
+                              <XCircle className="h-3 w-3 text-destructive" />
+                            </Button>
+                          </div>
+                        ))}
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-6 text-xs gap-1"
+                          onClick={() => {
+                            setSelectedLocationForManager(location);
+                            setIsAssignManagerOpen(true);
+                          }}
+                        >
+                          <UserPlus className="h-3 w-3" />
+                          Assign Manager
+                        </Button>
+                      </div>
                     </TableCell>
                     <TableCell>
                       <div className="space-y-1">
@@ -755,6 +881,50 @@ export default function LocationsPage() {
               ) : (
                 "Save Changes"
               )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Assign Manager Dialog */}
+      <Dialog open={isAssignManagerOpen} onOpenChange={setIsAssignManagerOpen}>
+        <DialogContent className="sm:max-w-[400px]">
+          <DialogHeader>
+            <DialogTitle>Assign Manager</DialogTitle>
+            <DialogDescription>
+              Assign a location manager to {selectedLocationForManager?.name}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            {availableManagers.length === 0 ? (
+              <p className="text-muted-foreground text-center py-4">
+                No unassigned location managers available. Create a new staff member with the "Location Manager" role first.
+              </p>
+            ) : (
+              <div className="space-y-2">
+                {availableManagers.map((manager) => (
+                  <Button
+                    key={manager.id}
+                    variant="outline"
+                    className="w-full justify-start gap-2"
+                    onClick={() => handleAssignManager(manager.id)}
+                  >
+                    <Users className="h-4 w-4" />
+                    {manager.name}
+                  </Button>
+                ))}
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setIsAssignManagerOpen(false);
+                setSelectedLocationForManager(null);
+              }}
+            >
+              Cancel
             </Button>
           </DialogFooter>
         </DialogContent>

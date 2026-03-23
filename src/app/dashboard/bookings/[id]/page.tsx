@@ -46,9 +46,13 @@ import {
   Loader2,
 } from "lucide-react";
 import { toast } from "sonner";
-import { format } from "date-fns";
+import { format, addDays } from "date-fns";
 import { cn } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/client";
+import { Calendar as CalendarPicker } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Label } from "@/components/ui/label";
 
 interface BookingData {
   id: string;
@@ -59,6 +63,7 @@ interface BookingData {
   guest_count: number;
   notes: string | null;
   created_at: string;
+  availability_id?: string;
   customer: {
     first_name: string;
     last_name: string;
@@ -119,6 +124,12 @@ export default function BookingDetailPage() {
   const [editNotesOpen, setEditNotesOpen] = useState(false);
   const [notes, setNotes] = useState("");
   const [savingNotes, setSavingNotes] = useState(false);
+  const [rescheduleOpen, setRescheduleOpen] = useState(false);
+  const [rescheduling, setRescheduling] = useState(false);
+  const [rescheduleDate, setRescheduleDate] = useState<Date>(addDays(new Date(), 1));
+  const [availableSlots, setAvailableSlots] = useState<Array<{id: string; start_time: string; end_time: string; booked_count: number; capacity: number}>>([]);
+  const [selectedSlot, setSelectedSlot] = useState<string>("");
+  const [loadingSlots, setLoadingSlots] = useState(false);
 
   useEffect(() => {
     const fetchBooking = async () => {
@@ -365,6 +376,77 @@ export default function BookingDetailPage() {
     }
   };
 
+  const fetchAvailableSlots = async (date: Date) => {
+    if (!booking?.availability?.tour) return;
+
+    setLoadingSlots(true);
+    try {
+      const supabase = createClient();
+      const dateStr = format(date, 'yyyy-MM-dd');
+
+      // Get tour ID from current booking
+      const { data: currentAvail } = await supabase
+        .from('availabilities')
+        .select('tour_id')
+        .eq('id', booking.availability_id || '')
+        .single();
+
+      if (!currentAvail) return;
+
+      const { data: slots } = await supabase
+        .from('availabilities')
+        .select('id, start_time, end_time, booked_count, capacity_override, tour:tours(max_capacity)')
+        .eq('tour_id', currentAvail.tour_id)
+        .eq('date', dateStr)
+        .eq('status', 'available')
+        .order('start_time');
+
+      const formattedSlots = (slots || []).map((s: any) => ({
+        id: s.id,
+        start_time: s.start_time,
+        end_time: s.end_time,
+        booked_count: s.booked_count || 0,
+        capacity: s.capacity_override || s.tour?.max_capacity || 10,
+      })).filter((s: any) => s.booked_count + (booking?.guest_count || 1) <= s.capacity);
+
+      setAvailableSlots(formattedSlots);
+      setSelectedSlot("");
+    } catch (err) {
+      console.error('Error fetching slots:', err);
+    } finally {
+      setLoadingSlots(false);
+    }
+  };
+
+  const handleReschedule = async () => {
+    if (!selectedSlot || !booking) return;
+
+    setRescheduling(true);
+    try {
+      const response = await fetch(`/api/bookings/${booking.id}/reschedule`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ new_availability_id: selectedSlot }),
+      });
+
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || 'Failed to reschedule');
+
+      toast.success("Booking rescheduled", {
+        description: `Booking ${booking.booking_reference} has been rescheduled.`,
+      });
+
+      setRescheduleOpen(false);
+      window.location.reload();
+    } catch (err: any) {
+      toast.error("Failed to reschedule", {
+        description: err.message || 'An error occurred',
+      });
+    } finally {
+      setRescheduling(false);
+    }
+  };
+
   const sendEmail = async () => {
     if (!booking?.customer?.email) {
       toast.error("No email address", {
@@ -520,7 +602,7 @@ export default function BookingDetailPage() {
                 <Edit className="h-4 w-4 mr-2" />
                 Edit Booking
               </DropdownMenuItem>
-              <DropdownMenuItem>
+              <DropdownMenuItem onClick={() => { setRescheduleOpen(true); fetchAvailableSlots(rescheduleDate); }}>
                 <RefreshCw className="h-4 w-4 mr-2" />
                 Reschedule
               </DropdownMenuItem>
@@ -897,6 +979,86 @@ export default function BookingDetailPage() {
                 </>
               ) : (
                 "Save Notes"
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Reschedule Dialog */}
+      <Dialog open={rescheduleOpen} onOpenChange={setRescheduleOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Reschedule Booking</DialogTitle>
+            <DialogDescription>
+              Select a new date and time slot for this booking.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label>Select Date</Label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" className="w-full justify-start">
+                    <Calendar className="h-4 w-4 mr-2" />
+                    {format(rescheduleDate, 'EEEE, MMMM d, yyyy')}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0">
+                  <CalendarPicker
+                    mode="single"
+                    selected={rescheduleDate}
+                    onSelect={(d) => {
+                      if (d) {
+                        setRescheduleDate(d);
+                        fetchAvailableSlots(d);
+                      }
+                    }}
+                    disabled={(date) => date < new Date()}
+                  />
+                </PopoverContent>
+              </Popover>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Available Time Slots</Label>
+              {loadingSlots ? (
+                <div className="flex items-center gap-2 text-muted-foreground">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Loading available slots...
+                </div>
+              ) : availableSlots.length === 0 ? (
+                <p className="text-muted-foreground text-sm">
+                  No available slots for this date. Please select another date.
+                </p>
+              ) : (
+                <Select value={selectedSlot} onValueChange={setSelectedSlot}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select a time slot" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {availableSlots.map((slot) => (
+                      <SelectItem key={slot.id} value={slot.id}>
+                        {slot.start_time.slice(0, 5)} - {slot.end_time.slice(0, 5)} ({slot.capacity - slot.booked_count} spots left)
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setRescheduleOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleReschedule} disabled={rescheduling || !selectedSlot}>
+              {rescheduling ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  Rescheduling...
+                </>
+              ) : (
+                "Reschedule Booking"
               )}
             </Button>
           </DialogFooter>

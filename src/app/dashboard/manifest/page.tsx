@@ -270,6 +270,99 @@ export default function ManifestPage() {
     }))
     .filter((tour) => tour.bookings.length > 0 || searchQuery === "");
 
+  const bulkCheckInBooking = async (tourId: string, bookingId: string, checkIn: boolean) => {
+    // Find the booking
+    const tour = manifestData.find(t => t.id === tourId);
+    const booking = tour?.bookings.find(b => b.id === bookingId);
+    if (!booking) return;
+
+    const guestIds = booking.guests.map(g => g.id);
+
+    // Optimistic update
+    setManifestData((prev) =>
+      prev.map((t) => {
+        if (t.id !== tourId) return t;
+        return {
+          ...t,
+          bookings: t.bookings.map((b) => {
+            if (b.id !== bookingId) return b;
+            return {
+              ...b,
+              guests: b.guests.map((g) => ({ ...g, checkedIn: checkIn })),
+            };
+          }),
+        };
+      })
+    );
+
+    // Update in database
+    try {
+      const supabase = createClient();
+      await supabase
+        .from('booking_guests')
+        .update({ checked_in: checkIn })
+        .in('id', guestIds);
+
+      toast.success(checkIn ? "All guests checked in" : "Check-in undone for all guests");
+    } catch (error) {
+      console.error('Error bulk updating check-in:', error);
+      toast.error("Failed to update check-in status");
+      // Revert on error
+      setManifestData((prev) =>
+        prev.map((t) => {
+          if (t.id !== tourId) return t;
+          return {
+            ...t,
+            bookings: t.bookings.map((b) => {
+              if (b.id !== bookingId) return b;
+              return {
+                ...b,
+                guests: b.guests.map((g) => ({ ...g, checkedIn: !checkIn })),
+              };
+            }),
+          };
+        })
+      );
+    }
+  };
+
+  const markNoShow = async (tourId: string, bookingId: string) => {
+    if (!confirm("Mark this booking as a no-show? This will update the booking status.")) return;
+
+    try {
+      const supabase = createClient();
+
+      // Find the actual booking ID (may be different from reference)
+      const tour = manifestData.find(t => t.id === tourId);
+      const booking = tour?.bookings.find(b => b.id === bookingId);
+      if (!booking) return;
+
+      // Update booking status to no_show
+      const { error } = await supabase
+        .from('bookings')
+        .update({ status: 'no_show' })
+        .eq('booking_reference', bookingId);
+
+      if (error) throw error;
+
+      // Remove from manifest display
+      setManifestData((prev) =>
+        prev.map((t) => {
+          if (t.id !== tourId) return t;
+          return {
+            ...t,
+            bookings: t.bookings.filter((b) => b.id !== bookingId),
+          };
+        })
+      );
+
+      toast.success("Marked as no-show", { description: "Booking has been marked as a no-show." });
+    } catch (error) {
+      console.error('Error marking no-show:', error);
+      toast.error("Failed to mark as no-show");
+    }
+  };
+
   const toggleGuestCheckIn = async (tourId: string, bookingId: string, guestId: string) => {
     // Find current state
     const tour = manifestData.find(t => t.id === tourId);
@@ -627,7 +720,28 @@ export default function ManifestPage() {
                                 </div>
 
                                 {/* Guest Check-in */}
-                                <div className="flex flex-wrap gap-2">
+                                <div className="flex flex-col gap-2">
+                                  <div className="flex gap-2 justify-end">
+                                    <Button
+                                      size="sm"
+                                      variant={checkedIn === booking.guests.length ? "outline" : "default"}
+                                      className="gap-1 text-xs"
+                                      onClick={() => bulkCheckInBooking(tour.id, booking.id, checkedIn < booking.guests.length)}
+                                    >
+                                      <CheckCircle2 className="h-3 w-3" />
+                                      {checkedIn === booking.guests.length ? "Undo All" : "Check All In"}
+                                    </Button>
+                                    <Button
+                                      size="sm"
+                                      variant="destructive"
+                                      className="gap-1 text-xs"
+                                      onClick={() => markNoShow(tour.id, booking.id)}
+                                    >
+                                      <AlertCircle className="h-3 w-3" />
+                                      No-Show
+                                    </Button>
+                                  </div>
+                                  <div className="flex flex-wrap gap-2">
                                   {booking.guests.map((guest) => (
                                     <Dialog key={guest.id}>
                                       <DialogTrigger asChild>
@@ -746,6 +860,7 @@ export default function ManifestPage() {
                                       </DialogContent>
                                     </Dialog>
                                   ))}
+                                  </div>
                                 </div>
                               </div>
                             </div>

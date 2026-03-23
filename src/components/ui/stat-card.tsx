@@ -60,7 +60,8 @@ export function StatCard({
 
   // Handle both ReactNode and LucideIcon component
   const renderIcon = () => {
-    if (typeof IconProp === "function") {
+    // Check if it's a component (function or forwardRef object)
+    if (typeof IconProp === "function" || (typeof IconProp === "object" && IconProp !== null && "$$typeof" in IconProp && "render" in IconProp)) {
       const Icon = IconProp as LucideIcon;
       return <Icon className="h-5 w-5" />;
     }

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -115,6 +115,14 @@ export default function AvailabilityPage() {
   const [savingSlot, setSavingSlot] = useState(false);
   const [savingSchedule, setSavingSchedule] = useState(false);
   const [generatingSlots, setGeneratingSlots] = useState<string | null>(null);
+  const [isBlackoutOpen, setIsBlackoutOpen] = useState(false);
+  const [savingBlackout, setSavingBlackout] = useState(false);
+  const [blackoutDates, setBlackoutDates] = useState({
+    tour_id: 'all',
+    start_date: new Date(),
+    end_date: addDays(new Date(), 1),
+    reason: '',
+  });
 
   const [newSlot, setNewSlot] = useState({
     tour_id: '',
@@ -136,9 +144,9 @@ export default function AvailabilityPage() {
     valid_until: null as Date | null,
   });
 
-  const weekStart = startOfWeek(currentWeek, { weekStartsOn: 0 });
-  const weekEnd = endOfWeek(currentWeek, { weekStartsOn: 0 });
-  const weekDays = eachDayOfInterval({ start: weekStart, end: weekEnd });
+  const weekStart = useMemo(() => startOfWeek(currentWeek, { weekStartsOn: 0 }), [currentWeek]);
+  const weekEnd = useMemo(() => endOfWeek(currentWeek, { weekStartsOn: 0 }), [currentWeek]);
+  const weekDays = useMemo(() => eachDayOfInterval({ start: weekStart, end: weekEnd }), [weekStart, weekEnd]);
 
   const fetchData = useCallback(async () => {
     try {
@@ -396,6 +404,47 @@ export default function AvailabilityPage() {
     }
   };
 
+  const handleCreateBlackout = async () => {
+    setSavingBlackout(true);
+    try {
+      const response = await fetch('/api/availabilities/blackout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          tour_id: blackoutDates.tour_id === 'all' ? null : blackoutDates.tour_id,
+          start_date: format(blackoutDates.start_date, 'yyyy-MM-dd'),
+          end_date: format(blackoutDates.end_date, 'yyyy-MM-dd'),
+          reason: blackoutDates.reason || undefined,
+        }),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to create blackout');
+      }
+
+      if (result.warning) {
+        toast.warning(result.warning, { description: result.message });
+      } else {
+        toast.success(result.message);
+      }
+
+      setIsBlackoutOpen(false);
+      setBlackoutDates({
+        tour_id: 'all',
+        start_date: new Date(),
+        end_date: addDays(new Date(), 1),
+        reason: '',
+      });
+      fetchData();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to create blackout');
+    } finally {
+      setSavingBlackout(false);
+    }
+  };
+
   const getStatusBadge = (slot: TimeSlot) => {
     if (slot.status === 'cancelled') {
       return <Badge variant="destructive"><XCircle className="h-3 w-3 mr-1" />Cancelled</Badge>;
@@ -435,6 +484,104 @@ export default function AvailabilityPage() {
           <p className="text-muted-foreground">Manage time slots and recurring schedules</p>
         </div>
         <div className="flex items-center gap-2">
+          <Dialog open={isBlackoutOpen} onOpenChange={setIsBlackoutOpen}>
+            <DialogTrigger asChild>
+              <Button variant="outline" className="text-destructive border-destructive/50 hover:bg-destructive/10">
+                <XCircle className="h-4 w-4 mr-2" />
+                Blackout Dates
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Create Blackout Dates</DialogTitle>
+                <DialogDescription>
+                  Cancel all availability slots within a date range
+                </DialogDescription>
+              </DialogHeader>
+              <div className="space-y-4 py-4">
+                <div className="space-y-2">
+                  <Label>Tour (optional)</Label>
+                  <Select
+                    value={blackoutDates.tour_id}
+                    onValueChange={(v) => setBlackoutDates({ ...blackoutDates, tour_id: v })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="All tours" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Tours</SelectItem>
+                      {tours.map(tour => (
+                        <SelectItem key={tour.id} value={tour.id}>{tour.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>Start Date</Label>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button variant="outline" className="w-full justify-start">
+                          <CalendarIcon className="h-4 w-4 mr-2" />
+                          {format(blackoutDates.start_date, 'MMM d, yyyy')}
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0">
+                        <Calendar
+                          mode="single"
+                          selected={blackoutDates.start_date}
+                          onSelect={(d) => d && setBlackoutDates({ ...blackoutDates, start_date: d })}
+                        />
+                      </PopoverContent>
+                    </Popover>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>End Date</Label>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button variant="outline" className="w-full justify-start">
+                          <CalendarIcon className="h-4 w-4 mr-2" />
+                          {format(blackoutDates.end_date, 'MMM d, yyyy')}
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0">
+                        <Calendar
+                          mode="single"
+                          selected={blackoutDates.end_date}
+                          onSelect={(d) => d && setBlackoutDates({ ...blackoutDates, end_date: d })}
+                        />
+                      </PopoverContent>
+                    </Popover>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Reason (optional)</Label>
+                  <Input
+                    placeholder="e.g., Holiday closure, Maintenance"
+                    value={blackoutDates.reason}
+                    onChange={(e) => setBlackoutDates({ ...blackoutDates, reason: e.target.value })}
+                  />
+                </div>
+
+                <div className="p-3 bg-destructive/10 border border-destructive/30 rounded-lg">
+                  <p className="text-sm text-destructive flex items-center gap-2">
+                    <AlertCircle className="h-4 w-4" />
+                    This will cancel all matching availability slots. Existing bookings will need to be rescheduled or cancelled separately.
+                  </p>
+                </div>
+              </div>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setIsBlackoutOpen(false)}>Cancel</Button>
+                <Button variant="destructive" onClick={handleCreateBlackout} disabled={savingBlackout}>
+                  {savingBlackout && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                  Create Blackout
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+
           <Dialog open={isAddScheduleOpen} onOpenChange={setIsAddScheduleOpen}>
             <DialogTrigger asChild>
               <Button variant="outline">

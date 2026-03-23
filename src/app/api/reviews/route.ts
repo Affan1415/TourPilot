@@ -21,9 +21,9 @@ export async function GET(request: NextRequest) {
       .from("reviews")
       .select(`
         *,
-        tour:tours(id, name),
-        booking:bookings(id, reference_number),
-        customer:customers(id, first_name, last_name, email)
+        tours(id, name),
+        bookings(id, reference_number),
+        customers(id, first_name, last_name, email)
       `)
       .order("review_date", { ascending: false })
       .range(offset, offset + limit - 1);
@@ -51,15 +51,17 @@ export async function GET(request: NextRequest) {
     const { data, error, count } = await query;
 
     if (error) {
+      console.error("Reviews API error:", error);
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
     return NextResponse.json({ data, count });
   } catch (error: any) {
+    console.error("Reviews API catch error:", error);
     if (error.message?.includes("Unauthorized") || error.message?.includes("permission")) {
       return forbiddenResponse(error.message);
     }
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+    return NextResponse.json({ error: error.message || "Internal server error" }, { status: 500 });
   }
 }
 

@@ -1,13 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { requireAdmin, forbiddenResponse } from "@/lib/auth/api-auth";
+import { requireManager, forbiddenResponse } from "@/lib/auth/api-auth";
 
 // POST: Create blackout dates (cancel availabilities in a date range)
 export async function POST(request: NextRequest) {
   try {
-    // Check admin permission
+    // Check manager permission (admin or location_manager)
+    let auth;
     try {
-      await requireAdmin();
+      auth = await requireManager();
     } catch (e: any) {
       return forbiddenResponse(e.message);
     }
@@ -82,9 +83,9 @@ export async function POST(request: NextRequest) {
 // DELETE: Remove blackout (restore availabilities)
 export async function DELETE(request: NextRequest) {
   try {
-    // Check admin permission
+    // Check manager permission (admin or location_manager)
     try {
-      await requireAdmin();
+      await requireManager();
     } catch (e: any) {
       return forbiddenResponse(e.message);
     }

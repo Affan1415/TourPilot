@@ -11,7 +11,7 @@ export async function GET(request: NextRequest) {
     const startDate = searchParams.get("start_date");
     const endDate = searchParams.get("end_date");
 
-    // Get bookings in date range with payment info
+    // Get bookings in date range with payment info (including refunded)
     let query = supabase
       .from("bookings")
       .select(`
@@ -22,13 +22,14 @@ export async function GET(request: NextRequest) {
         payment_status,
         status,
         created_at,
+        source,
         availability:availabilities(
           date,
           tour:tours(id, name)
         )
       `)
-      .in("status", ["confirmed", "completed"])
-      .eq("payment_status", "paid");
+      .in("status", ["confirmed", "completed", "cancelled"])
+      .in("payment_status", ["paid", "refunded"]);
 
     if (startDate) {
       query = query.gte("created_at", `${startDate}T00:00:00`);
@@ -44,14 +45,30 @@ export async function GET(request: NextRequest) {
     }
 
     // Calculate metrics
-    const totalRevenue = bookings?.reduce((sum, b) => sum + (b.total_price || 0), 0) || 0;
-    const totalDiscounts = bookings?.reduce((sum, b) => sum + (b.discount_amount || 0), 0) || 0;
-    const bookingCount = bookings?.length || 0;
-    const averageBookingValue = bookingCount > 0 ? totalRevenue / bookingCount : 0;
+    const paidBookings = bookings?.filter(b => b.payment_status === "paid") || [];
+    const refundedBookings = bookings?.filter(b => b.payment_status === "refunded") || [];
 
-    // Daily breakdown
+    const grossRevenue = paidBookings.reduce((sum, b) => sum + (b.total_price || 0), 0);
+    const totalRefunds = refundedBookings.reduce((sum, b) => sum + (b.total_price || 0), 0);
+    const totalDiscounts = bookings?.reduce((sum, b) => sum + (b.discount_amount || 0), 0) || 0;
+    const totalRevenue = grossRevenue - totalRefunds; // Net revenue
+    const bookingCount = paidBookings.length;
+    const averageBookingValue = bookingCount > 0 ? grossRevenue / bookingCount : 0;
+
+    // Source breakdown
+    const sourceBreakdown: Record<string, { count: number; revenue: number }> = {};
+    paidBookings.forEach(booking => {
+      const source = (booking as any).source || "direct";
+      if (!sourceBreakdown[source]) {
+        sourceBreakdown[source] = { count: 0, revenue: 0 };
+      }
+      sourceBreakdown[source].count += 1;
+      sourceBreakdown[source].revenue += booking.total_price || 0;
+    });
+
+    // Daily breakdown (only paid bookings)
     const dailyRevenue: Record<string, { revenue: number; bookings: number }> = {};
-    bookings?.forEach(booking => {
+    paidBookings.forEach(booking => {
       const date = booking.created_at.split("T")[0];
       if (!dailyRevenue[date]) {
         dailyRevenue[date] = { revenue: 0, bookings: 0 };
@@ -60,9 +77,9 @@ export async function GET(request: NextRequest) {
       dailyRevenue[date].bookings += 1;
     });
 
-    // Revenue by tour
+    // Revenue by tour (only paid bookings)
     const revenueByTour: Record<string, { name: string; revenue: number; bookings: number }> = {};
-    bookings?.forEach(booking => {
+    paidBookings.forEach(booking => {
       const tour = (booking.availability as any)?.tour;
       if (tour) {
         if (!revenueByTour[tour.id]) {
@@ -75,10 +92,16 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({
       data: {
-        totalRevenue,
+        grossRevenue,
+        totalRefunds,
+        totalRevenue, // Net revenue (gross - refunds)
         totalDiscounts,
         bookingCount,
+        refundCount: refundedBookings.length,
         averageBookingValue,
+        sourceBreakdown: Object.entries(sourceBreakdown)
+          .map(([source, data]) => ({ source, ...data }))
+          .sort((a, b) => b.revenue - a.revenue),
         dailyRevenue: Object.entries(dailyRevenue)
           .map(([date, data]) => ({ date, ...data }))
           .sort((a, b) => a.date.localeCompare(b.date)),

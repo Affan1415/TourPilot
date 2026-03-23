@@ -126,7 +126,7 @@ export default function ToursPage() {
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Form state for new tour (simplified - prices/capacity are per slot/boat)
+  // Form state for new tour
   const [newTour, setNewTour] = useState({
     name: "",
     slug: "",
@@ -134,6 +134,9 @@ export default function ToursPage() {
     duration: "",  // Duration in minutes
     location: "",  // Meeting point
     status: "draft",
+    base_price: "",
+    max_capacity: "",
+    min_capacity: "",
   });
 
   // State for availability management
@@ -332,6 +335,9 @@ export default function ToursPage() {
           meeting_point: newTour.location,
           status: newTour.status,
           location_id: selectedLocation.id,
+          base_price: parseFloat(newTour.base_price) || 0,
+          max_capacity: parseInt(newTour.max_capacity) || 10,
+          min_capacity: parseInt(newTour.min_capacity) || 1,
         })
         .select()
         .single();
@@ -372,6 +378,9 @@ export default function ToursPage() {
         duration: "",
         location: "",
         status: "draft",
+        base_price: "",
+        max_capacity: "",
+        min_capacity: "",
       });
       setIsCreateOpen(false);
     } catch (error) {
@@ -893,18 +902,50 @@ export default function ToursPage() {
                   onChange={(e) => setNewTour({ ...newTour, description: e.target.value })}
                 />
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="duration">Duration (minutes)</Label>
-                <Input
-                  id="duration"
-                  type="number"
-                  placeholder="120"
-                  value={newTour.duration}
-                  onChange={(e) => setNewTour({ ...newTour, duration: e.target.value })}
-                />
-                <p className="text-xs text-muted-foreground">
-                  Prices and capacity are set per slot/boat, not per tour
-                </p>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="duration">Duration (minutes)</Label>
+                  <Input
+                    id="duration"
+                    type="number"
+                    placeholder="120"
+                    value={newTour.duration}
+                    onChange={(e) => setNewTour({ ...newTour, duration: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="base_price">Base Price ($)</Label>
+                  <Input
+                    id="base_price"
+                    type="number"
+                    placeholder="99.00"
+                    step="0.01"
+                    value={newTour.base_price}
+                    onChange={(e) => setNewTour({ ...newTour, base_price: e.target.value })}
+                  />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="min_capacity">Min Capacity</Label>
+                  <Input
+                    id="min_capacity"
+                    type="number"
+                    placeholder="1"
+                    value={newTour.min_capacity}
+                    onChange={(e) => setNewTour({ ...newTour, min_capacity: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="max_capacity">Max Capacity</Label>
+                  <Input
+                    id="max_capacity"
+                    type="number"
+                    placeholder="10"
+                    value={newTour.max_capacity}
+                    onChange={(e) => setNewTour({ ...newTour, max_capacity: e.target.value })}
+                  />
+                </div>
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">

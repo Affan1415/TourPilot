@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { requireStaff, requireAdmin, forbiddenResponse } from "@/lib/auth/api-auth";
+import { requireStaff, requireAdmin, forbiddenResponse, getAuthUser } from "@/lib/auth/api-auth";
 
 // GET: List availabilities with filters
 export async function GET(request: NextRequest) {
@@ -13,12 +13,13 @@ export async function GET(request: NextRequest) {
     const endDate = searchParams.get("end_date");
     const status = searchParams.get("status");
     const boatId = searchParams.get("boat_id");
+    const locationId = searchParams.get("location_id");
 
     let query = supabase
       .from("availabilities")
       .select(`
         *,
-        tour:tours(id, name, slug, base_price, duration_minutes, max_capacity),
+        tour:tours(id, name, slug, base_price, duration_minutes, max_capacity, location_id),
         boat:boats(id, name, capacity)
       `)
       .order("date", { ascending: true })
@@ -50,7 +51,25 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
-    return NextResponse.json({ data });
+    // Location-based filtering
+    let filteredData = data;
+    const auth = await getAuthUser();
+
+    if (auth.authenticated && auth.role && auth.role !== "admin") {
+      // Non-admin staff only see their location's availabilities
+      if (auth.locationId) {
+        filteredData = data?.filter(
+          (avail: any) => avail.tour?.location_id === auth.locationId
+        );
+      }
+    } else if (locationId) {
+      // Filter by location_id parameter if provided
+      filteredData = data?.filter(
+        (avail: any) => avail.tour?.location_id === locationId
+      );
+    }
+
+    return NextResponse.json({ data: filteredData });
   } catch (error) {
     return NextResponse.json(
       { error: "Internal server error" },
