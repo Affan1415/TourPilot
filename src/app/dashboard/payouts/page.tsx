@@ -888,7 +888,7 @@ export default function PayoutsPage() {
               Create Payout
             </DialogTitle>
             <DialogDescription>
-              Process commission payout for {selectedAffiliate?.staff.name}
+              Process commission payout for {selectedAffiliate?.staff?.name}
             </DialogDescription>
           </DialogHeader>
 

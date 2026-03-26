@@ -53,7 +53,7 @@ import { cn } from "@/lib/utils";
 import { useLocation } from "@/lib/location/context";
 import type { TourLog, Staff, Boat } from "@/types";
 
-interface TourLogWithRelations extends TourLog {
+interface TourLogWithRelations extends Omit<TourLog, 'availability' | 'captain'> {
   availability: {
     id: string;
     date: string;

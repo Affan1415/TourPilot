@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
@@ -123,7 +123,7 @@ interface Tour {
   name: string;
 }
 
-export default function BookingsPage() {
+function BookingsContent() {
   const { t } = useTranslation();
   const { selectedLocation } = useLocation();
   const searchParams = useSearchParams();
@@ -1007,5 +1007,17 @@ export default function BookingsPage() {
         </DialogContent>
       </Dialog>
     </div>
+  );
+}
+
+export default function BookingsPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex items-center justify-center min-h-[400px]">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    }>
+      <BookingsContent />
+    </Suspense>
   );
 }
