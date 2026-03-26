@@ -12,6 +12,7 @@ import {
   Text,
 } from '@react-email/components';
 import * as React from 'react';
+import { t, Locale, defaultLocale } from '@/lib/i18n';
 
 interface TourReminderEmailProps {
   customerName: string;
@@ -26,6 +27,7 @@ interface TourReminderEmailProps {
   bookingUrl: string;
   companyName?: string;
   companyPhone?: string;
+  locale?: Locale;
 }
 
 export const TourReminderEmail = ({
@@ -41,8 +43,13 @@ export const TourReminderEmail = ({
   bookingUrl = 'https://example.com/booking',
   companyName = 'TourPilot',
   companyPhone = '(555) 123-4567',
+  locale = defaultLocale,
 }: TourReminderEmailProps) => {
-  const previewText = `Reminder: Your ${tourName} is ${tourDate}!`;
+  // Translation helper for this email
+  const e = (key: string, params?: Record<string, string | number>) =>
+    t(locale, `email.tourReminder.${key}`, params);
+
+  const previewText = e('subject', { tourName, date: tourDate });
 
   return (
     <Html>
@@ -58,14 +65,14 @@ export const TourReminderEmail = ({
           {/* Countdown Badge */}
           <Section style={countdownBadge}>
             <Text style={countdownIcon}>🎉</Text>
-            <Heading style={countdownText}>Your Adventure is Tomorrow!</Heading>
+            <Heading style={countdownText}>{e('title')}</Heading>
           </Section>
 
           {/* Greeting */}
           <Section style={content}>
-            <Text style={paragraph}>Hi {customerName},</Text>
+            <Text style={paragraph}>{e('greeting', { name: customerName })}</Text>
             <Text style={paragraph}>
-              This is a friendly reminder that your tour is coming up! We're excited to have you join us.
+              {e('reminderMessage')}
             </Text>
           </Section>
 
@@ -75,22 +82,22 @@ export const TourReminderEmail = ({
 
             <div style={dateTimeRow}>
               <div style={dateBox}>
-                <Text style={dateLabel}>📅 Date</Text>
+                <Text style={dateLabel}>📅 {e('dateLabel')}</Text>
                 <Text style={dateValue}>{tourDate}</Text>
               </div>
               <div style={timeBox}>
-                <Text style={dateLabel}>🕐 Time</Text>
+                <Text style={dateLabel}>🕐 {e('timeLabel')}</Text>
                 <Text style={dateValue}>{tourTime}</Text>
               </div>
             </div>
 
             <div style={meetingBox}>
-              <Text style={meetingLabel}>📍 Meeting Point</Text>
+              <Text style={meetingLabel}>📍 {e('meetingPoint')}</Text>
               <Text style={meetingValue}>{meetingPoint}</Text>
             </div>
 
             <Text style={guestInfo}>
-              {guestCount} {guestCount === 1 ? 'guest' : 'guests'} • Ref: {bookingReference}
+              {e('guestInfo', { count: guestCount, reference: bookingReference })}
             </Text>
           </Section>
 
@@ -98,12 +105,12 @@ export const TourReminderEmail = ({
           {!waiverSigned && (
             <Section style={waiverWarning}>
               <Text style={warningIcon}>⚠️</Text>
-              <Heading style={warningTitle}>Waiver Not Yet Signed</Heading>
+              <Heading style={warningTitle}>{e('waiverNotSigned')}</Heading>
               <Text style={warningText}>
-                Please sign your waiver before arriving. All guests must complete this before boarding.
+                {e('waiverWarning')}
               </Text>
               <Button style={waiverButton} href={waiverUrl}>
-                Sign Waiver Now
+                {e('signWaiverNow')}
               </Button>
             </Section>
           )}
@@ -112,46 +119,46 @@ export const TourReminderEmail = ({
           {waiverSigned && (
             <Section style={waiverComplete}>
               <Text style={checkIcon}>✓</Text>
-              <Text style={completeText}>All waivers signed - you're all set!</Text>
+              <Text style={completeText}>{e('allWaiversSigned')}</Text>
             </Section>
           )}
 
           {/* Checklist */}
           <Section style={checklistSection}>
-            <Heading style={checklistTitle}>Before You Go Checklist</Heading>
+            <Heading style={checklistTitle}>{e('checklist')}</Heading>
             <div style={checklistItem}>
               <Text style={checkbox}>☐</Text>
-              <Text style={checklistText}>Sunscreen & sunglasses</Text>
+              <Text style={checklistText}>{e('checkItem1')}</Text>
             </div>
             <div style={checklistItem}>
               <Text style={checkbox}>☐</Text>
-              <Text style={checklistText}>Comfortable shoes</Text>
+              <Text style={checklistText}>{e('checkItem2')}</Text>
             </div>
             <div style={checklistItem}>
               <Text style={checkbox}>☐</Text>
-              <Text style={checklistText}>Light jacket (it can get breezy)</Text>
+              <Text style={checklistText}>{e('checkItem3')}</Text>
             </div>
             <div style={checklistItem}>
               <Text style={checkbox}>☐</Text>
-              <Text style={checklistText}>Camera or phone for photos</Text>
+              <Text style={checklistText}>{e('checkItem4')}</Text>
             </div>
             <div style={checklistItem}>
               <Text style={checkbox}>☐</Text>
-              <Text style={checklistText}>Arrive 15 minutes early</Text>
+              <Text style={checklistText}>{e('checkItem5')}</Text>
             </div>
           </Section>
 
           {/* Weather Note */}
           <Section style={weatherNote}>
             <Text style={weatherText}>
-              🌤️ Check the weather before you head out! Dress in layers for the best experience.
+              🌤️ {e('weatherNote')}
             </Text>
           </Section>
 
           {/* CTA Button */}
           <Section style={buttonSection}>
             <Button style={primaryButton} href={bookingUrl}>
-              View Booking Details
+              {e('viewBookingDetails')}
             </Button>
           </Section>
 
@@ -160,7 +167,7 @@ export const TourReminderEmail = ({
           {/* Footer */}
           <Section style={footer}>
             <Text style={footerText}>
-              Need to make changes? Contact us at {companyPhone}
+              {e('needChanges', { phone: companyPhone })}
             </Text>
             <Text style={footerText}>
               {companyName} | 123 Marina Drive, Coastal City, FL 33139

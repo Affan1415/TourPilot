@@ -1,27 +1,39 @@
 // i18n Configuration for TourPilot
-// Supports English and Spanish with extensible architecture
+// Supports English, Dutch, Spanish, German, and French
 
 export const defaultLocale = 'en';
-export const locales = ['en', 'es'] as const;
+export const locales = ['en', 'nl', 'es', 'de', 'fr'] as const;
 export type Locale = (typeof locales)[number];
 
 export const localeNames: Record<Locale, string> = {
   en: 'English',
+  nl: 'Nederlands',
   es: 'Español',
+  de: 'Deutsch',
+  fr: 'Français',
 };
 
 export const localeFlags: Record<Locale, string> = {
   en: '🇺🇸',
+  nl: '🇳🇱',
   es: '🇪🇸',
+  de: '🇩🇪',
+  fr: '🇫🇷',
 };
 
 // Import translations
 import enCommon from '@/locales/en/common.json';
+import nlCommon from '@/locales/nl/common.json';
 import esCommon from '@/locales/es/common.json';
+import deCommon from '@/locales/de/common.json';
+import frCommon from '@/locales/fr/common.json';
 
 export const translations: Record<Locale, typeof enCommon> = {
   en: enCommon,
+  nl: nlCommon,
   es: esCommon,
+  de: deCommon,
+  fr: frCommon,
 };
 
 // Type-safe translation key paths

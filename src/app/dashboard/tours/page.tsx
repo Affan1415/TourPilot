@@ -138,6 +138,9 @@ export default function ToursPage() {
     max_capacity: "",
     min_capacity: "",
   });
+  const [createWaiverTemplates, setCreateWaiverTemplates] = useState<WaiverTemplate[]>([]);
+  const [createSelectedWaiverIds, setCreateSelectedWaiverIds] = useState<Set<string>>(new Set());
+  const [loadingCreateWaivers, setLoadingCreateWaivers] = useState(false);
 
   // State for availability management
   const [selectedTourForAvailability, setSelectedTourForAvailability] = useState<Tour | null>(null);
@@ -307,6 +310,27 @@ export default function ToursPage() {
     fetchTours();
   }, [selectedLocation]);
 
+  // Load waivers when create dialog opens
+  const handleOpenCreateDialog = async () => {
+    setIsCreateOpen(true);
+    setLoadingCreateWaivers(true);
+    try {
+      const supabase = createClient();
+      const { data, error } = await supabase
+        .from('waiver_templates')
+        .select('id, name, is_active')
+        .eq('is_active', true)
+        .order('name');
+
+      if (error) throw error;
+      setCreateWaiverTemplates(data || []);
+    } catch (error) {
+      console.error('Error loading waivers:', error);
+    } finally {
+      setLoadingCreateWaivers(false);
+    }
+  };
+
   const handleCreateTour = async () => {
     if (!newTour.name) {
       alert("Please fill in the tour name.");
@@ -348,6 +372,25 @@ export default function ToursPage() {
         return;
       }
 
+      // Assign selected waivers to the new tour
+      if (data && createSelectedWaiverIds.size > 0) {
+        const waiverAssignments = Array.from(createSelectedWaiverIds).map((waiverId, index) => ({
+          tour_id: data.id,
+          waiver_template_id: waiverId,
+          is_required: true,
+          display_order: index,
+        }));
+
+        const { error: waiverError } = await supabase
+          .from('tour_waivers')
+          .insert(waiverAssignments);
+
+        if (waiverError) {
+          console.error('Error assigning waivers:', waiverError);
+          // Don't fail the whole operation, just log the error
+        }
+      }
+
       // Add the new tour to the list
       if (data) {
         setTours(prev => [{
@@ -382,6 +425,7 @@ export default function ToursPage() {
         max_capacity: "",
         min_capacity: "",
       });
+      setCreateSelectedWaiverIds(new Set());
       setIsCreateOpen(false);
     } catch (error) {
       console.error('Error creating tour:', error);
@@ -862,7 +906,7 @@ export default function ToursPage() {
 
         <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
           <DialogTrigger asChild>
-            <Button className="gap-2 gradient-primary border-0 rounded-xl shadow-lg shadow-primary/30">
+            <Button onClick={handleOpenCreateDialog} className="gap-2 gradient-primary border-0 rounded-xl shadow-lg shadow-primary/30">
               <Plus className="h-4 w-4" />
               Create Tour
             </Button>
@@ -982,6 +1026,72 @@ export default function ToursPage() {
                   </p>
                 </div>
               </div>
+
+              {/* Waiver Selection */}
+              <div className="space-y-2">
+                <Label className="flex items-center gap-2">
+                  <FileSignature className="h-4 w-4" />
+                  Required Waivers
+                </Label>
+                {loadingCreateWaivers ? (
+                  <div className="flex items-center justify-center py-4 border rounded-lg">
+                    <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                  </div>
+                ) : createWaiverTemplates.length === 0 ? (
+                  <div className="text-sm text-muted-foreground border rounded-lg p-3 bg-muted/30">
+                    No waiver templates available. Create them in the Waivers page.
+                  </div>
+                ) : (
+                  <ScrollArea className="h-[120px] border rounded-lg p-3">
+                    <div className="space-y-2">
+                      {createWaiverTemplates.map((waiver) => (
+                        <div
+                          key={waiver.id}
+                          className={cn(
+                            "flex items-center gap-3 p-2 rounded-lg cursor-pointer transition-colors",
+                            createSelectedWaiverIds.has(waiver.id)
+                              ? "bg-primary/10 border border-primary/30"
+                              : "hover:bg-muted"
+                          )}
+                          onClick={() => {
+                            setCreateSelectedWaiverIds(prev => {
+                              const next = new Set(prev);
+                              if (next.has(waiver.id)) {
+                                next.delete(waiver.id);
+                              } else {
+                                next.add(waiver.id);
+                              }
+                              return next;
+                            });
+                          }}
+                        >
+                          <Checkbox
+                            checked={createSelectedWaiverIds.has(waiver.id)}
+                            onCheckedChange={() => {
+                              setCreateSelectedWaiverIds(prev => {
+                                const next = new Set(prev);
+                                if (next.has(waiver.id)) {
+                                  next.delete(waiver.id);
+                                } else {
+                                  next.add(waiver.id);
+                                }
+                                return next;
+                              });
+                            }}
+                          />
+                          <span className="text-sm">{waiver.name}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </ScrollArea>
+                )}
+                {createSelectedWaiverIds.size > 0 && (
+                  <p className="text-xs text-muted-foreground">
+                    {createSelectedWaiverIds.size} waiver{createSelectedWaiverIds.size !== 1 ? 's' : ''} will be required
+                  </p>
+                )}
+              </div>
+
               <div className="flex justify-end gap-3 mt-4">
                 <Button variant="outline" onClick={() => setIsCreateOpen(false)} disabled={isSubmitting}>
                   Cancel
@@ -1163,7 +1273,7 @@ export default function ToursPage() {
                             <Edit className="h-4 w-4 mr-2" />
                             Edit
                           </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => router.push(`/dashboard/reports?tour=${tour.id}`)} className="rounded-lg">
+                          <DropdownMenuItem onClick={() => router.push(`/dashboard/analytics?tour=${tour.id}`)} className="rounded-lg">
                             <BarChart3 className="h-4 w-4 mr-2" />
                             View Analytics
                           </DropdownMenuItem>

@@ -11,10 +11,12 @@ import { Separator } from "@/components/ui/separator";
 import { Ship, Mail, Lock, Eye, EyeOff, AlertCircle, Shield, Anchor, User, Building2, Monitor, Users } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
+import { useTranslation } from "@/lib/i18n/context";
 
 type LoginType = "admin" | "location_manager" | "front_desk" | "captain" | "affiliate" | "customer" | null;
 
 function LoginPageContent() {
+  const { t } = useTranslation();
   const router = useRouter();
   const searchParams = useSearchParams();
   const [loginType, setLoginType] = useState<LoginType>(null);
@@ -28,19 +30,19 @@ function LoginPageContent() {
   useEffect(() => {
     const errorParam = searchParams.get("error");
     if (errorParam === "auth") {
-      setError("Authentication failed. Please try again.");
+      setError(t("auth.authFailed"));
     } else if (errorParam === "no_admin_access") {
-      setError("You don't have admin access. Please contact your administrator.");
+      setError(t("auth.noAdminAccess"));
     } else if (errorParam === "no_location_manager_access") {
-      setError("You don't have location manager access. Please contact your administrator.");
+      setError(t("auth.noLocationManagerAccess"));
     } else if (errorParam === "no_front_desk_access") {
-      setError("You don't have front desk access. Please contact your administrator.");
+      setError(t("auth.noFrontDeskAccess"));
     } else if (errorParam === "no_captain_access") {
-      setError("You don't have captain access. Please contact your administrator.");
+      setError(t("auth.noCaptainAccess"));
     } else if (errorParam === "no_affiliate_access") {
-      setError("You don't have affiliate access. Please contact your administrator.");
+      setError(t("auth.noAffiliateAccess"));
     }
-  }, [searchParams]);
+  }, [searchParams, t]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -72,7 +74,7 @@ function LoginPageContent() {
           if (staffData && staffData.is_active && staffData.role === 'admin') {
             router.push("/dashboard");
           } else {
-            setError("You don't have admin access. Please contact your administrator.");
+            setError(t("auth.noAdminAccess"));
             await supabase.auth.signOut();
             return;
           }
@@ -87,7 +89,7 @@ function LoginPageContent() {
           if (staffData && staffData.is_active && ['location_manager', 'manager'].includes(staffData.role)) {
             router.push("/dashboard");
           } else {
-            setError("You don't have location manager access. Please contact your administrator.");
+            setError(t("auth.noLocationManagerAccess"));
             await supabase.auth.signOut();
             return;
           }
@@ -102,7 +104,7 @@ function LoginPageContent() {
           if (staffData && staffData.is_active && staffData.role === 'front_desk') {
             router.push("/dashboard");
           } else {
-            setError("You don't have front desk access. Please contact your administrator.");
+            setError(t("auth.noFrontDeskAccess"));
             await supabase.auth.signOut();
             return;
           }
@@ -117,7 +119,7 @@ function LoginPageContent() {
           if (staffData && staffData.is_active && staffData.role === 'captain') {
             router.push("/captain");
           } else {
-            setError("You don't have captain access. Please contact your administrator.");
+            setError(t("auth.noCaptainAccess"));
             await supabase.auth.signOut();
             return;
           }
@@ -132,7 +134,7 @@ function LoginPageContent() {
           if (staffData && staffData.is_active && staffData.role === 'affiliate') {
             router.push("/dashboard/affiliate");
           } else {
-            setError("You don't have affiliate access. Please contact your administrator.");
+            setError(t("auth.noAffiliateAccess"));
             await supabase.auth.signOut();
             return;
           }
@@ -152,7 +154,7 @@ function LoginPageContent() {
 
       router.refresh();
     } catch (err) {
-      setError("An unexpected error occurred");
+      setError(t("auth.unexpectedError"));
     } finally {
       setLoading(false);
     }
@@ -160,7 +162,7 @@ function LoginPageContent() {
 
   const handleGoogleLogin = async () => {
     if (!loginType) {
-      setError("Please select an account type first");
+      setError(t("auth.selectAccountType"));
       return;
     }
 
@@ -190,9 +192,9 @@ function LoginPageContent() {
 
           <Card className="p-8">
             <div className="text-center mb-8">
-              <h1 className="text-2xl font-bold">Welcome to TourPilot</h1>
+              <h1 className="text-2xl font-bold">{t("auth.welcomeToTourPilot")}</h1>
               <p className="text-muted-foreground mt-1">
-                Select how you'd like to sign in
+                {t("auth.selectSignInMethod")}
               </p>
             </div>
 
@@ -206,9 +208,9 @@ function LoginPageContent() {
                   <Shield className="h-6 w-6 text-red-600" />
                 </div>
                 <div>
-                  <p className="font-semibold">Admin</p>
+                  <p className="font-semibold">{t("auth.admin")}</p>
                   <p className="text-sm text-muted-foreground">
-                    Full system access and management
+                    {t("auth.adminDesc")}
                   </p>
                 </div>
               </button>
@@ -222,9 +224,9 @@ function LoginPageContent() {
                   <Building2 className="h-6 w-6 text-amber-600" />
                 </div>
                 <div>
-                  <p className="font-semibold">Location Manager</p>
+                  <p className="font-semibold">{t("auth.locationManager")}</p>
                   <p className="text-sm text-muted-foreground">
-                    Manage your location's tours and staff
+                    {t("auth.locationManagerDesc")}
                   </p>
                 </div>
               </button>
@@ -238,9 +240,9 @@ function LoginPageContent() {
                   <Monitor className="h-6 w-6 text-emerald-600" />
                 </div>
                 <div>
-                  <p className="font-semibold">Front Desk</p>
+                  <p className="font-semibold">{t("auth.frontDesk")}</p>
                   <p className="text-sm text-muted-foreground">
-                    Handle bookings and customer check-ins
+                    {t("auth.frontDeskDesc")}
                   </p>
                 </div>
               </button>
@@ -254,9 +256,9 @@ function LoginPageContent() {
                   <Anchor className="h-6 w-6 text-blue-600" />
                 </div>
                 <div>
-                  <p className="font-semibold">Captain</p>
+                  <p className="font-semibold">{t("auth.captain")}</p>
                   <p className="text-sm text-muted-foreground">
-                    View assigned tours and check-in guests
+                    {t("auth.captainDesc")}
                   </p>
                 </div>
               </button>
@@ -270,9 +272,9 @@ function LoginPageContent() {
                   <Users className="h-6 w-6 text-teal-600" />
                 </div>
                 <div>
-                  <p className="font-semibold">Affiliate</p>
+                  <p className="font-semibold">{t("auth.affiliate")}</p>
                   <p className="text-sm text-muted-foreground">
-                    View your QR code and track referrals
+                    {t("auth.affiliateDesc")}
                   </p>
                 </div>
               </button>
@@ -286,9 +288,9 @@ function LoginPageContent() {
                   <User className="h-6 w-6 text-violet-600" />
                 </div>
                 <div>
-                  <p className="font-semibold">Customer</p>
+                  <p className="font-semibold">{t("auth.customer")}</p>
                   <p className="text-sm text-muted-foreground">
-                    View your bookings and sign waivers
+                    {t("auth.customerDesc")}
                   </p>
                 </div>
               </button>
@@ -296,13 +298,13 @@ function LoginPageContent() {
           </Card>
 
           <p className="text-center text-xs text-muted-foreground mt-6">
-            By signing in, you agree to our{" "}
+            {t("auth.bySigningIn")}{" "}
             <Link href="/terms" className="hover:underline">
-              Terms of Service
+              {t("auth.termsOfService")}
             </Link>{" "}
-            and{" "}
+            {t("auth.and")}{" "}
             <Link href="/privacy" className="hover:underline">
-              Privacy Policy
+              {t("auth.privacyPolicy")}
             </Link>
           </p>
         </div>
@@ -313,38 +315,38 @@ function LoginPageContent() {
   // Login form
   const loginConfig = {
     admin: {
-      title: "Admin Login",
-      subtitle: "Sign in with full system access",
+      title: t("auth.adminLogin"),
+      subtitle: t("auth.adminSubtitle"),
       color: "red",
       icon: Shield,
     },
     location_manager: {
-      title: "Location Manager Login",
-      subtitle: "Sign in to manage your location",
+      title: t("auth.locationManagerLogin"),
+      subtitle: t("auth.locationManagerSubtitle"),
       color: "amber",
       icon: Building2,
     },
     front_desk: {
-      title: "Front Desk Login",
-      subtitle: "Sign in to handle bookings",
+      title: t("auth.frontDeskLogin"),
+      subtitle: t("auth.frontDeskSubtitle"),
       color: "emerald",
       icon: Monitor,
     },
     captain: {
-      title: "Captain Login",
-      subtitle: "Sign in to view your assignments",
+      title: t("auth.captainLogin"),
+      subtitle: t("auth.captainSubtitle"),
       color: "blue",
       icon: Anchor,
     },
     affiliate: {
-      title: "Affiliate Login",
-      subtitle: "Sign in to view your QR code and earnings",
+      title: t("auth.affiliateLogin"),
+      subtitle: t("auth.affiliateSubtitle"),
       color: "teal",
       icon: Users,
     },
     customer: {
-      title: "Customer Login",
-      subtitle: "Sign in to view your bookings",
+      title: t("auth.customerLogin"),
+      subtitle: t("auth.customerSubtitle"),
       color: "violet",
       icon: User,
     },
@@ -375,7 +377,7 @@ function LoginPageContent() {
             }}
             className="text-sm text-muted-foreground hover:text-foreground mb-4 flex items-center gap-1"
           >
-            ← Back to account selection
+            ← {t("auth.backToSelection")}
           </button>
 
           <div className="text-center mb-6">
@@ -413,13 +415,13 @@ function LoginPageContent() {
 
           <form onSubmit={handleLogin} className="space-y-4">
             <div className="grid gap-2">
-              <Label htmlFor="email">Email</Label>
+              <Label htmlFor="email">{t("auth.email")}</Label>
               <div className="relative">
                 <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
                   id="email"
                   type="email"
-                  placeholder="you@example.com"
+                  placeholder={t("auth.emailPlaceholder")}
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   className="pl-10"
@@ -430,12 +432,12 @@ function LoginPageContent() {
 
             <div className="grid gap-2">
               <div className="flex items-center justify-between">
-                <Label htmlFor="password">Password</Label>
+                <Label htmlFor="password">{t("auth.password")}</Label>
                 <Link
                   href="/forgot-password"
                   className="text-sm text-primary hover:underline"
                 >
-                  Forgot password?
+                  {t("auth.forgotPassword")}
                 </Link>
               </div>
               <div className="relative">
@@ -443,7 +445,7 @@ function LoginPageContent() {
                 <Input
                   id="password"
                   type={showPassword ? "text" : "password"}
-                  placeholder="Enter your password"
+                  placeholder={t("auth.passwordPlaceholder")}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   className="pl-10 pr-10"
@@ -476,14 +478,14 @@ function LoginPageContent() {
               )}
               disabled={loading}
             >
-              {loading ? "Signing in..." : "Sign in"}
+              {loading ? t("auth.signingIn") : t("auth.signIn")}
             </Button>
           </form>
 
           <div className="relative my-6">
             <Separator />
             <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-card px-2 text-xs text-muted-foreground">
-              or continue with
+              {t("auth.orContinueWith")}
             </span>
           </div>
 
@@ -511,27 +513,27 @@ function LoginPageContent() {
                 d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
               />
             </svg>
-            Continue with Google
+            {t("auth.continueWithGoogle")}
           </Button>
 
           {loginType === "customer" && (
             <p className="text-center text-sm text-muted-foreground mt-6">
-              Don't have an account?{" "}
+              {t("auth.noAccount")}{" "}
               <Link href="/signup" className="text-primary hover:underline font-medium">
-                Sign up
+                {t("auth.signUp")}
               </Link>
             </p>
           )}
         </Card>
 
         <p className="text-center text-xs text-muted-foreground mt-6">
-          By signing in, you agree to our{" "}
+          {t("auth.bySigningIn")}{" "}
           <Link href="/terms" className="hover:underline">
-            Terms of Service
+            {t("auth.termsOfService")}
           </Link>{" "}
-          and{" "}
+          {t("auth.and")}{" "}
           <Link href="/privacy" className="hover:underline">
-            Privacy Policy
+            {t("auth.privacyPolicy")}
           </Link>
         </p>
       </div>

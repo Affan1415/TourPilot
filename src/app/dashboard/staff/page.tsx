@@ -309,16 +309,23 @@ export default function StaffPage() {
     try {
       const supabase = createClient();
 
+      const updateData: Record<string, any> = {
+        name: editingStaff.name,
+        email: editingStaff.email,
+        phone: editingStaff.phone || null,
+        role: editingStaff.role,
+        is_active: editingStaff.status === 'active',
+        reports_to: editingStaff.reports_to || null,
+      };
+
+      // Only admin can change location
+      if (currentUserRole === 'admin') {
+        updateData.location_id = editingStaff.location_id || null;
+      }
+
       const { error } = await supabase
         .from('staff')
-        .update({
-          name: editingStaff.name,
-          email: editingStaff.email,
-          phone: editingStaff.phone || null,
-          role: editingStaff.role,
-          is_active: editingStaff.status === 'active',
-          reports_to: editingStaff.reports_to || null,
-        })
+        .update(updateData)
         .eq('id', editingStaff.id);
 
       if (error) throw error;
@@ -648,6 +655,30 @@ export default function StaffPage() {
                     </Select>
                   </div>
                 </div>
+                {currentUserRole === 'admin' && (
+                  <div className="grid gap-2">
+                    <Label htmlFor="edit-location" className="flex items-center gap-2">
+                      <MapPin className="h-4 w-4" />
+                      Assigned Location
+                    </Label>
+                    <Select
+                      value={editingStaff.location_id || "none"}
+                      onValueChange={(value) => setEditingStaff({ ...editingStaff, location_id: value === "none" ? null : value })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select location" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">No location assigned</SelectItem>
+                        {locations.map((loc) => (
+                          <SelectItem key={loc.id} value={loc.id}>
+                            {loc.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
                 <div className="grid gap-2">
                   <Label htmlFor="edit-reports_to">Reports To (Manager)</Label>
                   <Select
@@ -817,6 +848,9 @@ export default function StaffPage() {
               <TableRow>
                 <TableHead>Staff Member</TableHead>
                 <TableHead>Role</TableHead>
+                {currentUserRole === 'admin' && !selectedLocation && (
+                  <TableHead>Location</TableHead>
+                )}
                 <TableHead>Contact</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead></TableHead>
@@ -825,7 +859,7 @@ export default function StaffPage() {
             <TableBody>
               {filteredStaff.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center py-8">
+                  <TableCell colSpan={currentUserRole === 'admin' && !selectedLocation ? 6 : 5} className="text-center py-8">
                     <p className="text-muted-foreground">No staff members match your search</p>
                   </TableCell>
                 </TableRow>
@@ -858,6 +892,18 @@ export default function StaffPage() {
                         {roleConfig[member.role]?.label || member.role}
                       </Badge>
                     </TableCell>
+                    {currentUserRole === 'admin' && !selectedLocation && (
+                      <TableCell>
+                        {member.location_id ? (
+                          <span className="text-sm flex items-center gap-1">
+                            <MapPin className="h-3 w-3 text-muted-foreground" />
+                            {locations.find(l => l.id === member.location_id)?.name || 'Unknown'}
+                          </span>
+                        ) : (
+                          <span className="text-sm text-muted-foreground">Not assigned</span>
+                        )}
+                      </TableCell>
+                    )}
                     <TableCell>
                       <div className="space-y-1">
                         <p className="text-sm flex items-center gap-1">

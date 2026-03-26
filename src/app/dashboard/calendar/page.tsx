@@ -63,6 +63,7 @@ import {
 import { cn } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/client";
 import { useLocation } from "@/lib/location/context";
+import { Checkbox } from "@/components/ui/checkbox";
 
 interface Tour {
   id: string;
@@ -95,7 +96,7 @@ interface Availability {
   staffName?: string;
 }
 
-type ViewMode = "week" | "day";
+type ViewMode = "week" | "day" | "boat";
 
 const timeSlots = [
   "06:00", "07:00", "08:00", "09:00", "10:00", "11:00",
@@ -123,6 +124,7 @@ export default function CalendarPage() {
   // Filters (local filters within the selected global location)
   const [selectedTour, setSelectedTour] = useState("all");
   const [selectedBoat, setSelectedBoat] = useState("all");
+  const [selectedBoats, setSelectedBoats] = useState<string[]>([]); // Multi-select for boat view
   const [selectedMeetingPoint, setSelectedMeetingPoint] = useState("all");
   const [filtersOpen, setFiltersOpen] = useState(false);
 
@@ -138,13 +140,11 @@ export default function CalendarPage() {
     return points.sort();
   }, [tours]);
 
-  const activeFilterCount = useMemo(() => {
-    let count = 0;
-    if (selectedTour !== "all") count++;
-    if (selectedBoat !== "all") count++;
-    if (selectedMeetingPoint !== "all") count++;
-    return count;
-  }, [selectedTour, selectedBoat, selectedMeetingPoint]);
+  // Filtered boats for boat view (multi-select)
+  const displayedBoats = useMemo(() => {
+    if (selectedBoats.length === 0) return boats;
+    return boats.filter(b => selectedBoats.includes(b.id));
+  }, [boats, selectedBoats]);
 
   const filteredAvailabilities = useMemo(() => {
     return availabilities.filter(a => {
@@ -154,6 +154,18 @@ export default function CalendarPage() {
       return true;
     });
   }, [availabilities, selectedTour, selectedBoat, selectedMeetingPoint]);
+
+  const activeFilterCount = useMemo(() => {
+    let count = 0;
+    if (selectedTour !== "all") count++;
+    if (viewMode === 'boat') {
+      if (selectedBoats.length > 0) count++;
+    } else {
+      if (selectedBoat !== "all") count++;
+    }
+    if (selectedMeetingPoint !== "all") count++;
+    return count;
+  }, [selectedTour, selectedBoat, selectedBoats, selectedMeetingPoint, viewMode]);
 
   // Stats
   const stats = useMemo(() => {
@@ -312,6 +324,7 @@ export default function CalendarPage() {
   const clearFilters = () => {
     setSelectedTour("all");
     setSelectedBoat("all");
+    setSelectedBoats([]);
     setSelectedMeetingPoint("all");
   };
 
@@ -324,6 +337,20 @@ export default function CalendarPage() {
     const dateStr = format(date, 'yyyy-MM-dd');
     return filteredAvailabilities
       .filter(a => a.date === dateStr)
+      .sort((a, b) => a.time.localeCompare(b.time));
+  };
+
+  const getSlotsForBoatAndTime = (boatId: string, date: Date, time: string) => {
+    const dateStr = format(date, 'yyyy-MM-dd');
+    return filteredAvailabilities.filter(
+      a => a.boatId === boatId && a.date === dateStr && a.time === time
+    );
+  };
+
+  const getSlotsForBoatAndDay = (boatId: string, date: Date) => {
+    const dateStr = format(date, 'yyyy-MM-dd');
+    return filteredAvailabilities
+      .filter(a => a.boatId === boatId && a.date === dateStr)
       .sort((a, b) => a.time.localeCompare(b.time));
   };
 
@@ -489,7 +516,7 @@ export default function CalendarPage() {
 
             {/* Actions */}
             <div className="flex gap-3">
-              <Link href={`/dashboard/bookings?availability=${slot.id}`} className="flex-1">
+              <Link href={`/dashboard/bookings?tour=${slot.tourId}&date=${slot.date}`} className="flex-1">
                 <Button variant="outline" className="w-full rounded-xl">
                   <Eye className="h-4 w-4 mr-2" />
                   View Bookings
@@ -551,6 +578,10 @@ export default function CalendarPage() {
                   <CalendarDays className="h-4 w-4" />
                   Day
                 </TabsTrigger>
+                <TabsTrigger value="boat" className="rounded-lg gap-1.5">
+                  <Anchor className="h-4 w-4" />
+                  Boats
+                </TabsTrigger>
               </TabsList>
             </Tabs>
 
@@ -601,21 +632,58 @@ export default function CalendarPage() {
                   <div className="space-y-2">
                     <label className="text-sm font-medium flex items-center gap-2">
                       <Anchor className="h-4 w-4 text-muted-foreground" />
-                      Boat
+                      {viewMode === 'boat' ? 'Select Boats to Display' : 'Boat'}
                     </label>
-                    <Select value={selectedBoat} onValueChange={setSelectedBoat}>
-                      <SelectTrigger className="rounded-xl">
-                        <SelectValue placeholder="All Boats" />
-                      </SelectTrigger>
-                      <SelectContent className="rounded-xl">
-                        <SelectItem value="all">All Boats</SelectItem>
+                    {viewMode === 'boat' ? (
+                      /* Multi-select for boat view */
+                      <div className="space-y-2 max-h-48 overflow-y-auto border rounded-xl p-2">
+                        <div className="flex items-center space-x-2 pb-2 border-b">
+                          <Checkbox
+                            id="all-boats"
+                            checked={selectedBoats.length === 0}
+                            onCheckedChange={(checked) => {
+                              if (checked) setSelectedBoats([]);
+                            }}
+                          />
+                          <label htmlFor="all-boats" className="text-sm font-medium cursor-pointer">
+                            All Boats
+                          </label>
+                        </div>
                         {boats.map((boat) => (
-                          <SelectItem key={boat.id} value={boat.id}>
-                            {boat.name} ({boat.capacity} pax)
-                          </SelectItem>
+                          <div key={boat.id} className="flex items-center space-x-2">
+                            <Checkbox
+                              id={`boat-${boat.id}`}
+                              checked={selectedBoats.includes(boat.id)}
+                              onCheckedChange={(checked) => {
+                                if (checked) {
+                                  setSelectedBoats(prev => [...prev, boat.id]);
+                                } else {
+                                  setSelectedBoats(prev => prev.filter(id => id !== boat.id));
+                                }
+                              }}
+                            />
+                            <label htmlFor={`boat-${boat.id}`} className="text-sm cursor-pointer flex-1">
+                              {boat.name} ({boat.capacity} pax)
+                            </label>
+                          </div>
                         ))}
-                      </SelectContent>
-                    </Select>
+                      </div>
+                    ) : (
+                      /* Single select for week/day view */
+                      <Select value={selectedBoat} onValueChange={setSelectedBoat}>
+                        <SelectTrigger className="rounded-xl">
+                          <SelectValue placeholder="All Boats" />
+                        </SelectTrigger>
+                        <SelectContent className="rounded-xl">
+                          <SelectItem value="all">All Boats</SelectItem>
+                          {boats.map((boat) => (
+                            <SelectItem key={boat.id} value={boat.id}>
+                              {boat.name} ({boat.capacity} pax)
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    )}
                   </div>
 
                   {/* Tour Filter */}
@@ -656,11 +724,11 @@ export default function CalendarPage() {
         {/* Quick Stats */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-6">
           <div className="p-3 bg-sky rounded-xl">
-            <p className="text-xs text-sky-dark/70">Today's Tours</p>
+            <p className="text-xs text-sky-dark/70">Today&apos;s Tours</p>
             <p className="text-xl font-bold text-sky-dark">{stats.todaySlots}</p>
           </div>
           <div className="p-3 bg-mint rounded-xl">
-            <p className="text-xs text-mint-dark/70">Today's Guests</p>
+            <p className="text-xs text-mint-dark/70">Today&apos;s Guests</p>
             <p className="text-xl font-bold text-mint-dark">{stats.todayGuests}</p>
           </div>
           <div className="p-3 bg-lavender rounded-xl">
@@ -739,28 +807,146 @@ export default function CalendarPage() {
               </Link>
             </div>
           </div>
+        ) : viewMode === 'boat' ? (
+          /* Boat View - Shows boats as columns */
+          <div className="min-w-[900px]">
+            {displayedBoats.length === 0 ? (
+              <div className="h-64 flex items-center justify-center">
+                <div className="text-center">
+                  <Anchor className="h-12 w-12 text-muted-foreground/30 mx-auto mb-3" />
+                  <p className="font-medium">No boats available</p>
+                  <p className="text-sm text-muted-foreground">Add boats to your fleet to use this view</p>
+                </div>
+              </div>
+            ) : (
+              <>
+                {/* Date selector for boat view */}
+                <div className="flex items-center justify-center gap-3 mb-4">
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={() => navigateDay('prev')}
+                    className="rounded-xl"
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                  </Button>
+                  <div className="px-4 py-2 bg-muted rounded-xl font-medium">
+                    {format(selectedDay, "EEEE, MMMM d, yyyy")}
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={() => navigateDay('next')}
+                    className="rounded-xl"
+                  >
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
+                </div>
+
+                {/* Boat Headers */}
+                <div className="grid gap-1.5 mb-2" style={{ gridTemplateColumns: `80px repeat(${displayedBoats.length}, 1fr)` }}>
+                  <div className="p-2 text-sm font-medium text-muted-foreground">
+                    Time
+                  </div>
+                  {displayedBoats.map((boat) => {
+                    const boatSlots = getSlotsForBoatAndDay(boat.id, selectedDay);
+                    const boatGuests = boatSlots.reduce((sum, s) => sum + s.booked, 0);
+                    const boatCapacity = boatSlots.reduce((sum, s) => sum + s.capacity, 0);
+
+                    return (
+                      <div
+                        key={boat.id}
+                        className="p-3 text-center bg-gradient-to-br from-sky to-lavender rounded-xl"
+                      >
+                        <div className="flex items-center justify-center gap-1.5 mb-1">
+                          <Anchor className="h-4 w-4 text-sky-dark" />
+                          <p className="font-bold text-sky-dark">{boat.name}</p>
+                        </div>
+                        <p className="text-xs text-sky-dark/70">
+                          {boat.capacity} pax • {boat.boat_type}
+                        </p>
+                        <p className="text-xs text-sky-dark/70 mt-1">
+                          {boatSlots.length} tours • {boatGuests}/{boatCapacity} guests
+                        </p>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* Time Slots by Boat */}
+                <div className="grid gap-1.5" style={{ gridTemplateColumns: `80px repeat(${displayedBoats.length}, 1fr)` }}>
+                  {timeSlots.map((time) => {
+                    const hasAnySlots = displayedBoats.some(boat =>
+                      getSlotsForBoatAndTime(boat.id, selectedDay, time).length > 0
+                    );
+
+                    return (
+                    <React.Fragment key={time}>
+                      {/* Time Label */}
+                      <div className={cn(
+                        "text-sm text-muted-foreground text-right pr-4 transition-all",
+                        hasAnySlots ? "p-2" : "py-1 px-2 text-xs opacity-50"
+                      )}>
+                        {time}
+                      </div>
+
+                      {/* Boat Cells */}
+                      {displayedBoats.map((boat) => {
+                        const slots = getSlotsForBoatAndTime(boat.id, selectedDay, time);
+
+                        return (
+                          <div
+                            key={`${boat.id}-${time}`}
+                            className={cn(
+                              "bg-card border border-border/50 rounded-xl transition-all",
+                              hasAnySlots ? "min-h-[60px] p-1" : "h-6 opacity-50"
+                            )}
+                          >
+                            {slots.length > 0 && (
+                              <div className="space-y-1">
+                                {slots.map(slot => (
+                                  <SlotCard key={slot.id} slot={slot} compact={slots.length > 1} />
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </React.Fragment>
+                    );
+                  })}
+                </div>
+              </>
+            )}
+          </div>
         ) : viewMode === 'day' ? (
           /* Day View */
           <div className="max-w-3xl mx-auto">
-            <div className="space-y-2">
+            <div className="space-y-1">
               {timeSlots.map(time => {
                 const slots = getSlotsForTime(selectedDay, time);
+                const hasSlots = slots.length > 0;
 
                 return (
-                  <div key={time} className="flex gap-4">
-                    <div className="w-16 text-sm text-muted-foreground text-right pt-2 shrink-0">
+                  <div key={time} className={cn(
+                    "flex gap-4 transition-all",
+                    !hasSlots && "opacity-50"
+                  )}>
+                    <div className={cn(
+                      "w-16 text-sm text-muted-foreground text-right shrink-0 transition-all",
+                      hasSlots ? "pt-2" : "py-1 text-xs"
+                    )}>
                       {time}
                     </div>
-                    <div className="flex-1 min-h-[70px] p-2 bg-card border border-border/50 rounded-xl">
-                      {slots.length > 0 ? (
+                    <div className={cn(
+                      "flex-1 bg-card border border-border/50 rounded-xl transition-all",
+                      hasSlots ? "min-h-[70px] p-2" : "h-6"
+                    )}>
+                      {hasSlots && (
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                           {slots.map(slot => (
                             <SlotCard key={slot.id} slot={slot} />
                           ))}
-                        </div>
-                      ) : (
-                        <div className="h-full flex items-center justify-center text-muted-foreground/50 text-sm">
-                          No tours scheduled
                         </div>
                       )}
                     </div>
@@ -808,10 +994,16 @@ export default function CalendarPage() {
 
             {/* Time Slots */}
             <div className="grid grid-cols-8 gap-1.5">
-              {timeSlots.map((time) => (
+              {timeSlots.map((time) => {
+                const hasAnySlots = calendarDays.some(day => getSlotsForTime(day, time).length > 0);
+
+                return (
                 <React.Fragment key={time}>
                   {/* Time Label */}
-                  <div className="p-2 text-sm text-muted-foreground text-right pr-4">
+                  <div className={cn(
+                    "text-sm text-muted-foreground text-right pr-4 transition-all",
+                    hasAnySlots ? "p-2" : "py-1 px-2 text-xs opacity-50"
+                  )}>
                     {time}
                   </div>
 
@@ -822,7 +1014,10 @@ export default function CalendarPage() {
                     return (
                       <div
                         key={`${day.toISOString()}-${time}`}
-                        className="min-h-[60px] p-1 bg-card border border-border/50 rounded-xl"
+                        className={cn(
+                          "bg-card border border-border/50 rounded-xl transition-all",
+                          hasAnySlots ? "min-h-[60px] p-1" : "h-6 opacity-50"
+                        )}
                       >
                         {slots.length > 0 && (
                           <div className="space-y-1">
@@ -840,7 +1035,8 @@ export default function CalendarPage() {
                     );
                   })}
                 </React.Fragment>
-              ))}
+                );
+              })}
             </div>
           </div>
         )}

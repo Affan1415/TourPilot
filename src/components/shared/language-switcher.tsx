@@ -28,17 +28,17 @@ export function LanguageSwitcher({
     return (
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button variant="ghost" size="icon" className="h-8 w-8">
-            <Globe className="h-4 w-4" />
+          <Button variant="outline" size="icon" className="rounded-xl border-border hover:border-primary hover:text-primary">
+            <span className="text-base">{localeFlags[locale]}</span>
             <span className="sr-only">Change language</span>
           </Button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="end">
+        <DropdownMenuContent align="end" className="rounded-xl">
           {locales.map((loc) => (
             <DropdownMenuItem
               key={loc}
               onClick={() => setLocale(loc)}
-              className={locale === loc ? 'bg-accent' : ''}
+              className={`rounded-lg cursor-pointer ${locale === loc ? 'bg-accent' : ''}`}
             >
               {showFlag && <span className="mr-2">{localeFlags[loc]}</span>}
               {localeNames[loc]}

@@ -8,13 +8,11 @@ const ROUTE_PERMISSIONS: Record<string, UserRole[]> = {
   // Admin-only routes
   '/dashboard/settings': ['admin'],
   '/dashboard/locations': ['admin'],
-  '/dashboard/super-admin': ['admin'],
   '/dashboard/audit': ['admin'],
 
   // Admin and Location Manager routes
   '/dashboard/tours': ['admin', 'location_manager'],
   '/dashboard/staff': ['admin', 'location_manager'],
-  '/dashboard/reports': ['admin', 'location_manager'],
   '/dashboard/communications': ['admin', 'location_manager'],
   '/dashboard/analytics': ['admin', 'location_manager'],
   '/dashboard/pricing': ['admin', 'location_manager'],

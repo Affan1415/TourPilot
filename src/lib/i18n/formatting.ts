@@ -4,7 +4,10 @@ import { Locale } from './index';
 // Currency formatting
 const currencyFormats: Record<Locale, Intl.NumberFormatOptions> = {
   en: { style: 'currency', currency: 'USD' },
-  es: { style: 'currency', currency: 'USD' }, // Using USD for consistency, can be changed per locale
+  nl: { style: 'currency', currency: 'EUR' },
+  es: { style: 'currency', currency: 'USD' },
+  de: { style: 'currency', currency: 'EUR' },
+  fr: { style: 'currency', currency: 'EUR' },
 };
 
 export function formatCurrency(amount: number, locale: Locale): string {
@@ -59,7 +62,10 @@ export function formatDateTime(
 // Relative time formatting
 const relativeTimeFormat: Record<Locale, Intl.RelativeTimeFormat> = {
   en: new Intl.RelativeTimeFormat('en', { numeric: 'auto' }),
+  nl: new Intl.RelativeTimeFormat('nl', { numeric: 'auto' }),
   es: new Intl.RelativeTimeFormat('es', { numeric: 'auto' }),
+  de: new Intl.RelativeTimeFormat('de', { numeric: 'auto' }),
+  fr: new Intl.RelativeTimeFormat('fr', { numeric: 'auto' }),
 };
 
 type TimeUnit = 'second' | 'minute' | 'hour' | 'day' | 'week' | 'month' | 'year';
@@ -90,29 +96,30 @@ export function formatRelativeTime(date: Date | string | number, locale: Locale)
 }
 
 // Duration formatting (e.g., "2 hours 30 minutes")
+const durationLabels: Record<Locale, { hour: string; hours: string; minute: string; minutes: string; zero: string }> = {
+  en: { hour: 'hour', hours: 'hours', minute: 'minute', minutes: 'minutes', zero: '0 minutes' },
+  nl: { hour: 'uur', hours: 'uur', minute: 'minuut', minutes: 'minuten', zero: '0 minuten' },
+  es: { hour: 'hora', hours: 'horas', minute: 'minuto', minutes: 'minutos', zero: '0 minutos' },
+  de: { hour: 'Stunde', hours: 'Stunden', minute: 'Minute', minutes: 'Minuten', zero: '0 Minuten' },
+  fr: { hour: 'heure', hours: 'heures', minute: 'minute', minutes: 'minutes', zero: '0 minutes' },
+};
+
 export function formatDuration(minutes: number, locale: Locale): string {
   const hours = Math.floor(minutes / 60);
   const mins = minutes % 60;
+  const labels = durationLabels[locale];
 
   const parts: string[] = [];
 
   if (hours > 0) {
-    if (locale === 'es') {
-      parts.push(`${hours} ${hours === 1 ? 'hora' : 'horas'}`);
-    } else {
-      parts.push(`${hours} ${hours === 1 ? 'hour' : 'hours'}`);
-    }
+    parts.push(`${hours} ${hours === 1 ? labels.hour : labels.hours}`);
   }
 
   if (mins > 0) {
-    if (locale === 'es') {
-      parts.push(`${mins} ${mins === 1 ? 'minuto' : 'minutos'}`);
-    } else {
-      parts.push(`${mins} ${mins === 1 ? 'minute' : 'minutes'}`);
-    }
+    parts.push(`${mins} ${mins === 1 ? labels.minute : labels.minutes}`);
   }
 
-  return parts.join(' ') || (locale === 'es' ? '0 minutos' : '0 minutes');
+  return parts.join(' ') || labels.zero;
 }
 
 // Short duration (e.g., "2h 30m")
@@ -141,7 +148,10 @@ export function formatList(items: string[], locale: Locale, type: 'conjunction' 
 // Plural rules
 const pluralRules: Record<Locale, Intl.PluralRules> = {
   en: new Intl.PluralRules('en'),
+  nl: new Intl.PluralRules('nl'),
   es: new Intl.PluralRules('es'),
+  de: new Intl.PluralRules('de'),
+  fr: new Intl.PluralRules('fr'),
 };
 
 export function getPluralForm(count: number, locale: Locale): Intl.LDMLPluralRule {

@@ -12,6 +12,7 @@ import {
   Text,
 } from '@react-email/components';
 import * as React from 'react';
+import { t, Locale, defaultLocale } from '@/lib/i18n';
 
 interface WaiverRequestEmailProps {
   guestName: string;
@@ -22,6 +23,7 @@ interface WaiverRequestEmailProps {
   waiverUrl: string;
   companyName?: string;
   companyPhone?: string;
+  locale?: Locale;
 }
 
 export const WaiverRequestEmail = ({
@@ -33,8 +35,13 @@ export const WaiverRequestEmail = ({
   waiverUrl = 'https://example.com/waiver',
   companyName = 'TourPilot',
   companyPhone = '(555) 123-4567',
+  locale = defaultLocale,
 }: WaiverRequestEmailProps) => {
-  const previewText = `Please sign your waiver for ${tourName}`;
+  // Translation helper for this email
+  const e = (key: string, params?: Record<string, string | number>) =>
+    t(locale, `email.waiverRequest.${key}`, params);
+
+  const previewText = e('subject', { tourName });
 
   return (
     <Html>
@@ -54,63 +61,60 @@ export const WaiverRequestEmail = ({
 
           {/* Content */}
           <Section style={content}>
-            <Heading style={title}>Digital Waiver Required</Heading>
+            <Heading style={title}>{e('title')}</Heading>
 
-            <Text style={paragraph}>Hi {guestName},</Text>
+            <Text style={paragraph}>{e('greeting', { name: guestName })}</Text>
 
             <Text style={paragraph}>
-              {customerName} has booked a tour and listed you as a guest. Before the tour,
-              we need you to complete a quick digital waiver.
+              {e('message', { customerName })}
             </Text>
           </Section>
 
           {/* Tour Info */}
           <Section style={tourInfo}>
-            <Text style={tourLabel}>Your upcoming tour:</Text>
+            <Text style={tourLabel}>{e('yourUpcomingTour')}</Text>
             <Heading style={tourNameStyle}>{tourName}</Heading>
             <Text style={tourDetails}>
-              📅 {tourDate} at {tourTime}
+              📅 {e('dateTime', { date: tourDate, time: tourTime })}
             </Text>
           </Section>
 
           {/* CTA */}
           <Section style={ctaSection}>
             <Button style={primaryButton} href={waiverUrl}>
-              Sign Waiver Now
+              {e('signWaiverNow')}
             </Button>
             <Text style={ctaNote}>
-              Takes less than 2 minutes to complete
+              {e('takesLessThan')}
             </Text>
           </Section>
 
           {/* Why Sign */}
           <Section style={whySection}>
-            <Heading style={whyTitle}>Why do I need to sign?</Heading>
+            <Heading style={whyTitle}>{e('whySign')}</Heading>
             <Text style={whyText}>
-              The waiver ensures your safety and allows you to participate in the tour.
-              It covers standard liability release and acknowledgment of activity risks.
-              All guests must sign before boarding.
+              {e('whySignMessage')}
             </Text>
           </Section>
 
           {/* Steps */}
           <Section style={stepsSection}>
-            <Heading style={stepsTitle}>How it works:</Heading>
+            <Heading style={stepsTitle}>{e('howItWorks')}</Heading>
             <div style={step}>
               <Text style={stepNumber}>1</Text>
-              <Text style={stepText}>Click the button above</Text>
+              <Text style={stepText}>{e('step1')}</Text>
             </div>
             <div style={step}>
               <Text style={stepNumber}>2</Text>
-              <Text style={stepText}>Review the waiver terms</Text>
+              <Text style={stepText}>{e('step2')}</Text>
             </div>
             <div style={step}>
               <Text style={stepNumber}>3</Text>
-              <Text style={stepText}>Sign with your finger or mouse</Text>
+              <Text style={stepText}>{e('step3')}</Text>
             </div>
             <div style={step}>
               <Text style={stepNumber}>4</Text>
-              <Text style={stepText}>You're done! 🎉</Text>
+              <Text style={stepText}>{e('step4')} 🎉</Text>
             </div>
           </Section>
 
@@ -119,14 +123,13 @@ export const WaiverRequestEmail = ({
           {/* Footer */}
           <Section style={footer}>
             <Text style={footerText}>
-              Questions? Contact us at {companyPhone}
+              {e('questions', { phone: companyPhone })}
             </Text>
             <Text style={footerText}>
               {companyName} | 123 Marina Drive, Coastal City, FL 33139
             </Text>
             <Text style={footerSmall}>
-              If you were not expecting this email or did not book this tour,
-              please disregard this message.
+              {e('notExpectingEmail')}
             </Text>
           </Section>
         </Container>

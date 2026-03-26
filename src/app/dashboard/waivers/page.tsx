@@ -7,7 +7,6 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Checkbox } from '@/components/ui/checkbox';
 import {
   Dialog,
   DialogContent,
@@ -33,7 +32,6 @@ import {
 } from '@/components/ui/table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Switch } from '@/components/ui/switch';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import {
   FileText,
   Plus,
@@ -45,21 +43,13 @@ import {
   CheckCircle,
   Clock,
   AlertCircle,
-  History,
   FileSignature,
-  Ship,
   Loader2,
+  MapPin,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { createClient } from '@/lib/supabase/client';
 import { useLocation } from '@/lib/location/context';
-import { MapPin } from 'lucide-react';
-
-interface Tour {
-  id: string;
-  name: string;
-  status: string;
-}
 
 interface WaiverTemplate {
   id: string;
@@ -67,7 +57,6 @@ interface WaiverTemplate {
   content: string;
   version: number;
   is_active: boolean;
-  tour_ids: string[] | null;
   created_at: string;
   updated_at: string;
   usage_count: number;
@@ -100,20 +89,16 @@ interface WaiverRecord {
 export default function WaiversPage() {
   const { selectedLocation } = useLocation();
   const [templates, setTemplates] = useState<WaiverTemplate[]>([]);
-  const [tours, setTours] = useState<Tour[]>([]);
   const [waiverRecords, setWaiverRecords] = useState<WaiverRecord[]>([]);
   const [loading, setLoading] = useState(true);
-  const [loadingTours, setLoadingTours] = useState(true);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
   const [selectedTemplate, setSelectedTemplate] = useState<WaiverTemplate | null>(null);
   const [saving, setSaving] = useState(false);
-  const [newTemplate, setNewTemplate] = useState<{ name: string; content: string; tour_ids: string[]; applyToAll: boolean }>({
+  const [newTemplate, setNewTemplate] = useState<{ name: string; content: string }>({
     name: '',
     content: '',
-    tour_ids: [],
-    applyToAll: true
   });
 
   const supabase = createClient();
@@ -128,7 +113,6 @@ export default function WaiversPage() {
     try {
       await Promise.all([
         loadTemplates(),
-        loadTours(),
         loadWaiverRecords()
       ]);
     } finally {
@@ -138,67 +122,16 @@ export default function WaiversPage() {
 
   const loadTemplates = async () => {
     try {
-      // First, fetch all templates
       const { data, error } = await supabase
         .from('waiver_templates')
         .select('*')
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-
-      // If a location is selected, filter templates that apply to tours in this location
-      if (selectedLocation?.id && data) {
-        // Get tour IDs for the selected location
-        const { data: locationTours } = await supabase
-          .from('tours')
-          .select('id')
-          .eq('location_id', selectedLocation.id);
-
-        const locationTourIds = new Set(locationTours?.map(t => t.id) || []);
-
-        // Filter templates:
-        // - Templates with null tour_ids (apply to all tours) are included
-        // - Templates with tour_ids that overlap with location tours are included
-        const filteredTemplates = data.filter(template => {
-          if (!template.tour_ids || template.tour_ids.length === 0) {
-            // Applies to all tours - include it
-            return true;
-          }
-          // Check if any of the template's tour_ids belong to this location
-          return template.tour_ids.some((tourId: string) => locationTourIds.has(tourId));
-        });
-
-        setTemplates(filteredTemplates);
-      } else {
-        setTemplates(data || []);
-      }
+      setTemplates(data || []);
     } catch (error) {
       console.error('Error loading templates:', error);
       toast.error('Failed to load waiver templates');
-    }
-  };
-
-  const loadTours = async () => {
-    setLoadingTours(true);
-    try {
-      let query = supabase
-        .from('tours')
-        .select('id, name, status')
-        .eq('status', 'active')
-        .order('name');
-
-      if (selectedLocation?.id) {
-        query = query.eq('location_id', selectedLocation.id);
-      }
-
-      const { data, error } = await query;
-
-      if (error) throw error;
-      setTours(data || []);
-    } catch (error) {
-      console.error('Error loading tours:', error);
-    } finally {
-      setLoadingTours(false);
     }
   };
 
@@ -259,33 +192,14 @@ export default function WaiversPage() {
     }
   };
 
-  const getTourNames = (tourIds: string[] | null): string => {
-    if (!tourIds || tourIds.length === 0) return 'All Tours';
-    const tourNames = tourIds
-      .map(id => tours.find(t => t.id === id)?.name)
-      .filter(Boolean);
-    if (tourNames.length === 0) return 'All Tours';
-    if (tourNames.length <= 2) return tourNames.join(', ');
-    return `${tourNames.slice(0, 2).join(', ')} +${tourNames.length - 2} more`;
-  };
-
   const handleCreateTemplate = async () => {
     if (!newTemplate.name || !newTemplate.content) {
       toast.error('Please fill in all fields');
       return;
     }
 
-    // Validate tour selection if not applying to all
-    if (!newTemplate.applyToAll && newTemplate.tour_ids.length === 0) {
-      toast.error('Please select at least one tour or apply to all tours');
-      return;
-    }
-
     setSaving(true);
     try {
-      // Determine tour_ids to save
-      const tourIdsToSave = newTemplate.applyToAll ? null : newTemplate.tour_ids;
-
       const { data, error } = await supabase
         .from('waiver_templates')
         .insert({
@@ -293,7 +207,6 @@ export default function WaiversPage() {
           content: newTemplate.content,
           version: 1,
           is_active: true,
-          tour_ids: tourIdsToSave,
         })
         .select()
         .single();
@@ -301,12 +214,10 @@ export default function WaiversPage() {
       if (error) throw error;
 
       setTemplates([{ ...data, usage_count: 0, signed_count: 0 }, ...templates]);
-      setNewTemplate({ name: '', content: '', tour_ids: [], applyToAll: true });
+      setNewTemplate({ name: '', content: '' });
       setIsCreateOpen(false);
       toast.success('Waiver template created', {
-        description: tourIdsToSave
-          ? `Assigned to ${tourIdsToSave.length} tour(s)`
-          : 'Applies to all tours'
+        description: 'Assign to tours from the Tours page'
       });
     } catch (error) {
       console.error('Error creating template:', error);
@@ -326,7 +237,6 @@ export default function WaiversPage() {
         .update({
           name: selectedTemplate.name,
           content: selectedTemplate.content,
-          tour_ids: selectedTemplate.tour_ids,
           version: selectedTemplate.version + 1,
           updated_at: new Date().toISOString(),
         })
@@ -378,7 +288,6 @@ export default function WaiversPage() {
           content: template.content,
           version: 1,
           is_active: false,
-          tour_ids: template.tour_ids,
         })
         .select()
         .single();
@@ -479,75 +388,6 @@ export default function WaiversPage() {
                 />
               </div>
 
-              {/* Tour Selection */}
-              <div className="space-y-3">
-                <Label>Apply to Tours</Label>
-                <div className="flex items-center space-x-2">
-                  <Checkbox
-                    id="apply-all"
-                    checked={newTemplate.applyToAll}
-                    onCheckedChange={(checked) => setNewTemplate({
-                      ...newTemplate,
-                      applyToAll: checked as boolean,
-                      tour_ids: checked ? [] : newTemplate.tour_ids
-                    })}
-                  />
-                  <label htmlFor="apply-all" className="text-sm font-medium cursor-pointer">
-                    Apply to all tours
-                  </label>
-                </div>
-
-                {!newTemplate.applyToAll && (
-                  <div className="border rounded-lg p-3 bg-muted/30">
-                    <p className="text-xs text-muted-foreground mb-3">
-                      Select which tours require this waiver:
-                    </p>
-                    {loadingTours ? (
-                      <div className="flex items-center justify-center py-4">
-                        <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-                      </div>
-                    ) : tours.length === 0 ? (
-                      <p className="text-sm text-muted-foreground">No active tours found</p>
-                    ) : (
-                      <ScrollArea className="h-[150px]">
-                        <div className="space-y-2">
-                          {tours.map((tour) => (
-                            <div key={tour.id} className="flex items-center space-x-2">
-                              <Checkbox
-                                id={`tour-${tour.id}`}
-                                checked={newTemplate.tour_ids.includes(tour.id)}
-                                onCheckedChange={(checked) => {
-                                  if (checked) {
-                                    setNewTemplate({
-                                      ...newTemplate,
-                                      tour_ids: [...newTemplate.tour_ids, tour.id]
-                                    });
-                                  } else {
-                                    setNewTemplate({
-                                      ...newTemplate,
-                                      tour_ids: newTemplate.tour_ids.filter(id => id !== tour.id)
-                                    });
-                                  }
-                                }}
-                              />
-                              <label htmlFor={`tour-${tour.id}`} className="text-sm cursor-pointer flex items-center gap-2">
-                                <Ship className="h-4 w-4 text-muted-foreground" />
-                                {tour.name}
-                              </label>
-                            </div>
-                          ))}
-                        </div>
-                      </ScrollArea>
-                    )}
-                    {!newTemplate.applyToAll && newTemplate.tour_ids.length === 0 && (
-                      <p className="text-xs text-amber-600 mt-2">
-                        Please select at least one tour, or check "Apply to all tours"
-                      </p>
-                    )}
-                  </div>
-                )}
-              </div>
-
               <div className="space-y-2">
                 <Label htmlFor="content">Waiver Content</Label>
                 <p className="text-xs text-muted-foreground">
@@ -561,12 +401,16 @@ export default function WaiversPage() {
                   className="min-h-[250px] font-mono text-sm"
                 />
               </div>
+
+              <div className="bg-muted/50 rounded-lg p-3 text-sm text-muted-foreground">
+                <p>After creating this template, assign it to tours from the Tours page.</p>
+              </div>
             </div>
             <DialogFooter>
               <Button variant="outline" onClick={() => setIsCreateOpen(false)}>Cancel</Button>
               <Button
                 onClick={handleCreateTemplate}
-                disabled={saving || (!newTemplate.applyToAll && newTemplate.tour_ids.length === 0)}
+                disabled={saving}
               >
                 {saving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
                 Create Template
@@ -730,10 +574,6 @@ export default function WaiversPage() {
                   </CardHeader>
                   <CardContent>
                     <div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground">
-                      <div className="flex items-center gap-1.5 bg-muted/50 px-2 py-1 rounded-md">
-                        <Ship className="h-4 w-4" />
-                        <span className="font-medium">{getTourNames(template.tour_ids)}</span>
-                      </div>
                       <div className="flex items-center gap-1">
                         <FileText className="h-4 w-4" />
                         <span>{(template.usage_count || 0).toLocaleString()} uses</span>
@@ -855,75 +695,6 @@ export default function WaiversPage() {
                 />
               </div>
 
-              {/* Tour Selection */}
-              <div className="space-y-3">
-                <Label>Apply to Tours</Label>
-                <div className="flex items-center space-x-2">
-                  <Checkbox
-                    id="edit-apply-all"
-                    checked={!selectedTemplate.tour_ids || selectedTemplate.tour_ids.length === 0}
-                    onCheckedChange={(checked) => setSelectedTemplate({
-                      ...selectedTemplate,
-                      tour_ids: checked ? null : []
-                    })}
-                  />
-                  <label htmlFor="edit-apply-all" className="text-sm font-medium cursor-pointer">
-                    Apply to all tours
-                  </label>
-                </div>
-
-                {selectedTemplate.tour_ids !== null && (
-                  <div className="border rounded-lg p-3 bg-muted/30">
-                    <p className="text-xs text-muted-foreground mb-3">
-                      Select which tours require this waiver:
-                    </p>
-                    {loadingTours ? (
-                      <div className="flex items-center justify-center py-4">
-                        <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-                      </div>
-                    ) : tours.length === 0 ? (
-                      <p className="text-sm text-muted-foreground">No active tours found</p>
-                    ) : (
-                      <ScrollArea className="h-[150px]">
-                        <div className="space-y-2">
-                          {tours.map((tour) => (
-                            <div key={tour.id} className="flex items-center space-x-2">
-                              <Checkbox
-                                id={`edit-tour-${tour.id}`}
-                                checked={selectedTemplate.tour_ids?.includes(tour.id) || false}
-                                onCheckedChange={(checked) => {
-                                  const currentIds = selectedTemplate.tour_ids || [];
-                                  if (checked) {
-                                    setSelectedTemplate({
-                                      ...selectedTemplate,
-                                      tour_ids: [...currentIds, tour.id]
-                                    });
-                                  } else {
-                                    setSelectedTemplate({
-                                      ...selectedTemplate,
-                                      tour_ids: currentIds.filter(id => id !== tour.id)
-                                    });
-                                  }
-                                }}
-                              />
-                              <label htmlFor={`edit-tour-${tour.id}`} className="text-sm cursor-pointer flex items-center gap-2">
-                                <Ship className="h-4 w-4 text-muted-foreground" />
-                                {tour.name}
-                              </label>
-                            </div>
-                          ))}
-                        </div>
-                      </ScrollArea>
-                    )}
-                    {selectedTemplate.tour_ids && selectedTemplate.tour_ids.length === 0 && (
-                      <p className="text-xs text-amber-600 mt-2">
-                        Please select at least one tour, or check "Apply to all tours"
-                      </p>
-                    )}
-                  </div>
-                )}
-              </div>
-
               <div className="space-y-2">
                 <Label htmlFor="edit-content">Waiver Content</Label>
                 <Textarea
@@ -933,13 +704,17 @@ export default function WaiversPage() {
                   className="min-h-[250px] font-mono text-sm"
                 />
               </div>
+
+              <div className="bg-muted/50 rounded-lg p-3 text-sm text-muted-foreground">
+                <p>Assign this waiver to tours from the Tours page.</p>
+              </div>
             </div>
           )}
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsEditOpen(false)}>Cancel</Button>
             <Button
               onClick={handleUpdateTemplate}
-              disabled={saving || (selectedTemplate?.tour_ids !== null && selectedTemplate?.tour_ids?.length === 0)}
+              disabled={saving}
             >
               {saving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
               Save as New Version

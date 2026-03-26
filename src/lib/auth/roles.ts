@@ -46,12 +46,10 @@ export function isCustomerRole(role: UserRole | null): boolean {
 export const ROUTE_ACCESS: Record<string, UserRole[]> = {
   // Admin-only routes
   '/dashboard/settings': ['admin'],
-  '/dashboard/super-admin': ['admin'],
 
   // Admin and Location Manager routes (front_desk cannot access these)
   '/dashboard/tours': ['admin', 'location_manager'],
   '/dashboard/staff': ['admin', 'location_manager'],
-  '/dashboard/reports': ['admin', 'location_manager'],
   '/dashboard/communications': ['admin', 'location_manager'],
   '/dashboard/customers': ['admin', 'location_manager'],
   '/dashboard/reviews': ['admin', 'location_manager'],

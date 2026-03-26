@@ -5,7 +5,6 @@ import {
   Locale,
   defaultLocale,
   locales,
-  translations,
   detectLocale,
   setLocale as saveLocale,
   t as translate,
@@ -13,7 +12,7 @@ import {
 
 interface I18nContextType {
   locale: Locale;
-  setLocale: (locale: Locale) => void;
+  setLocale: (locale: Locale, syncToServer?: boolean) => void;
   t: (key: string, params?: Record<string, string | number>) => string;
   locales: readonly Locale[];
 }
@@ -29,21 +28,59 @@ export function I18nProvider({ children, initialLocale }: I18nProviderProps) {
   const [locale, setLocaleState] = useState<Locale>(initialLocale ?? defaultLocale);
   const [mounted, setMounted] = useState(false);
 
+  // Fetch user's language preference from server on mount
   useEffect(() => {
     setMounted(true);
-    if (!initialLocale) {
-      const detected = detectLocale();
-      setLocaleState(detected);
+
+    async function fetchUserLanguage() {
+      try {
+        const response = await fetch('/api/user/language');
+        if (response.ok) {
+          const data = await response.json();
+          if (data.language && locales.includes(data.language as Locale)) {
+            setLocaleState(data.language as Locale);
+            saveLocale(data.language);
+            if (typeof document !== 'undefined') {
+              document.documentElement.lang = data.language;
+            }
+            return;
+          }
+        }
+      } catch {
+        // Ignore errors, fall back to localStorage/browser detection
+      }
+
+      // Fall back to localStorage or browser detection
+      if (!initialLocale) {
+        const detected = detectLocale();
+        setLocaleState(detected);
+        if (typeof document !== 'undefined') {
+          document.documentElement.lang = detected;
+        }
+      }
     }
+
+    fetchUserLanguage();
   }, [initialLocale]);
 
-  const setLocale = useCallback((newLocale: Locale) => {
+  const setLocale = useCallback((newLocale: Locale, syncToServer = true) => {
     if (locales.includes(newLocale)) {
       setLocaleState(newLocale);
       saveLocale(newLocale);
       // Update document lang attribute
       if (typeof document !== 'undefined') {
         document.documentElement.lang = newLocale;
+      }
+
+      // Sync to server for authenticated users
+      if (syncToServer) {
+        fetch('/api/user/language', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ language: newLocale }),
+        }).catch(() => {
+          // Ignore errors - localStorage is the fallback
+        });
       }
     }
   }, []);

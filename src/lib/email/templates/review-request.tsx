@@ -12,6 +12,7 @@ import {
   Text,
 } from '@react-email/components';
 import * as React from 'react';
+import { t, Locale, defaultLocale } from '@/lib/i18n';
 
 interface ReviewRequestEmailProps {
   customerName: string;
@@ -20,6 +21,7 @@ interface ReviewRequestEmailProps {
   tripAdvisorUrl?: string;
   googleReviewUrl?: string;
   companyName?: string;
+  locale?: Locale;
 }
 
 export const ReviewRequestEmail = ({
@@ -29,8 +31,13 @@ export const ReviewRequestEmail = ({
   tripAdvisorUrl = 'https://tripadvisor.com/review',
   googleReviewUrl = 'https://google.com/review',
   companyName = 'TourPilot',
+  locale = defaultLocale,
 }: ReviewRequestEmailProps) => {
-  const previewText = `How was your ${tourName} experience?`;
+  // Translation helper for this email
+  const e = (key: string, params?: Record<string, string | number>) =>
+    t(locale, `email.reviewRequest.${key}`, params);
+
+  const previewText = e('subject', { tourName });
 
   return (
     <Html>
@@ -46,81 +53,78 @@ export const ReviewRequestEmail = ({
           {/* Hero */}
           <Section style={heroSection}>
             <Text style={waveEmoji}>👋</Text>
-            <Heading style={heroTitle}>How Was Your Adventure?</Heading>
+            <Heading style={heroTitle}>{e('title')}</Heading>
             <Text style={heroSubtitle}>
-              We hope you had an amazing time!
+              {e('subtitle')}
             </Text>
           </Section>
 
           {/* Content */}
           <Section style={content}>
-            <Text style={paragraph}>Hi {customerName},</Text>
+            <Text style={paragraph}>{e('greeting', { name: customerName })}</Text>
 
             <Text style={paragraph}>
-              Thank you for joining us on the <strong>{tourName}</strong> on {tourDate}.
-              We truly hope you had an unforgettable experience!
+              {e('thankYou', { tourName, date: tourDate })}
             </Text>
 
             <Text style={paragraph}>
-              Your feedback means the world to us and helps other travelers discover
-              amazing adventures. Would you mind taking a moment to share your experience?
+              {e('feedbackMessage')}
             </Text>
           </Section>
 
           {/* Star Rating Visual */}
           <Section style={starSection}>
             <Text style={starText}>⭐⭐⭐⭐⭐</Text>
-            <Text style={starSubtext}>Your review makes a difference!</Text>
+            <Text style={starSubtext}>{e('reviewMakesDifference')}</Text>
           </Section>
 
           {/* Review Buttons */}
           <Section style={buttonsSection}>
             {tripAdvisorUrl && (
               <Button style={tripAdvisorButton} href={tripAdvisorUrl}>
-                <span style={buttonIcon}>🦉</span> Review on TripAdvisor
+                <span style={buttonIcon}>🦉</span> {e('reviewOnTripAdvisor')}
               </Button>
             )}
 
             {googleReviewUrl && (
               <Button style={googleButton} href={googleReviewUrl}>
-                <span style={buttonIcon}>G</span> Review on Google
+                <span style={buttonIcon}>G</span> {e('reviewOnGoogle')}
               </Button>
             )}
           </Section>
 
           {/* What to Include */}
           <Section style={tipsSection}>
-            <Heading style={tipsTitle}>Tips for a Great Review</Heading>
+            <Heading style={tipsTitle}>{e('tipsTitle')}</Heading>
             <div style={tipRow}>
               <Text style={tipIcon}>📸</Text>
-              <Text style={tipText}>Share your favorite photos from the tour</Text>
+              <Text style={tipText}>{e('tip1')}</Text>
             </div>
             <div style={tipRow}>
               <Text style={tipIcon}>✨</Text>
-              <Text style={tipText}>Mention highlights like the crew, views, or activities</Text>
+              <Text style={tipText}>{e('tip2')}</Text>
             </div>
             <div style={tipRow}>
               <Text style={tipIcon}>💡</Text>
-              <Text style={tipText}>Include tips for future guests</Text>
+              <Text style={tipText}>{e('tip3')}</Text>
             </div>
           </Section>
 
           {/* Thank You Note */}
           <Section style={thankYouSection}>
             <Text style={thankYouText}>
-              Thank you for being part of our {companyName} family. We can't wait to
-              welcome you back for your next adventure! 🌊
+              {e('thankYouNote', { companyName })}
             </Text>
           </Section>
 
           {/* Discount Offer */}
           <Section style={discountSection}>
-            <Heading style={discountTitle}>Book Again & Save!</Heading>
+            <Heading style={discountTitle}>{e('discountTitle')}</Heading>
             <Text style={discountText}>
-              Use code <strong style={discountCode}>COMEBACK15</strong> for 15% off your next booking
+              {e('discountMessage')}
             </Text>
             <Button style={bookAgainButton} href="#">
-              Browse Tours
+              {e('browseTours')}
             </Button>
           </Section>
 
@@ -132,11 +136,11 @@ export const ReviewRequestEmail = ({
               {companyName} | 123 Marina Drive, Coastal City, FL 33139
             </Text>
             <Text style={footerLinks}>
-              <Link href="#" style={footerLink}>Our Tours</Link>
+              <Link href="#" style={footerLink}>{e('ourTours')}</Link>
               {' • '}
-              <Link href="#" style={footerLink}>Contact Us</Link>
+              <Link href="#" style={footerLink}>{e('contactUs')}</Link>
               {' • '}
-              <Link href="#" style={footerLink}>Unsubscribe</Link>
+              <Link href="#" style={footerLink}>{e('unsubscribe')}</Link>
             </Text>
           </Section>
         </Container>

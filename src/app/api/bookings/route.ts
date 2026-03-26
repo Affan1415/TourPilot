@@ -339,7 +339,39 @@ export async function POST(request: NextRequest) {
         });
     }
 
-    // 8. Send confirmation email
+    // 8. Auto-create affiliate profile for the customer (every customer is an affiliate)
+    try {
+      // Get tour location for the affiliate profile
+      const { data: tourLocation } = await adminClient
+        .from("tours")
+        .select("location_id")
+        .eq("id", availability.tour_id)
+        .single();
+
+      if (tourLocation?.location_id) {
+        // Check if customer already has an affiliate profile for this location
+        const { data: existingAffiliate } = await adminClient
+          .from("affiliate_profiles")
+          .select("id")
+          .eq("customer_id", customerId)
+          .eq("location_id", tourLocation.location_id)
+          .single();
+
+        if (!existingAffiliate) {
+          // Create affiliate profile for customer using the database function
+          await adminClient.rpc('create_customer_affiliate', {
+            p_customer_id: customerId,
+            p_location_id: tourLocation.location_id,
+            p_customer_name: `${customer.first_name} ${customer.last_name}`
+          });
+        }
+      }
+    } catch (affiliateError) {
+      // Log but don't fail booking if affiliate creation fails
+      console.error("Failed to create customer affiliate:", affiliateError);
+    }
+
+    // 9. Send confirmation email
     try {
       const waiverUrl = `${APP_URL}/waiver/${booking.booking_reference}`;
       const bookingUrl = `${APP_URL}/booking/${booking.booking_reference}`;

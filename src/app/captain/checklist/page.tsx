@@ -5,6 +5,7 @@ import { useSearchParams, useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
 import {
@@ -55,6 +56,7 @@ interface ChecklistState {
     checked: boolean;
     photoUrl?: string;
     note?: string;
+    textValue?: string;
   };
 }
 
@@ -276,6 +278,16 @@ function CaptainChecklistContent() {
     }));
   };
 
+  const updateTextValue = (itemId: string, textValue: string) => {
+    setChecklistState((prev) => ({
+      ...prev,
+      [itemId]: {
+        ...prev[itemId],
+        textValue,
+      },
+    }));
+  };
+
   const getCompletionStats = () => {
     if (!template) return { completed: 0, total: 0, required: 0, requiredComplete: 0 };
 
@@ -290,7 +302,16 @@ function CaptainChecklistContent() {
   const canSubmit = () => {
     if (!template) return false;
     const requiredItems = template.items.filter((i) => i.required);
-    return requiredItems.every((item) => checklistState[item.id]?.checked);
+    const allRequiredChecked = requiredItems.every((item) => checklistState[item.id]?.checked);
+
+    // Also check that all items requiring text have a value
+    const textItems = template.items.filter((i) => i.requiresText);
+    const allTextFilled = textItems.every((item) => {
+      const state = checklistState[item.id];
+      return state?.textValue && state.textValue.trim().length > 0;
+    });
+
+    return allRequiredChecked && allTextFilled;
   };
 
   const handleSubmit = async () => {
@@ -305,6 +326,7 @@ function CaptainChecklistContent() {
         checked: state.checked,
         photoUrl: state.photoUrl,
         note: state.note,
+        textValue: state.textValue,
       }));
 
       const { error } = await supabase
@@ -530,51 +552,74 @@ function CaptainChecklistContent() {
         <div className="max-w-2xl mx-auto space-y-3">
           {template.items.map((item, index) => {
             const isChecked = checklistState[item.id]?.checked || false;
+            const textValue = checklistState[item.id]?.textValue || "";
 
             return (
-              <button
+              <div
                 key={item.id}
-                onClick={() => toggleItem(item.id)}
                 className={cn(
-                  "w-full flex items-center gap-4 p-4 rounded-xl border-2 transition-all text-left",
+                  "w-full rounded-xl border-2 transition-all",
                   isChecked
                     ? "bg-green-50 dark:bg-green-950/30 border-green-300 dark:border-green-700"
-                    : "bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 hover:border-indigo-300"
+                    : "bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700"
                 )}
               >
-                <div
-                  className={cn(
-                    "h-8 w-8 rounded-full flex items-center justify-center flex-shrink-0 transition-all",
-                    isChecked
-                      ? "bg-green-500 text-white"
-                      : "bg-slate-100 dark:bg-slate-800 text-slate-400"
-                  )}
+                <button
+                  onClick={() => toggleItem(item.id)}
+                  className="w-full flex items-center gap-4 p-4 text-left hover:bg-slate-50 dark:hover:bg-slate-800/50 rounded-xl transition-colors"
                 >
-                  {isChecked ? (
-                    <Check className="h-5 w-5" />
-                  ) : (
-                    <span className="text-sm font-medium">{index + 1}</span>
-                  )}
-                </div>
+                  <div
+                    className={cn(
+                      "h-8 w-8 rounded-full flex items-center justify-center flex-shrink-0 transition-all",
+                      isChecked
+                        ? "bg-green-500 text-white"
+                        : "bg-slate-100 dark:bg-slate-800 text-slate-400"
+                    )}
+                  >
+                    {isChecked ? (
+                      <Check className="h-5 w-5" />
+                    ) : (
+                      <span className="text-sm font-medium">{index + 1}</span>
+                    )}
+                  </div>
 
-                <div className="flex-1 min-w-0">
-                  <p className={cn(
-                    "font-medium",
-                    isChecked && "text-green-800 dark:text-green-200"
-                  )}>
-                    {item.label}
-                  </p>
-                  {item.required && !isChecked && (
-                    <p className="text-xs text-orange-600 mt-0.5">Required</p>
-                  )}
-                </div>
+                  <div className="flex-1 min-w-0">
+                    <p className={cn(
+                      "font-medium",
+                      isChecked && "text-green-800 dark:text-green-200"
+                    )}>
+                      {item.label}
+                    </p>
+                    {item.required && !isChecked && (
+                      <p className="text-xs text-orange-600 mt-0.5">Required</p>
+                    )}
+                    {item.requiresText && !textValue && (
+                      <p className="text-xs text-orange-600 mt-0.5">Text input required</p>
+                    )}
+                  </div>
 
-                {item.requiresPhoto && (
-                  <div className="flex-shrink-0">
-                    <Camera className="h-5 w-5 text-slate-400" />
+                  {item.requiresPhoto && (
+                    <div className="flex-shrink-0">
+                      <Camera className="h-5 w-5 text-slate-400" />
+                    </div>
+                  )}
+                </button>
+
+                {item.requiresText && (
+                  <div className="px-4 pb-4">
+                    <Input
+                      placeholder={item.textPlaceholder || "Enter value..."}
+                      value={textValue}
+                      onChange={(e) => updateTextValue(item.id, e.target.value)}
+                      onClick={(e) => e.stopPropagation()}
+                      className={cn(
+                        "mt-1",
+                        textValue && "border-green-300 dark:border-green-700"
+                      )}
+                    />
                   </div>
                 )}
-              </button>
+              </div>
             );
           })}
 

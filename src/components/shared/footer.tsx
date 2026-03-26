@@ -1,7 +1,12 @@
+"use client";
+
 import Link from "next/link";
 import { Ship, Mail, Phone, MapPin, Facebook, Instagram, Twitter } from "lucide-react";
+import { useTranslation } from "@/lib/i18n/context";
 
 export function Footer() {
+  const { t } = useTranslation();
+
   return (
     <footer className="border-t bg-card">
       <div className="container mx-auto px-4 py-12">
@@ -15,7 +20,7 @@ export function Footer() {
               <span className="text-xl font-bold">TourPilot</span>
             </Link>
             <p className="text-sm text-muted-foreground">
-              Book unforgettable tours and activities. Digital waivers, instant confirmations, and seamless experiences.
+              {t('public.footer.tagline') || 'Book unforgettable tours and activities. Digital waivers, instant confirmations, and seamless experiences.'}
             </p>
             <div className="flex gap-4">
               <a href="#" className="text-muted-foreground hover:text-foreground transition-colors">
@@ -32,26 +37,26 @@ export function Footer() {
 
           {/* Quick Links */}
           <div>
-            <h4 className="font-semibold mb-4">Quick Links</h4>
+            <h4 className="font-semibold mb-4">{t('public.footer.quickLinks') || 'Quick Links'}</h4>
             <ul className="space-y-2 text-sm">
               <li>
                 <Link href="/tours" className="text-muted-foreground hover:text-foreground transition-colors">
-                  All Tours
+                  {t('public.footer.allTours') || 'All Tours'}
                 </Link>
               </li>
               <li>
                 <Link href="/about" className="text-muted-foreground hover:text-foreground transition-colors">
-                  About Us
+                  {t('public.footer.aboutUs') || 'About Us'}
                 </Link>
               </li>
               <li>
                 <Link href="/contact" className="text-muted-foreground hover:text-foreground transition-colors">
-                  Contact
+                  {t('public.footer.contact') || 'Contact'}
                 </Link>
               </li>
               <li>
                 <Link href="/faq" className="text-muted-foreground hover:text-foreground transition-colors">
-                  FAQ
+                  {t('public.footer.faq') || 'FAQ'}
                 </Link>
               </li>
             </ul>
@@ -59,26 +64,26 @@ export function Footer() {
 
           {/* Support */}
           <div>
-            <h4 className="font-semibold mb-4">Support</h4>
+            <h4 className="font-semibold mb-4">{t('public.footer.support') || 'Support'}</h4>
             <ul className="space-y-2 text-sm">
               <li>
                 <Link href="/booking/lookup" className="text-muted-foreground hover:text-foreground transition-colors">
-                  Find My Booking
+                  {t('public.footer.findMyBooking') || 'Find My Booking'}
                 </Link>
               </li>
               <li>
                 <Link href="/waiver" className="text-muted-foreground hover:text-foreground transition-colors">
-                  Sign Waiver
+                  {t('public.footer.signWaiver') || 'Sign Waiver'}
                 </Link>
               </li>
               <li>
                 <Link href="/cancellation" className="text-muted-foreground hover:text-foreground transition-colors">
-                  Cancellation Policy
+                  {t('public.footer.cancellationPolicy') || 'Cancellation Policy'}
                 </Link>
               </li>
               <li>
                 <Link href="/privacy" className="text-muted-foreground hover:text-foreground transition-colors">
-                  Privacy Policy
+                  {t('public.footer.privacyPolicy') || 'Privacy Policy'}
                 </Link>
               </li>
             </ul>
@@ -86,7 +91,7 @@ export function Footer() {
 
           {/* Contact */}
           <div>
-            <h4 className="font-semibold mb-4">Contact</h4>
+            <h4 className="font-semibold mb-4">{t('public.footer.contactSection') || 'Contact'}</h4>
             <ul className="space-y-3 text-sm">
               <li className="flex items-center gap-2 text-muted-foreground">
                 <MapPin className="h-4 w-4" />
@@ -109,7 +114,7 @@ export function Footer() {
         </div>
 
         <div className="border-t mt-8 pt-8 text-center text-sm text-muted-foreground">
-          <p>&copy; {new Date().getFullYear()} TourPilot. All rights reserved.</p>
+          <p>&copy; {new Date().getFullYear()} TourPilot. {t('public.footer.allRightsReserved') || 'All rights reserved.'}</p>
         </div>
       </div>
     </footer>

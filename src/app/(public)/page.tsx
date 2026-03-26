@@ -1,3 +1,5 @@
+"use client";
+
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -15,6 +17,7 @@ import {
   Smartphone,
   Mail,
 } from "lucide-react";
+import { useTranslation } from "@/lib/i18n/context";
 
 // Mock data for tours (replace with actual data fetch)
 const featuredTours = [
@@ -56,30 +59,33 @@ const featuredTours = [
   },
 ];
 
-const features = [
-  {
-    icon: Calendar,
-    title: "Instant Booking",
-    description: "Book your tour in seconds with real-time availability",
-  },
-  {
-    icon: Shield,
-    title: "Digital Waivers",
-    description: "Sign waivers electronically before you arrive",
-  },
-  {
-    icon: Smartphone,
-    title: "Mobile Check-in",
-    description: "Skip the line with quick mobile check-in",
-  },
-  {
-    icon: Mail,
-    title: "Automated Reminders",
-    description: "Get timely reminders via email, SMS, or WhatsApp",
-  },
-];
 
 export default function HomePage() {
+  const { t } = useTranslation();
+
+  const features = [
+    {
+      icon: Calendar,
+      title: t('public.home.instantBooking') || "Instant Booking",
+      description: t('public.home.instantBookingDesc') || "Book your tour in seconds with real-time availability",
+    },
+    {
+      icon: Shield,
+      title: t('public.home.digitalWaivers') || "Digital Waivers",
+      description: t('public.home.digitalWaiversDesc') || "Sign waivers electronically before you arrive",
+    },
+    {
+      icon: Smartphone,
+      title: t('public.home.mobileCheckIn') || "Mobile Check-in",
+      description: t('public.home.mobileCheckInDesc') || "Skip the line with quick mobile check-in",
+    },
+    {
+      icon: Mail,
+      title: t('public.home.automatedReminders') || "Automated Reminders",
+      description: t('public.home.automatedRemindersDesc') || "Get timely reminders via email, SMS, or WhatsApp",
+    },
+  ];
+
   return (
     <div className="flex flex-col">
       {/* Hero Section */}
@@ -89,28 +95,25 @@ export default function HomePage() {
           <div className="max-w-3xl mx-auto text-center">
             <Badge variant="secondary" className="mb-4 gap-2">
               <Sparkles className="h-3 w-3" />
-              Book with confidence
+              {t('public.home.heroBadge') || 'Book with confidence'}
             </Badge>
             <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight mb-6">
-              Unforgettable{" "}
-              <span className="text-primary">Adventures</span>{" "}
-              Await You
+              {t('public.home.heroTitle') || 'Unforgettable Adventures Await You'}
             </h1>
             <p className="text-lg md:text-xl text-muted-foreground mb-8 max-w-2xl mx-auto">
-              Book tours and activities with ease. Digital waivers, instant confirmations,
-              and seamless check-in make your experience unforgettable.
+              {t('public.home.heroSubtitle') || 'Book tours and activities with ease. Digital waivers, instant confirmations, and seamless check-in make your experience unforgettable.'}
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <Link href="/tours">
                 <Button size="lg" className="gap-2 gradient-primary border-0 shadow-lg shadow-primary/25 w-full sm:w-auto">
                   <Ship className="h-5 w-5" />
-                  Explore Tours
+                  {t('public.home.exploreTours') || 'Explore Tours'}
                   <ArrowRight className="h-4 w-4" />
                 </Button>
               </Link>
               <Link href="/booking/lookup">
                 <Button size="lg" variant="outline" className="gap-2 w-full sm:w-auto">
-                  Find My Booking
+                  {t('public.home.findMyBooking') || 'Find My Booking'}
                 </Button>
               </Link>
             </div>
@@ -147,12 +150,12 @@ export default function HomePage() {
         <div className="container mx-auto px-4">
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-10">
             <div>
-              <h2 className="text-3xl font-bold mb-2">Featured Tours</h2>
-              <p className="text-muted-foreground">Discover our most popular experiences</p>
+              <h2 className="text-3xl font-bold mb-2">{t('public.home.featuredTours') || 'Featured Tours'}</h2>
+              <p className="text-muted-foreground">{t('public.home.featuredToursSubtitle') || 'Discover our most popular experiences'}</p>
             </div>
             <Link href="/tours">
               <Button variant="ghost" className="gap-2 mt-4 md:mt-0">
-                View All Tours
+                {t('public.home.viewAllTours') || 'View All Tours'}
                 <ArrowRight className="h-4 w-4" />
               </Button>
             </Link>
@@ -193,7 +196,7 @@ export default function HomePage() {
                         </span>
                       </div>
                       <div className="text-right">
-                        <span className="text-sm text-muted-foreground">From</span>
+                        <span className="text-sm text-muted-foreground">{t('public.home.from') || 'From'}</span>
                         <p className="text-xl font-bold text-primary">${tour.price}</p>
                       </div>
                     </div>
@@ -209,9 +212,9 @@ export default function HomePage() {
       <section className="py-20 bg-gradient-to-b from-muted/50 to-background">
         <div className="container mx-auto px-4">
           <div className="text-center mb-12">
-            <h2 className="text-3xl font-bold mb-4">How It Works</h2>
+            <h2 className="text-3xl font-bold mb-4">{t('public.home.howItWorks') || 'How It Works'}</h2>
             <p className="text-muted-foreground max-w-2xl mx-auto">
-              Book your perfect tour in just a few simple steps
+              {t('public.home.howItWorksSubtitle') || 'Book your perfect tour in just a few simple steps'}
             </p>
           </div>
 
@@ -219,18 +222,18 @@ export default function HomePage() {
             {[
               {
                 step: "1",
-                title: "Choose Your Tour",
-                description: "Browse our selection of amazing tours and pick your favorite",
+                title: t('public.home.step1Title') || "Choose Your Tour",
+                description: t('public.home.step1Desc') || "Browse our selection of amazing tours and pick your favorite",
               },
               {
                 step: "2",
-                title: "Book & Sign Waiver",
-                description: "Select your date, complete payment, and sign the waiver digitally",
+                title: t('public.home.step2Title') || "Book & Sign Waiver",
+                description: t('public.home.step2Desc') || "Select your date, complete payment, and sign the waiver digitally",
               },
               {
                 step: "3",
-                title: "Enjoy Your Adventure",
-                description: "Show up and have an unforgettable experience",
+                title: t('public.home.step3Title') || "Enjoy Your Adventure",
+                description: t('public.home.step3Desc') || "Show up and have an unforgettable experience",
               },
             ].map((item, index) => (
               <div key={index} className="relative text-center">
@@ -254,15 +257,15 @@ export default function HomePage() {
           <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-primary to-primary/80 p-8 md:p-12 lg:p-16 text-center">
             <div className="relative z-10">
               <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">
-                Ready for Your Next Adventure?
+                {t('public.home.ctaTitle') || 'Ready for Your Next Adventure?'}
               </h2>
               <p className="text-white/80 max-w-2xl mx-auto mb-8">
-                Join thousands of happy customers who have experienced unforgettable moments with us.
+                {t('public.home.ctaSubtitle') || 'Join thousands of happy customers who have experienced unforgettable moments with us.'}
               </p>
               <Link href="/tours">
                 <Button size="lg" variant="secondary" className="gap-2 shadow-lg">
                   <Calendar className="h-5 w-5" />
-                  Book Your Tour Today
+                  {t('public.home.bookNow') || 'Book Your Tour Today'}
                 </Button>
               </Link>
             </div>

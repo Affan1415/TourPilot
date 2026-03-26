@@ -26,8 +26,10 @@ import {
 } from "lucide-react";
 import { format, addDays } from "date-fns";
 import { createClient } from "@/lib/supabase/client";
+import { useTranslation } from "@/lib/i18n/context";
 
 export default function DashboardPage() {
+  const { t } = useTranslation();
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState({
     todayBookings: 0,
@@ -125,22 +127,22 @@ export default function DashboardPage() {
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold">Overview</h1>
+          <h1 className="text-2xl font-bold">{t('dashboard.overview')}</h1>
           <p className="text-muted-foreground">
-            Welcome back! Here&apos;s what&apos;s happening today.
+            {t('dashboard.welcomeMessage')}
           </p>
         </div>
         <div className="flex gap-3">
           <Link href="/dashboard/manifest">
             <Button variant="outline" className="gap-2 rounded-xl">
               <FileText className="h-4 w-4" />
-              Today&apos;s Manifest
+              {t('dashboard.todaysManifest')}
             </Button>
           </Link>
           <Link href="/dashboard/bookings/new">
             <Button className="gap-2 gradient-primary border-0 rounded-xl shadow-lg shadow-primary/30">
               <Plus className="h-4 w-4" />
-              New Booking
+              {t('dashboard.newBooking')}
             </Button>
           </Link>
         </div>
@@ -149,7 +151,7 @@ export default function DashboardPage() {
       {/* Stats Grid - V6 Pastel Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
         <StatCard
-          title="Total Bookings"
+          title={t('dashboard.totalBookings')}
           value={stats.todayBookings}
           icon={<Calendar className="h-5 w-5" />}
           color="mint"
@@ -157,7 +159,7 @@ export default function DashboardPage() {
           className="animate-fade-in-up stagger-1"
         />
         <StatCard
-          title="Monthly Revenue"
+          title={t('dashboard.monthlyRevenue')}
           value={`$${stats.todayRevenue.toLocaleString()}`}
           icon={<DollarSign className="h-5 w-5" />}
           color="lavender"
@@ -165,7 +167,7 @@ export default function DashboardPage() {
           className="animate-fade-in-up stagger-2"
         />
         <StatCard
-          title="Active Customers"
+          title={t('dashboard.activeCustomers')}
           value={stats.todayGuests}
           icon={<Users className="h-5 w-5" />}
           color="peach"
@@ -173,7 +175,7 @@ export default function DashboardPage() {
           className="animate-fade-in-up stagger-3"
         />
         <StatCard
-          title="Average Rating"
+          title={t('dashboard.averageRating')}
           value={stats.avgRating}
           icon={<Star className="h-5 w-5" />}
           color="sky"
@@ -186,10 +188,10 @@ export default function DashboardPage() {
         {/* Recent Bookings Table */}
         <Card className="lg:col-span-2 rounded-2xl border shadow-sm animate-fade-in-up stagger-5">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-base font-semibold">Recent Bookings</CardTitle>
+            <CardTitle className="text-base font-semibold">{t('dashboard.recentBookings')}</CardTitle>
             <Link href="/dashboard/bookings">
               <Button variant="ghost" size="sm" className="gap-1 text-primary hover:text-primary">
-                View All
+                {t('dashboard.viewAll')}
                 <ChevronRight className="h-4 w-4" />
               </Button>
             </Link>
@@ -198,10 +200,10 @@ export default function DashboardPage() {
             {recentBookings.length === 0 ? (
               <div className="text-center py-12">
                 <Calendar className="h-12 w-12 text-muted-foreground/30 mx-auto mb-3" />
-                <p className="text-muted-foreground">No bookings yet</p>
+                <p className="text-muted-foreground">{t('dashboard.noBookingsYet')}</p>
                 <Link href="/dashboard/bookings/new">
                   <Button variant="link" size="sm" className="mt-2">
-                    Create First Booking
+                    {t('dashboard.createFirstBooking')}
                   </Button>
                 </Link>
               </div>
@@ -210,11 +212,11 @@ export default function DashboardPage() {
                 <table className="table-v6 w-full">
                   <thead>
                     <tr>
-                      <th>Tour</th>
-                      <th>Customer</th>
-                      <th>Date</th>
-                      <th>Amount</th>
-                      <th>Status</th>
+                      <th>{t('table.tour')}</th>
+                      <th>{t('table.customer')}</th>
+                      <th>{t('table.date')}</th>
+                      <th>{t('table.amount')}</th>
+                      <th>{t('table.status')}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -267,10 +269,10 @@ export default function DashboardPage() {
           {/* Upcoming Tours */}
           <Card className="rounded-2xl border shadow-sm animate-fade-in-up stagger-5">
             <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-base font-semibold">Upcoming Tours</CardTitle>
+              <CardTitle className="text-base font-semibold">{t('dashboard.upcomingTours')}</CardTitle>
               <Link href="/dashboard/calendar">
                 <span className="text-sm text-primary font-medium cursor-pointer hover:underline">
-                  Schedule
+                  {t('dashboard.schedule')}
                 </span>
               </Link>
             </CardHeader>
@@ -278,7 +280,7 @@ export default function DashboardPage() {
               {todayTours.length === 0 ? (
                 <div className="text-center py-8">
                   <Ship className="h-10 w-10 text-muted-foreground/30 mx-auto mb-2" />
-                  <p className="text-sm text-muted-foreground">No tours scheduled</p>
+                  <p className="text-sm text-muted-foreground">{t('dashboard.noToursScheduled')}</p>
                 </div>
               ) : (
                 todayTours.slice(0, 3).map((tour) => (
@@ -310,7 +312,7 @@ export default function DashboardPage() {
           {/* Quick Actions */}
           <Card className="rounded-2xl border shadow-sm animate-fade-in-up stagger-5">
             <CardHeader className="pb-2">
-              <CardTitle className="text-base font-semibold">Quick Actions</CardTitle>
+              <CardTitle className="text-base font-semibold">{t('dashboard.quickActions')}</CardTitle>
             </CardHeader>
             <CardContent className="p-4 pt-2">
               <div className="grid grid-cols-2 gap-3">
@@ -321,7 +323,7 @@ export default function DashboardPage() {
                       color="sky"
                       className="group-hover:scale-110 transition-transform"
                     />
-                    <span className="text-xs font-medium text-muted-foreground">New Booking</span>
+                    <span className="text-xs font-medium text-muted-foreground">{t('dashboard.newBooking')}</span>
                   </div>
                 </Link>
                 <Link href="/dashboard/customers/new">
@@ -331,7 +333,7 @@ export default function DashboardPage() {
                       color="mint"
                       className="group-hover:scale-110 transition-transform"
                     />
-                    <span className="text-xs font-medium text-muted-foreground">Add Customer</span>
+                    <span className="text-xs font-medium text-muted-foreground">{t('dashboard.addCustomer')}</span>
                   </div>
                 </Link>
                 <Link href="/dashboard/calendar">
@@ -341,7 +343,7 @@ export default function DashboardPage() {
                       color="lavender"
                       className="group-hover:scale-110 transition-transform"
                     />
-                    <span className="text-xs font-medium text-muted-foreground">Schedule Tour</span>
+                    <span className="text-xs font-medium text-muted-foreground">{t('dashboard.scheduleTour')}</span>
                   </div>
                 </Link>
                 <Link href="/dashboard/analytics">
@@ -351,7 +353,7 @@ export default function DashboardPage() {
                       color="peach"
                       className="group-hover:scale-110 transition-transform"
                     />
-                    <span className="text-xs font-medium text-muted-foreground">View Reports</span>
+                    <span className="text-xs font-medium text-muted-foreground">{t('dashboard.viewReports')}</span>
                   </div>
                 </Link>
               </div>
@@ -364,13 +366,13 @@ export default function DashboardPage() {
       <Card className="rounded-2xl bg-sidebar text-white overflow-hidden relative animate-fade-in-up">
         <div className="absolute top-0 right-0 w-48 h-48 bg-gradient-to-br from-white/10 to-transparent rounded-full -translate-y-1/2 translate-x-1/4" />
         <CardContent className="p-6 relative">
-          <Badge className="bg-mint-dark/20 text-mint-dark border-0 mb-3">New Feature</Badge>
-          <h3 className="text-xl font-bold mb-2">Earn more with TourPilot Pro!</h3>
+          <Badge className="bg-mint-dark/20 text-mint-dark border-0 mb-3">{t('dashboard.newFeature')}</Badge>
+          <h3 className="text-xl font-bold mb-2">{t('dashboard.promoTitle')}</h3>
           <p className="text-sm text-sidebar-foreground mb-4 max-w-md">
-            Unlock advanced analytics, automated reminders, and priority support to grow your business.
+            {t('dashboard.promoDescription')}
           </p>
           <Button className="gradient-primary border-0 rounded-xl shadow-lg gap-2">
-            Learn More
+            {t('dashboard.learnMore')}
             <ChevronRight className="h-4 w-4" />
           </Button>
         </CardContent>

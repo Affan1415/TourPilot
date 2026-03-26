@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useTranslation } from '@/lib/i18n/context';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -100,9 +101,17 @@ interface RecurringSchedule {
   valid_until: string | null;
 }
 
-const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-
 export default function AvailabilityPage() {
+  const { t } = useTranslation();
+  const dayNames = [
+    t('dates.sun') || 'Sun',
+    t('dates.mon') || 'Mon',
+    t('dates.tue') || 'Tue',
+    t('dates.wed') || 'Wed',
+    t('dates.thu') || 'Thu',
+    t('dates.fri') || 'Fri',
+    t('dates.sat') || 'Sat'
+  ];
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [tours, setTours] = useState<Tour[]>([]);
@@ -196,14 +205,14 @@ export default function AvailabilityPage() {
     return filteredSlots.filter(slot => slot.date === dateStr);
   };
 
-  const getTourName = (slot: TimeSlot) => slot.tour?.name || 'Unknown Tour';
+  const getTourName = (slot: TimeSlot) => slot.tour?.name || t('availabilityPage.unknownTour');
   const getCapacity = (slot: TimeSlot) => slot.capacity_override || slot.tour?.max_capacity || 10;
   const getPrice = (slot: TimeSlot) => slot.price_override || slot.tour?.base_price || 0;
 
   const handleAddSlot = async () => {
-    const tour = tours.find(t => t.id === newSlot.tour_id);
+    const tour = tours.find(tr => tr.id === newSlot.tour_id);
     if (!tour) {
-      toast.error('Please select a tour');
+      toast.error(t('availabilityPage.pleaseSelectTour'));
       return;
     }
 
@@ -238,7 +247,7 @@ export default function AvailabilityPage() {
         capacity: '',
         price: '',
       });
-      toast.success('Time slot added');
+      toast.success(t('availabilityPage.timeSlotAdded'));
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Failed to create time slot');
     } finally {
@@ -247,13 +256,13 @@ export default function AvailabilityPage() {
   };
 
   const handleAddSchedule = async () => {
-    const tour = tours.find(t => t.id === newSchedule.tour_id);
+    const tour = tours.find(tr => tr.id === newSchedule.tour_id);
     if (!tour) {
-      toast.error('Please select a tour');
+      toast.error(t('availabilityPage.pleaseSelectTour'));
       return;
     }
     if (newSchedule.days_of_week.length === 0) {
-      toast.error('Please select at least one day');
+      toast.error(t('availabilityPage.pleaseSelectDay'));
       return;
     }
 
@@ -293,7 +302,7 @@ export default function AvailabilityPage() {
         valid_from: new Date(),
         valid_until: null,
       });
-      toast.success('Recurring schedule created');
+      toast.success(t('availabilityPage.scheduleCreated'));
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Failed to create schedule');
     } finally {
@@ -313,7 +322,7 @@ export default function AvailabilityPage() {
       }
 
       setSlots(slots.filter(s => s.id !== id));
-      toast.success('Time slot deleted');
+      toast.success(t('availabilityPage.slotDeleted'));
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Failed to delete slot');
     }
@@ -333,7 +342,7 @@ export default function AvailabilityPage() {
       }
 
       setSlots(slots.map(s => s.id === id ? { ...s, status: 'cancelled' as const } : s));
-      toast.success('Time slot cancelled');
+      toast.success(t('availabilityPage.slotCancelled'));
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Failed to cancel slot');
     }
@@ -353,7 +362,7 @@ export default function AvailabilityPage() {
       }
 
       setSchedules(schedules.map(s => s.id === id ? { ...s, is_active: !currentState } : s));
-      toast.success('Schedule updated');
+      toast.success(t('availabilityPage.scheduleUpdated'));
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Failed to update schedule');
     }
@@ -371,7 +380,7 @@ export default function AvailabilityPage() {
       }
 
       setSchedules(schedules.filter(s => s.id !== id));
-      toast.success('Schedule deleted');
+      toast.success(t('availabilityPage.scheduleDeleted'));
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Failed to delete schedule');
     }
@@ -395,7 +404,7 @@ export default function AvailabilityPage() {
         throw new Error(result.error || 'Failed to generate slots');
       }
 
-      toast.success(`Generated ${result.count} time slots`);
+      toast.success(t('availabilityPage.generatedSlots', { count: result.count }));
       fetchData();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Failed to generate slots');
@@ -447,13 +456,13 @@ export default function AvailabilityPage() {
 
   const getStatusBadge = (slot: TimeSlot) => {
     if (slot.status === 'cancelled') {
-      return <Badge variant="destructive"><XCircle className="h-3 w-3 mr-1" />Cancelled</Badge>;
+      return <Badge variant="destructive"><XCircle className="h-3 w-3 mr-1" />{t('availabilityPage.cancelled')}</Badge>;
     }
     const capacity = getCapacity(slot);
     if (slot.status === 'full' || slot.booked_count >= capacity) {
-      return <Badge className="bg-orange-100 text-orange-800"><AlertCircle className="h-3 w-3 mr-1" />Full</Badge>;
+      return <Badge className="bg-orange-100 text-orange-800"><AlertCircle className="h-3 w-3 mr-1" />{t('availabilityPage.full')}</Badge>;
     }
-    return <Badge className="bg-green-100 text-green-800"><CheckCircle className="h-3 w-3 mr-1" />Available</Badge>;
+    return <Badge className="bg-green-100 text-green-800"><CheckCircle className="h-3 w-3 mr-1" />{t('availabilityPage.available')}</Badge>;
   };
 
   if (loading) {
@@ -468,9 +477,9 @@ export default function AvailabilityPage() {
     return (
       <div className="p-6 flex flex-col items-center justify-center min-h-[400px] gap-4">
         <AlertCircle className="h-12 w-12 text-destructive" />
-        <p className="text-lg font-medium">Failed to load availability data</p>
+        <p className="text-lg font-medium">{t('availabilityPage.failedToLoadData')}</p>
         <p className="text-muted-foreground">{error}</p>
-        <Button onClick={fetchData}>Try Again</Button>
+        <Button onClick={fetchData}>{t('availabilityPage.tryAgain')}</Button>
       </div>
     );
   }
@@ -480,36 +489,36 @@ export default function AvailabilityPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold">Availability</h1>
-          <p className="text-muted-foreground">Manage time slots and recurring schedules</p>
+          <h1 className="text-3xl font-bold">{t('availabilityPage.title')}</h1>
+          <p className="text-muted-foreground">{t('availabilityPage.subtitle')}</p>
         </div>
         <div className="flex items-center gap-2">
           <Dialog open={isBlackoutOpen} onOpenChange={setIsBlackoutOpen}>
             <DialogTrigger asChild>
               <Button variant="outline" className="text-destructive border-destructive/50 hover:bg-destructive/10">
                 <XCircle className="h-4 w-4 mr-2" />
-                Blackout Dates
+                {t('availabilityPage.blackoutDates')}
               </Button>
             </DialogTrigger>
             <DialogContent>
               <DialogHeader>
-                <DialogTitle>Create Blackout Dates</DialogTitle>
+                <DialogTitle>{t('availabilityPage.createBlackoutDates')}</DialogTitle>
                 <DialogDescription>
-                  Cancel all availability slots within a date range
+                  {t('availabilityPage.blackoutDescription')}
                 </DialogDescription>
               </DialogHeader>
               <div className="space-y-4 py-4">
                 <div className="space-y-2">
-                  <Label>Tour (optional)</Label>
+                  <Label>{t('availabilityPage.tourOptional')}</Label>
                   <Select
                     value={blackoutDates.tour_id}
                     onValueChange={(v) => setBlackoutDates({ ...blackoutDates, tour_id: v })}
                   >
                     <SelectTrigger>
-                      <SelectValue placeholder="All tours" />
+                      <SelectValue placeholder={t('availabilityPage.allTours')} />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="all">All Tours</SelectItem>
+                      <SelectItem value="all">{t('availabilityPage.allTours')}</SelectItem>
                       {tours.map(tour => (
                         <SelectItem key={tour.id} value={tour.id}>{tour.name}</SelectItem>
                       ))}
@@ -519,7 +528,7 @@ export default function AvailabilityPage() {
 
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label>Start Date</Label>
+                    <Label>{t('availabilityPage.startDate')}</Label>
                     <Popover>
                       <PopoverTrigger asChild>
                         <Button variant="outline" className="w-full justify-start">
@@ -537,7 +546,7 @@ export default function AvailabilityPage() {
                     </Popover>
                   </div>
                   <div className="space-y-2">
-                    <Label>End Date</Label>
+                    <Label>{t('availabilityPage.endDate')}</Label>
                     <Popover>
                       <PopoverTrigger asChild>
                         <Button variant="outline" className="w-full justify-start">
@@ -557,9 +566,9 @@ export default function AvailabilityPage() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label>Reason (optional)</Label>
+                  <Label>{t('availabilityPage.reasonOptional')}</Label>
                   <Input
-                    placeholder="e.g., Holiday closure, Maintenance"
+                    placeholder={t('availabilityPage.reasonPlaceholder')}
                     value={blackoutDates.reason}
                     onChange={(e) => setBlackoutDates({ ...blackoutDates, reason: e.target.value })}
                   />
@@ -568,15 +577,15 @@ export default function AvailabilityPage() {
                 <div className="p-3 bg-destructive/10 border border-destructive/30 rounded-lg">
                   <p className="text-sm text-destructive flex items-center gap-2">
                     <AlertCircle className="h-4 w-4" />
-                    This will cancel all matching availability slots. Existing bookings will need to be rescheduled or cancelled separately.
+                    {t('availabilityPage.blackoutWarning')}
                   </p>
                 </div>
               </div>
               <DialogFooter>
-                <Button variant="outline" onClick={() => setIsBlackoutOpen(false)}>Cancel</Button>
+                <Button variant="outline" onClick={() => setIsBlackoutOpen(false)}>{t('common.cancel')}</Button>
                 <Button variant="destructive" onClick={handleCreateBlackout} disabled={savingBlackout}>
                   {savingBlackout && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-                  Create Blackout
+                  {t('availabilityPage.createBlackout')}
                 </Button>
               </DialogFooter>
             </DialogContent>
@@ -586,25 +595,25 @@ export default function AvailabilityPage() {
             <DialogTrigger asChild>
               <Button variant="outline">
                 <Repeat className="h-4 w-4 mr-2" />
-                Add Recurring
+                {t('availabilityPage.addRecurring')}
               </Button>
             </DialogTrigger>
             <DialogContent className="max-w-md">
               <DialogHeader>
-                <DialogTitle>Create Recurring Schedule</DialogTitle>
+                <DialogTitle>{t('availabilityPage.createRecurringSchedule')}</DialogTitle>
                 <DialogDescription>
-                  Set up automatic time slots that repeat weekly
+                  {t('availabilityPage.recurringDescription')}
                 </DialogDescription>
               </DialogHeader>
               <div className="space-y-4 py-4">
                 <div className="space-y-2">
-                  <Label>Tour</Label>
+                  <Label>{t('availabilityPage.tour')}</Label>
                   <Select
                     value={newSchedule.tour_id}
                     onValueChange={(v) => setNewSchedule({ ...newSchedule, tour_id: v })}
                   >
                     <SelectTrigger>
-                      <SelectValue placeholder="Select tour" />
+                      <SelectValue placeholder={t('availabilityPage.selectTour')} />
                     </SelectTrigger>
                     <SelectContent>
                       {tours.map(tour => (
@@ -615,7 +624,7 @@ export default function AvailabilityPage() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label>Days of Week</Label>
+                  <Label>{t('availabilityPage.daysOfWeek')}</Label>
                   <div className="flex flex-wrap gap-2">
                     {dayNames.map((day, index) => (
                       <label
@@ -646,7 +655,7 @@ export default function AvailabilityPage() {
 
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label>Start Time</Label>
+                    <Label>{t('availabilityPage.startTime')}</Label>
                     <Input
                       type="time"
                       value={newSchedule.start_time}
@@ -654,7 +663,7 @@ export default function AvailabilityPage() {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label>End Time</Label>
+                    <Label>{t('availabilityPage.endTime')}</Label>
                     <Input
                       type="time"
                       value={newSchedule.end_time}
@@ -665,19 +674,19 @@ export default function AvailabilityPage() {
 
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label>Capacity Override</Label>
+                    <Label>{t('availabilityPage.capacityOverride')}</Label>
                     <Input
                       type="number"
-                      placeholder="Default"
+                      placeholder={t('availabilityPage.default')}
                       value={newSchedule.capacity}
                       onChange={(e) => setNewSchedule({ ...newSchedule, capacity: e.target.value })}
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label>Price Override</Label>
+                    <Label>{t('availabilityPage.priceOverride')}</Label>
                     <Input
                       type="number"
-                      placeholder="Default"
+                      placeholder={t('availabilityPage.default')}
                       value={newSchedule.price_override}
                       onChange={(e) => setNewSchedule({ ...newSchedule, price_override: e.target.value })}
                     />
@@ -685,7 +694,7 @@ export default function AvailabilityPage() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label>Valid From</Label>
+                  <Label>{t('availabilityPage.validFrom')}</Label>
                   <Popover>
                     <PopoverTrigger asChild>
                       <Button variant="outline" className="w-full justify-start">
@@ -704,10 +713,10 @@ export default function AvailabilityPage() {
                 </div>
               </div>
               <DialogFooter>
-                <Button variant="outline" onClick={() => setIsAddScheduleOpen(false)}>Cancel</Button>
+                <Button variant="outline" onClick={() => setIsAddScheduleOpen(false)}>{t('common.cancel')}</Button>
                 <Button onClick={handleAddSchedule} disabled={savingSchedule}>
                   {savingSchedule && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-                  Create Schedule
+                  {t('availabilityPage.createSchedule')}
                 </Button>
               </DialogFooter>
             </DialogContent>
@@ -717,25 +726,25 @@ export default function AvailabilityPage() {
             <DialogTrigger asChild>
               <Button>
                 <Plus className="h-4 w-4 mr-2" />
-                Add Time Slot
+                {t('availabilityPage.addTimeSlot')}
               </Button>
             </DialogTrigger>
             <DialogContent>
               <DialogHeader>
-                <DialogTitle>Add Time Slot</DialogTitle>
+                <DialogTitle>{t('availabilityPage.addTimeSlotTitle')}</DialogTitle>
                 <DialogDescription>
-                  Create a one-time availability slot
+                  {t('availabilityPage.timeSlotDescription')}
                 </DialogDescription>
               </DialogHeader>
               <div className="space-y-4 py-4">
                 <div className="space-y-2">
-                  <Label>Tour</Label>
+                  <Label>{t('availabilityPage.tour')}</Label>
                   <Select
                     value={newSlot.tour_id}
                     onValueChange={(v) => setNewSlot({ ...newSlot, tour_id: v })}
                   >
                     <SelectTrigger>
-                      <SelectValue placeholder="Select tour" />
+                      <SelectValue placeholder={t('availabilityPage.selectTour')} />
                     </SelectTrigger>
                     <SelectContent>
                       {tours.map(tour => (
@@ -746,7 +755,7 @@ export default function AvailabilityPage() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label>Date</Label>
+                  <Label>{t('availabilityPage.date')}</Label>
                   <Popover>
                     <PopoverTrigger asChild>
                       <Button variant="outline" className="w-full justify-start">
@@ -766,7 +775,7 @@ export default function AvailabilityPage() {
 
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label>Start Time</Label>
+                    <Label>{t('availabilityPage.startTime')}</Label>
                     <Input
                       type="time"
                       value={newSlot.start_time}
@@ -774,7 +783,7 @@ export default function AvailabilityPage() {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label>End Time</Label>
+                    <Label>{t('availabilityPage.endTime')}</Label>
                     <Input
                       type="time"
                       value={newSlot.end_time}
@@ -785,19 +794,19 @@ export default function AvailabilityPage() {
 
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label>Capacity</Label>
+                    <Label>{t('availabilityPage.capacity')}</Label>
                     <Input
                       type="number"
-                      placeholder="Use tour default"
+                      placeholder={t('availabilityPage.useTourDefault')}
                       value={newSlot.capacity}
                       onChange={(e) => setNewSlot({ ...newSlot, capacity: e.target.value })}
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label>Price ($)</Label>
+                    <Label>{t('availabilityPage.price')}</Label>
                     <Input
                       type="number"
-                      placeholder="Use tour default"
+                      placeholder={t('availabilityPage.useTourDefault')}
                       value={newSlot.price}
                       onChange={(e) => setNewSlot({ ...newSlot, price: e.target.value })}
                     />
@@ -805,10 +814,10 @@ export default function AvailabilityPage() {
                 </div>
               </div>
               <DialogFooter>
-                <Button variant="outline" onClick={() => setIsAddSlotOpen(false)}>Cancel</Button>
+                <Button variant="outline" onClick={() => setIsAddSlotOpen(false)}>{t('common.cancel')}</Button>
                 <Button onClick={handleAddSlot} disabled={savingSlot}>
                   {savingSlot && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-                  Add Slot
+                  {t('availabilityPage.addSlot')}
                 </Button>
               </DialogFooter>
             </DialogContent>
@@ -820,17 +829,17 @@ export default function AvailabilityPage() {
       <Tabs defaultValue="calendar" className="space-y-4">
         <div className="flex items-center justify-between">
           <TabsList>
-            <TabsTrigger value="calendar">Calendar View</TabsTrigger>
-            <TabsTrigger value="list">List View</TabsTrigger>
-            <TabsTrigger value="recurring">Recurring Schedules</TabsTrigger>
+            <TabsTrigger value="calendar">{t('availabilityPage.calendarView')}</TabsTrigger>
+            <TabsTrigger value="list">{t('availabilityPage.listView')}</TabsTrigger>
+            <TabsTrigger value="recurring">{t('availabilityPage.recurringSchedules')}</TabsTrigger>
           </TabsList>
 
           <Select value={selectedTour} onValueChange={setSelectedTour}>
             <SelectTrigger className="w-[200px]">
-              <SelectValue placeholder="Filter by tour" />
+              <SelectValue placeholder={t('availabilityPage.filterByTour')} />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All Tours</SelectItem>
+              <SelectItem value="all">{t('availabilityPage.allTours')}</SelectItem>
               {tours.map(tour => (
                 <SelectItem key={tour.id} value={tour.id}>{tour.name}</SelectItem>
               ))}
@@ -847,7 +856,7 @@ export default function AvailabilityPage() {
                   <Button variant="outline" size="icon" onClick={() => setCurrentWeek(subWeeks(currentWeek, 1))}>
                     <ChevronLeft className="h-4 w-4" />
                   </Button>
-                  <Button variant="outline" onClick={() => setCurrentWeek(new Date())}>Today</Button>
+                  <Button variant="outline" onClick={() => setCurrentWeek(new Date())}>{t('availabilityPage.today')}</Button>
                   <Button variant="outline" size="icon" onClick={() => setCurrentWeek(addWeeks(currentWeek, 1))}>
                     <ChevronRight className="h-4 w-4" />
                   </Button>
@@ -898,7 +907,7 @@ export default function AvailabilityPage() {
                         })}
                         {daySlots.length === 0 && (
                           <div className="text-xs text-muted-foreground text-center py-4">
-                            No slots
+                            {t('availabilityPage.noSlots')}
                           </div>
                         )}
                       </div>
@@ -913,27 +922,27 @@ export default function AvailabilityPage() {
         <TabsContent value="list">
           <Card>
             <CardHeader>
-              <CardTitle>All Time Slots</CardTitle>
-              <CardDescription>View and manage individual availability slots</CardDescription>
+              <CardTitle>{t('availabilityPage.allTimeSlots')}</CardTitle>
+              <CardDescription>{t('availabilityPage.allTimeSlotsDescription')}</CardDescription>
             </CardHeader>
             <CardContent>
               {filteredSlots.length === 0 ? (
                 <div className="text-center py-12">
                   <CalendarDays className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                  <p className="text-lg font-medium">No time slots found</p>
-                  <p className="text-muted-foreground">Create a time slot or set up recurring schedules</p>
+                  <p className="text-lg font-medium">{t('availabilityPage.noTimeSlotsFound')}</p>
+                  <p className="text-muted-foreground">{t('availabilityPage.createOrRecurring')}</p>
                 </div>
               ) : (
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Date</TableHead>
-                      <TableHead>Tour</TableHead>
-                      <TableHead>Time</TableHead>
-                      <TableHead>Capacity</TableHead>
-                      <TableHead>Price</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead className="w-[80px]">Actions</TableHead>
+                      <TableHead>{t('availabilityPage.date')}</TableHead>
+                      <TableHead>{t('availabilityPage.tour')}</TableHead>
+                      <TableHead>{t('availabilityPage.time')}</TableHead>
+                      <TableHead>{t('availabilityPage.capacity')}</TableHead>
+                      <TableHead>{t('availabilityPage.price')}</TableHead>
+                      <TableHead>{t('availabilityPage.status')}</TableHead>
+                      <TableHead className="w-[80px]">{t('availabilityPage.actions')}</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -975,12 +984,12 @@ export default function AvailabilityPage() {
                             <DropdownMenuContent align="end">
                               <DropdownMenuItem>
                                 <Pencil className="h-4 w-4 mr-2" />
-                                Edit
+                                {t('availabilityPage.edit')}
                               </DropdownMenuItem>
                               {slot.status !== 'cancelled' && (
                                 <DropdownMenuItem onClick={() => handleCancelSlot(slot.id)}>
                                   <XCircle className="h-4 w-4 mr-2" />
-                                  Cancel Slot
+                                  {t('availabilityPage.cancelSlot')}
                                 </DropdownMenuItem>
                               )}
                               <DropdownMenuSeparator />
@@ -989,7 +998,7 @@ export default function AvailabilityPage() {
                                 onClick={() => handleDeleteSlot(slot.id)}
                               >
                                 <Trash2 className="h-4 w-4 mr-2" />
-                                Delete
+                                {t('availabilityPage.delete')}
                               </DropdownMenuItem>
                             </DropdownMenuContent>
                           </DropdownMenu>
@@ -1006,17 +1015,17 @@ export default function AvailabilityPage() {
         <TabsContent value="recurring">
           <Card>
             <CardHeader>
-              <CardTitle>Recurring Schedules</CardTitle>
+              <CardTitle>{t('availabilityPage.recurringSchedulesTitle')}</CardTitle>
               <CardDescription>
-                Recurring schedules automatically generate time slots on specified days
+                {t('availabilityPage.recurringSchedulesDescription')}
               </CardDescription>
             </CardHeader>
             <CardContent>
               {schedules.length === 0 ? (
                 <div className="text-center py-12">
                   <Repeat className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                  <p className="text-lg font-medium">No recurring schedules</p>
-                  <p className="text-muted-foreground">Create a schedule to auto-generate time slots</p>
+                  <p className="text-lg font-medium">{t('availabilityPage.noRecurringSchedules')}</p>
+                  <p className="text-muted-foreground">{t('availabilityPage.createScheduleToGenerate')}</p>
                 </div>
               ) : (
                 <div className="space-y-4">
@@ -1028,11 +1037,11 @@ export default function AvailabilityPage() {
                       <div className="flex items-start justify-between">
                         <div className="space-y-2">
                           <div className="flex items-center gap-2">
-                            <h3 className="font-semibold">{schedule.tour?.name || 'Unknown Tour'}</h3>
+                            <h3 className="font-semibold">{schedule.tour?.name || t('availabilityPage.unknownTour')}</h3>
                             {schedule.is_active ? (
-                              <Badge className="bg-green-100 text-green-800">Active</Badge>
+                              <Badge className="bg-green-100 text-green-800">{t('availabilityPage.active')}</Badge>
                             ) : (
-                              <Badge variant="secondary">Inactive</Badge>
+                              <Badge variant="secondary">{t('availabilityPage.inactive')}</Badge>
                             )}
                           </div>
                           <div className="flex items-center gap-4 text-sm text-muted-foreground">
@@ -1047,13 +1056,13 @@ export default function AvailabilityPage() {
                           </div>
                           <div className="flex gap-4 text-sm">
                             {schedule.capacity_override && (
-                              <span>Capacity: {schedule.capacity_override}</span>
+                              <span>{t('availabilityPage.capacityLabel')}: {schedule.capacity_override}</span>
                             )}
                             {schedule.price_override && (
-                              <span>Price: ${schedule.price_override}</span>
+                              <span>{t('availabilityPage.priceLabel')}: ${schedule.price_override}</span>
                             )}
                             <span>
-                              Valid: {format(new Date(schedule.valid_from), 'MMM d, yyyy')}
+                              {t('availabilityPage.validLabel')}: {format(new Date(schedule.valid_from), 'MMM d, yyyy')}
                               {schedule.valid_until && ` - ${format(new Date(schedule.valid_until), 'MMM d, yyyy')}`}
                             </span>
                           </div>
@@ -1070,7 +1079,7 @@ export default function AvailabilityPage() {
                             ) : (
                               <Play className="h-4 w-4 mr-2" />
                             )}
-                            Generate 30 Days
+                            {t('availabilityPage.generate30Days')}
                           </Button>
                           <Switch
                             checked={schedule.is_active}
@@ -1085,7 +1094,7 @@ export default function AvailabilityPage() {
                             <DropdownMenuContent align="end">
                               <DropdownMenuItem>
                                 <Pencil className="h-4 w-4 mr-2" />
-                                Edit
+                                {t('availabilityPage.edit')}
                               </DropdownMenuItem>
                               <DropdownMenuSeparator />
                               <DropdownMenuItem
@@ -1093,7 +1102,7 @@ export default function AvailabilityPage() {
                                 onClick={() => handleDeleteSchedule(schedule.id)}
                               >
                                 <Trash2 className="h-4 w-4 mr-2" />
-                                Delete
+                                {t('availabilityPage.delete')}
                               </DropdownMenuItem>
                             </DropdownMenuContent>
                           </DropdownMenu>

@@ -150,8 +150,10 @@ export interface Boat {
   maintenance_notes: string | null;
   last_maintenance_date: string | null;
   next_maintenance_date: string | null;
-  assigned_captain_id: string | null;
-  assigned_captain?: Staff;
+  assigned_captain_id: string | null; // Legacy (deprecated) - use captain_boats junction table
+  assigned_captain?: Staff; // Legacy (deprecated) - use captain_boats junction table
+  captain_boats?: CaptainBoat[]; // Multiple captains via junction table
+  location_id?: string;
   created_at: string;
   updated_at: string;
 }
@@ -168,6 +170,17 @@ export interface TourBoat {
   created_at: string;
   boat?: Boat;
   tour?: Tour;
+}
+
+// Captain-Boat Assignment Types
+export interface CaptainBoat {
+  id: string;
+  captain_id: string;
+  boat_id: string;
+  is_primary: boolean;
+  created_at: string;
+  captain?: Staff;
+  boat?: Boat;
 }
 
 // Tour Default Slots (daily recurring)
@@ -331,6 +344,8 @@ export interface ChecklistItem {
   label: string;
   required: boolean;
   requiresPhoto: boolean;
+  requiresText: boolean;
+  textPlaceholder?: string;
 }
 
 export interface ChecklistTemplate {
@@ -350,6 +365,7 @@ export interface CompletedChecklistItem {
   checked: boolean;
   photoUrl?: string;
   note?: string;
+  textValue?: string;
 }
 
 export interface ChecklistCompletion {

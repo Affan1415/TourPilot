@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -67,6 +68,7 @@ import { IconBox } from "@/components/ui/icon-box";
 import { useLocation } from "@/lib/location/context";
 import { MapPin } from "lucide-react";
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
+import { useTranslation } from "@/lib/i18n/context";
 
 interface Booking {
   id: string;
@@ -116,13 +118,25 @@ const statusConfig: Record<string, { label: string; variant: "mint" | "lavender"
   no_show: { label: "No Show", variant: "peach", icon: AlertCircle },
 };
 
+interface Tour {
+  id: string;
+  name: string;
+}
+
 export default function BookingsPage() {
+  const { t } = useTranslation();
   const { selectedLocation } = useLocation();
+  const searchParams = useSearchParams();
+  const tourIdFromUrl = searchParams.get("tour");
+  const dateFromUrl = searchParams.get("date");
+
   const [loading, setLoading] = useState(true);
   const [bookings, setBookings] = useState<Booking[]>([]);
+  const [tours, setTours] = useState<Tour[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
-  const [dateFilter, setDateFilter] = useState("all");
+  const [dateFilter, setDateFilter] = useState(dateFromUrl || "all");
+  const [tourFilter, setTourFilter] = useState(tourIdFromUrl || "all");
   const [sendingWaiver, setSendingWaiver] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
 
@@ -135,9 +149,23 @@ export default function BookingsPage() {
   const [loadingSlots, setLoadingSlots] = useState(false);
   const [rescheduling, setRescheduling] = useState(false);
 
-  const fetchBookings = async () => {
+  const fetchData = async () => {
       try {
         const supabase = createClient();
+
+        // Fetch tours for filter dropdown
+        let toursQuery = supabase
+          .from('tours')
+          .select('id, name')
+          .eq('is_active', true)
+          .order('name');
+
+        if (selectedLocation?.id) {
+          toursQuery = toursQuery.eq('location_id', selectedLocation.id);
+        }
+
+        const { data: toursData } = await toursQuery;
+        setTours(toursData || []);
 
         // Fetch bookings with tour location info for filtering
         const { data, error } = await supabase
@@ -195,13 +223,27 @@ export default function BookingsPage() {
   };
 
   useEffect(() => {
-    fetchBookings();
+    fetchData();
   }, [selectedLocation]);
+
+  // Update tour filter when URL param changes
+  useEffect(() => {
+    if (tourIdFromUrl) {
+      setTourFilter(tourIdFromUrl);
+    }
+  }, [tourIdFromUrl]);
+
+  // Update date filter when URL param changes
+  useEffect(() => {
+    if (dateFromUrl) {
+      setDateFilter(dateFromUrl);
+    }
+  }, [dateFromUrl]);
 
   const handleRefresh = async () => {
     setRefreshing(true);
-    await fetchBookings();
-    toast.success("Refreshed", { description: "Bookings list has been updated." });
+    await fetchData();
+    toast.success(t('notifications.refreshed'), { description: t('notifications.bookingsUpdated') });
   };
 
   const exportBookings = () => {
@@ -229,7 +271,7 @@ export default function BookingsPage() {
     link.download = `bookings-export-${format(new Date(), "yyyy-MM-dd")}.csv`;
     link.click();
     URL.revokeObjectURL(link.href);
-    toast.success("Exported", { description: "Bookings exported to CSV file." });
+    toast.success(t('notifications.exported'), { description: t('notifications.exportedToCsv') });
   };
 
   const sendEmailForBooking = async (booking: Booking) => {
@@ -260,10 +302,10 @@ export default function BookingsPage() {
         throw new Error(data.error || 'Failed to send email');
       }
 
-      toast.success("Email sent", { description: `Confirmation sent to ${booking.customer.email}` });
+      toast.success(t('notifications.emailSent'), { description: t('notifications.confirmationSent', { email: booking.customer.email }) });
     } catch (err: any) {
       console.error('Error sending email:', err);
-      toast.error("Failed to send email", { description: err.message || 'An error occurred' });
+      toast.error(t('notifications.failedToSendEmail'), { description: err.message || 'An error occurred' });
     }
   };
 
@@ -297,10 +339,10 @@ export default function BookingsPage() {
         b.uuid === booking.uuid ? { ...b, status: 'cancelled' } : b
       ));
 
-      toast.success("Booking cancelled", { description: `Booking ${booking.booking_reference} has been cancelled.` });
+      toast.success(t('notifications.bookingCancelled'), { description: t('notifications.bookingCancelledDesc', { reference: booking.booking_reference }) });
     } catch (err: any) {
       console.error('Error cancelling booking:', err);
-      toast.error("Failed to cancel booking", { description: err.message || 'An error occurred' });
+      toast.error(t('notifications.failedToCancelBooking'), { description: err.message || 'An error occurred' });
     }
   };
 
@@ -356,7 +398,7 @@ export default function BookingsPage() {
       setAvailableSlots(mappedSlots as AvailableSlot[]);
     } catch (err) {
       console.error('Error fetching available slots:', err);
-      toast.error("Failed to load available slots");
+      toast.error(t('notifications.failedToLoadSlots'));
     } finally {
       setLoadingSlots(false);
     }
@@ -411,12 +453,12 @@ export default function BookingsPage() {
 
       setRescheduleDialogOpen(false);
       setRescheduleBooking(null);
-      toast.success("Booking rescheduled", {
-        description: `Moved to ${newSlot?.date ? format(parseISO(newSlot.date), 'MMM d, yyyy') : ''} at ${newSlot?.start_time?.substring(0, 5) || ''}`,
+      toast.success(t('notifications.bookingRescheduled'), {
+        description: t('notifications.movedTo', { date: newSlot?.date ? format(parseISO(newSlot.date), 'MMM d, yyyy') : '', time: newSlot?.start_time?.substring(0, 5) || '' }),
       });
     } catch (err: any) {
       console.error('Error rescheduling booking:', err);
-      toast.error("Failed to reschedule", { description: err.message || 'An error occurred' });
+      toast.error(t('notifications.failedToReschedule'), { description: err.message || 'An error occurred' });
     } finally {
       setRescheduling(false);
     }
@@ -431,8 +473,32 @@ export default function BookingsPage() {
       booking.tour.toLowerCase().includes(searchQuery.toLowerCase());
 
     const matchesStatus = statusFilter === "all" || booking.status === statusFilter;
+    const matchesTour = tourFilter === "all" || booking.tour_id === tourFilter;
 
-    return matchesSearch && matchesStatus;
+    // Date filtering
+    let matchesDate = true;
+    if (dateFilter !== "all") {
+      const bookingDate = booking.date;
+      const today = format(new Date(), 'yyyy-MM-dd');
+      const tomorrow = format(addDays(new Date(), 1), 'yyyy-MM-dd');
+
+      if (dateFilter === "today") {
+        matchesDate = bookingDate === today;
+      } else if (dateFilter === "tomorrow") {
+        matchesDate = bookingDate === tomorrow;
+      } else if (dateFilter === "this_week") {
+        const weekEnd = format(addDays(new Date(), 7), 'yyyy-MM-dd');
+        matchesDate = bookingDate >= today && bookingDate <= weekEnd;
+      } else if (dateFilter === "this_month") {
+        const monthEnd = format(addDays(new Date(), 30), 'yyyy-MM-dd');
+        matchesDate = bookingDate >= today && bookingDate <= monthEnd;
+      } else {
+        // Specific date from URL (format: yyyy-MM-dd)
+        matchesDate = bookingDate === dateFilter;
+      }
+    }
+
+    return matchesSearch && matchesStatus && matchesTour && matchesDate;
   });
 
   const sendWaiverForBooking = async (booking: Booking) => {
@@ -453,12 +519,12 @@ export default function BookingsPage() {
         throw new Error(data.error || 'Failed to send waivers');
       }
 
-      toast.success("Waivers sent", {
+      toast.success(t('notifications.waiversSent'), {
         description: data.message,
       });
     } catch (err: any) {
       console.error('Error sending waivers:', err);
-      toast.error("Failed to send waivers", {
+      toast.error(t('notifications.failedToSendWaivers'), {
         description: err.message || 'An error occurred',
       });
     } finally {
@@ -494,7 +560,7 @@ export default function BookingsPage() {
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold">Bookings</h1>
+          <h1 className="text-2xl font-bold">{t('bookingsPage.title')}</h1>
           <p className="text-muted-foreground flex items-center gap-2">
             {selectedLocation ? (
               <>
@@ -502,7 +568,7 @@ export default function BookingsPage() {
                 {selectedLocation.name}
               </>
             ) : (
-              "Manage and track all tour bookings"
+              t('bookingsPage.subtitle')
             )}
           </p>
         </div>
@@ -517,12 +583,12 @@ export default function BookingsPage() {
           </Button>
           <Button variant="outline" className="gap-2 rounded-xl" onClick={exportBookings}>
             <Download className="h-4 w-4" />
-            Export
+            {t('bookingsPage.export')}
           </Button>
           <Link href="/dashboard/bookings/new">
             <Button className="gap-2 gradient-primary border-0 rounded-xl shadow-lg shadow-primary/30">
               <Plus className="h-4 w-4" />
-              New Booking
+              {t('bookingsPage.newBooking')}
             </Button>
           </Link>
         </div>
@@ -531,28 +597,28 @@ export default function BookingsPage() {
       {/* V6 Stats Grid */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-5">
         <StatCard
-          title="Total Bookings"
+          title={t('bookingsPage.totalBookings')}
           value={stats.total}
           icon={<ClipboardList className="h-5 w-5" />}
           color="sky"
           className="animate-fade-in-up stagger-1"
         />
         <StatCard
-          title="Confirmed"
+          title={t('bookingsPage.confirmed')}
           value={stats.confirmed}
           icon={<CheckCircle2 className="h-5 w-5" />}
           color="mint"
           className="animate-fade-in-up stagger-2"
         />
         <StatCard
-          title="Pending Payment"
+          title={t('bookingsPage.pendingPayment')}
           value={stats.pending}
           icon={<Clock className="h-5 w-5" />}
           color="peach"
           className="animate-fade-in-up stagger-3"
         />
         <StatCard
-          title="Pending Waivers"
+          title={t('bookingsPage.pendingWaivers')}
           value={stats.pendingWaivers}
           icon={<FileText className="h-5 w-5" />}
           color="lavender"
@@ -565,7 +631,7 @@ export default function BookingsPage() {
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
-            placeholder="Search by booking ID, customer, or tour..."
+            placeholder={t('bookingsPage.searchPlaceholder')}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="pl-10 rounded-xl border-border focus:border-primary"
@@ -574,29 +640,54 @@ export default function BookingsPage() {
 
         <Select value={statusFilter} onValueChange={setStatusFilter}>
           <SelectTrigger className="w-[150px] rounded-xl">
-            <SelectValue placeholder="Status" />
+            <SelectValue placeholder={t('common.status')} />
           </SelectTrigger>
           <SelectContent className="rounded-xl">
-            <SelectItem value="all">All Status</SelectItem>
-            <SelectItem value="pending">Pending</SelectItem>
-            <SelectItem value="confirmed">Confirmed</SelectItem>
-            <SelectItem value="checked_in">Checked In</SelectItem>
-            <SelectItem value="completed">Completed</SelectItem>
-            <SelectItem value="cancelled">Cancelled</SelectItem>
+            <SelectItem value="all">{t('bookingsPage.allStatus')}</SelectItem>
+            <SelectItem value="pending">{t('bookingsPage.pending')}</SelectItem>
+            <SelectItem value="confirmed">{t('bookingsPage.confirmed')}</SelectItem>
+            <SelectItem value="checked_in">{t('bookingsPage.checkedIn')}</SelectItem>
+            <SelectItem value="completed">{t('bookingsPage.completed')}</SelectItem>
+            <SelectItem value="cancelled">{t('bookingsPage.cancelled')}</SelectItem>
           </SelectContent>
         </Select>
 
         <Select value={dateFilter} onValueChange={setDateFilter}>
           <SelectTrigger className="w-[150px] rounded-xl">
             <Calendar className="h-4 w-4 mr-2" />
-            <SelectValue placeholder="Date" />
+            <SelectValue placeholder={t('bookingsPage.date')}>
+              {dateFilter === "all" ? t('bookingsPage.allDates') :
+               dateFilter === "today" ? t('bookingsPage.today') :
+               dateFilter === "tomorrow" ? t('bookingsPage.tomorrow') :
+               dateFilter === "this_week" ? t('bookingsPage.thisWeek') :
+               dateFilter === "this_month" ? t('bookingsPage.thisMonth') :
+               format(parseISO(dateFilter), 'MMM d, yyyy')}
+            </SelectValue>
           </SelectTrigger>
           <SelectContent className="rounded-xl">
-            <SelectItem value="all">All Dates</SelectItem>
-            <SelectItem value="today">Today</SelectItem>
-            <SelectItem value="tomorrow">Tomorrow</SelectItem>
-            <SelectItem value="this_week">This Week</SelectItem>
-            <SelectItem value="this_month">This Month</SelectItem>
+            <SelectItem value="all">{t('bookingsPage.allDates')}</SelectItem>
+            <SelectItem value="today">{t('bookingsPage.today')}</SelectItem>
+            <SelectItem value="tomorrow">{t('bookingsPage.tomorrow')}</SelectItem>
+            <SelectItem value="this_week">{t('bookingsPage.thisWeek')}</SelectItem>
+            <SelectItem value="this_month">{t('bookingsPage.thisMonth')}</SelectItem>
+            {dateFilter && !["all", "today", "tomorrow", "this_week", "this_month"].includes(dateFilter) && (
+              <SelectItem value={dateFilter}>{format(parseISO(dateFilter), 'MMM d, yyyy')}</SelectItem>
+            )}
+          </SelectContent>
+        </Select>
+
+        <Select value={tourFilter} onValueChange={setTourFilter}>
+          <SelectTrigger className="w-[180px] rounded-xl">
+            <Ship className="h-4 w-4 mr-2" />
+            <SelectValue placeholder={t('bookingsPage.tour')} />
+          </SelectTrigger>
+          <SelectContent className="rounded-xl">
+            <SelectItem value="all">{t('bookingsPage.allTours')}</SelectItem>
+            {tours.map((tour) => (
+              <SelectItem key={tour.id} value={tour.id}>
+                {tour.name}
+              </SelectItem>
+            ))}
           </SelectContent>
         </Select>
       </div>
@@ -606,16 +697,16 @@ export default function BookingsPage() {
         {filteredBookings.length === 0 ? (
           <div className="text-center py-16">
             <ClipboardList className="h-12 w-12 text-muted-foreground/30 mx-auto mb-4" />
-            <p className="text-lg font-medium">No bookings found</p>
+            <p className="text-lg font-medium">{t('bookingsPage.noBookingsFound')}</p>
             <p className="text-muted-foreground mb-4">
               {searchQuery || statusFilter !== "all"
-                ? "Try adjusting your filters"
-                : "Create your first booking to get started"}
+                ? t('bookingsPage.tryAdjustingFilters')
+                : t('bookingsPage.createFirstBooking')}
             </p>
             <Link href="/dashboard/bookings/new">
               <Button className="gap-2 gradient-primary border-0 rounded-xl">
                 <Plus className="h-4 w-4" />
-                Create Booking
+                {t('bookingsPage.createBooking')}
               </Button>
             </Link>
           </div>
@@ -624,14 +715,14 @@ export default function BookingsPage() {
             <table className="table-v6 w-full">
               <thead>
                 <tr>
-                  <th>Booking</th>
-                  <th>Customer</th>
-                  <th>Tour</th>
-                  <th>Date & Time</th>
-                  <th>Guests</th>
-                  <th>Total</th>
-                  <th>Status</th>
-                  <th>Waiver</th>
+                  <th>{t('bookingsPage.booking')}</th>
+                  <th>{t('bookingsPage.customer')}</th>
+                  <th>{t('bookingsPage.tour')}</th>
+                  <th>{t('bookingsPage.dateTime')}</th>
+                  <th>{t('bookingsPage.guests')}</th>
+                  <th>{t('bookingsPage.total')}</th>
+                  <th>{t('bookingsPage.status')}</th>
+                  <th>{t('bookingsPage.waiver')}</th>
                   <th></th>
                 </tr>
               </thead>
@@ -730,7 +821,7 @@ export default function BookingsPage() {
                             <DropdownMenuItem asChild className="rounded-lg">
                               <Link href={`/dashboard/bookings/${booking.id}`}>
                                 <ExternalLink className="h-4 w-4 mr-2" />
-                                View Details
+                                {t('bookingsPage.viewDetails')}
                               </Link>
                             </DropdownMenuItem>
                             <DropdownMenuItem
@@ -743,15 +834,15 @@ export default function BookingsPage() {
                               ) : (
                                 <FileText className="h-4 w-4 mr-2" />
                               )}
-                              Send Waiver
+                              {t('bookingsPage.sendWaiver')}
                             </DropdownMenuItem>
                             <DropdownMenuItem onClick={() => sendEmailForBooking(booking)} className="rounded-lg">
                               <Mail className="h-4 w-4 mr-2" />
-                              Send Email
+                              {t('bookingsPage.sendEmail')}
                             </DropdownMenuItem>
                             <DropdownMenuItem onClick={() => callCustomer(booking)} className="rounded-lg">
                               <Phone className="h-4 w-4 mr-2" />
-                              Call Customer
+                              {t('bookingsPage.callCustomer')}
                             </DropdownMenuItem>
                             <DropdownMenuSeparator />
                             <DropdownMenuItem
@@ -760,7 +851,7 @@ export default function BookingsPage() {
                               className="rounded-lg"
                             >
                               <CalendarClock className="h-4 w-4 mr-2" />
-                              Reschedule
+                              {t('bookingsPage.reschedule')}
                             </DropdownMenuItem>
                             <DropdownMenuItem
                               className="text-destructive rounded-lg"
@@ -768,7 +859,7 @@ export default function BookingsPage() {
                               disabled={booking.status === "cancelled"}
                             >
                               <XCircle className="h-4 w-4 mr-2" />
-                              Cancel Booking
+                              {t('bookingsPage.cancelBooking')}
                             </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>

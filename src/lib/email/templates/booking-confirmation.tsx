@@ -13,6 +13,7 @@ import {
   Text,
 } from '@react-email/components';
 import * as React from 'react';
+import { t, Locale, defaultLocale } from '@/lib/i18n';
 
 interface BookingConfirmationEmailProps {
   customerName: string;
@@ -26,6 +27,7 @@ interface BookingConfirmationEmailProps {
   waiverUrl: string;
   bookingUrl: string;
   companyName?: string;
+  locale?: Locale;
 }
 
 export const BookingConfirmationEmail = ({
@@ -40,8 +42,13 @@ export const BookingConfirmationEmail = ({
   waiverUrl = 'https://example.com/waiver',
   bookingUrl = 'https://example.com/booking',
   companyName = 'TourPilot',
+  locale = defaultLocale,
 }: BookingConfirmationEmailProps) => {
-  const previewText = `Your booking for ${tourName} is confirmed!`;
+  // Translation helper for this email
+  const e = (key: string, params?: Record<string, string | number>) =>
+    t(locale, `email.bookingConfirmation.${key}`, params);
+
+  const previewText = e('subject', { tourName });
 
   return (
     <Html>
@@ -57,20 +64,20 @@ export const BookingConfirmationEmail = ({
           {/* Success Badge */}
           <Section style={successBadge}>
             <Text style={successIcon}>✓</Text>
-            <Heading style={successText}>Booking Confirmed!</Heading>
+            <Heading style={successText}>{e('title')}</Heading>
           </Section>
 
           {/* Greeting */}
           <Section style={content}>
-            <Text style={paragraph}>Hi {customerName},</Text>
+            <Text style={paragraph}>{e('greeting', { name: customerName })}</Text>
             <Text style={paragraph}>
-              Thank you for booking with us! Your adventure is confirmed and we can't wait to see you.
+              {e('thankYou')}
             </Text>
           </Section>
 
           {/* Booking Details Card */}
           <Section style={bookingCard}>
-            <Text style={bookingRefLabel}>Booking Reference</Text>
+            <Text style={bookingRefLabel}>{e('bookingReference')}</Text>
             <Text style={bookingRef}>{bookingReference}</Text>
 
             <Hr style={divider} />
@@ -78,23 +85,23 @@ export const BookingConfirmationEmail = ({
             <table style={detailsTable}>
               <tbody>
                 <tr>
-                  <td style={detailLabel}>Tour</td>
+                  <td style={detailLabel}>{e('tour')}</td>
                   <td style={detailValue}>{tourName}</td>
                 </tr>
                 <tr>
-                  <td style={detailLabel}>Date</td>
+                  <td style={detailLabel}>{e('date')}</td>
                   <td style={detailValue}>{tourDate}</td>
                 </tr>
                 <tr>
-                  <td style={detailLabel}>Time</td>
+                  <td style={detailLabel}>{e('time')}</td>
                   <td style={detailValue}>{tourTime}</td>
                 </tr>
                 <tr>
-                  <td style={detailLabel}>Guests</td>
-                  <td style={detailValue}>{guestCount} {guestCount === 1 ? 'person' : 'people'}</td>
+                  <td style={detailLabel}>{e('guests')}</td>
+                  <td style={detailValue}>{guestCount} {guestCount === 1 ? e('person') : e('people')}</td>
                 </tr>
                 <tr>
-                  <td style={detailLabel}>Total Paid</td>
+                  <td style={detailLabel}>{e('totalPaid')}</td>
                   <td style={detailValueBold}>${totalAmount.toFixed(2)}</td>
                 </tr>
               </tbody>
@@ -104,36 +111,36 @@ export const BookingConfirmationEmail = ({
           {/* Meeting Point */}
           {meetingPoint && (
             <Section style={meetingSection}>
-              <Text style={meetingTitle}>📍 Meeting Point</Text>
+              <Text style={meetingTitle}>📍 {e('meetingPoint')}</Text>
               <Text style={meetingAddress}>{meetingPoint}</Text>
             </Section>
           )}
 
           {/* Important: Waiver CTA */}
           <Section style={waiverSection}>
-            <Heading style={waiverTitle}>Important: Sign Your Waiver</Heading>
+            <Heading style={waiverTitle}>{e('importantWaiver')}</Heading>
             <Text style={waiverText}>
-              All guests must sign a digital waiver before the tour. Please complete this as soon as possible.
+              {e('waiverMessage')}
             </Text>
             <Button style={primaryButton} href={waiverUrl}>
-              Sign Waiver Now
+              {e('signWaiverNow')}
             </Button>
           </Section>
 
           {/* View Booking Button */}
           <Section style={buttonSection}>
             <Button style={secondaryButton} href={bookingUrl}>
-              View Booking Details
+              {e('viewBookingDetails')}
             </Button>
           </Section>
 
           {/* What to Bring */}
           <Section style={tipsSection}>
-            <Heading style={tipsTitle}>What to Bring</Heading>
-            <Text style={tipItem}>• Sunscreen and sunglasses</Text>
-            <Text style={tipItem}>• Comfortable clothing</Text>
-            <Text style={tipItem}>• Camera (optional)</Text>
-            <Text style={tipItem}>• Light jacket for evening tours</Text>
+            <Heading style={tipsTitle}>{e('whatToBring')}</Heading>
+            <Text style={tipItem}>• {e('bringItem1')}</Text>
+            <Text style={tipItem}>• {e('bringItem2')}</Text>
+            <Text style={tipItem}>• {e('bringItem3')}</Text>
+            <Text style={tipItem}>• {e('bringItem4')}</Text>
           </Section>
 
           <Hr style={hr} />
@@ -141,17 +148,17 @@ export const BookingConfirmationEmail = ({
           {/* Footer */}
           <Section style={footer}>
             <Text style={footerText}>
-              Questions? Reply to this email or call us at (555) 123-4567
+              {e('questions', { phone: '(555) 123-4567' })}
             </Text>
             <Text style={footerText}>
               {companyName} | 123 Marina Drive, Coastal City, FL 33139
             </Text>
             <Text style={footerLinks}>
-              <Link href="#" style={footerLink}>Terms</Link>
+              <Link href="#" style={footerLink}>{e('terms')}</Link>
               {' • '}
-              <Link href="#" style={footerLink}>Privacy</Link>
+              <Link href="#" style={footerLink}>{e('privacy')}</Link>
               {' • '}
-              <Link href="#" style={footerLink}>Unsubscribe</Link>
+              <Link href="#" style={footerLink}>{e('unsubscribe')}</Link>
             </Text>
           </Section>
         </Container>

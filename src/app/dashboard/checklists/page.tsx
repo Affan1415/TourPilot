@@ -60,6 +60,7 @@ import {
   Ship,
   PlayCircle,
   StopCircle,
+  Type,
 } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { format, parseISO } from "date-fns";
@@ -137,7 +138,7 @@ export default function ChecklistTemplatesPage() {
       ...emptyFormData,
       checklist_type: activeTab,
       items: [
-        { id: crypto.randomUUID(), label: "", required: true, requiresPhoto: false },
+        { id: crypto.randomUUID(), label: "", required: true, requiresPhoto: false, requiresText: false },
       ],
     });
     setDialogOpen(true);
@@ -247,7 +248,7 @@ export default function ChecklistTemplatesPage() {
       ...prev,
       items: [
         ...prev.items,
-        { id: crypto.randomUUID(), label: "", required: true, requiresPhoto: false },
+        { id: crypto.randomUUID(), label: "", required: true, requiresPhoto: false, requiresText: false },
       ],
     }));
   };
@@ -575,7 +576,7 @@ export default function ChecklistTemplatesPage() {
                             updateItem(item.id, { label: e.target.value })
                           }
                         />
-                        <div className="flex items-center gap-4">
+                        <div className="flex flex-wrap items-center gap-4">
                           <label className="flex items-center gap-2 text-sm">
                             <Switch
                               checked={item.required}
@@ -595,7 +596,27 @@ export default function ChecklistTemplatesPage() {
                             <Camera className="h-4 w-4 text-muted-foreground" />
                             <span className="text-muted-foreground">Photo</span>
                           </label>
+                          <label className="flex items-center gap-2 text-sm">
+                            <Switch
+                              checked={item.requiresText || false}
+                              onCheckedChange={(checked) =>
+                                updateItem(item.id, { requiresText: checked })
+                              }
+                            />
+                            <Type className="h-4 w-4 text-muted-foreground" />
+                            <span className="text-muted-foreground">Text</span>
+                          </label>
                         </div>
+                        {item.requiresText && (
+                          <Input
+                            placeholder="Placeholder text for input (e.g., Enter fuel level...)"
+                            value={item.textPlaceholder || ""}
+                            onChange={(e) =>
+                              updateItem(item.id, { textPlaceholder: e.target.value })
+                            }
+                            className="text-sm"
+                          />
+                        )}
                       </div>
 
                       <Button

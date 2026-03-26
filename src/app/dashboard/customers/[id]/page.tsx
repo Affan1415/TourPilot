@@ -37,13 +37,9 @@ import {
   Mail,
   Phone,
   Calendar,
-  DollarSign,
   Tag,
-  MessageSquare,
-  Clock,
   Plus,
   MoreHorizontal,
-  Edit,
   Trash2,
   Pin,
   PinOff,
@@ -54,10 +50,9 @@ import {
   FileText,
   User,
   Activity,
-  Star,
-  TrendingUp,
-  MapPin,
   Globe,
+  Link2,
+  Users,
 } from "lucide-react";
 import { format, formatDistanceToNow } from "date-fns";
 import { toast } from "sonner";
@@ -117,6 +112,20 @@ interface Booking {
     start_time: string;
     tour?: { name: string };
   };
+  widget?: { name: string } | null;
+  affiliate_referral?: {
+    affiliate: {
+      affiliate_code: string;
+      staff: { first_name: string; last_name: string } | null;
+    };
+  } | null;
+}
+
+interface CustomerSource {
+  type: "direct" | "widget" | "affiliate" | "unknown";
+  name: string;
+  details?: string;
+  firstSeen: string;
 }
 
 interface Reminder {
@@ -162,6 +171,7 @@ export default function CustomerDetailPage() {
   const [activities, setActivities] = useState<CustomerActivity[]>([]);
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [reminders, setReminders] = useState<Reminder[]>([]);
+  const [customerSource, setCustomerSource] = useState<CustomerSource | null>(null);
 
   const [showAddNote, setShowAddNote] = useState(false);
   const [newNote, setNewNote] = useState("");
@@ -219,7 +229,7 @@ export default function CustomerDetailPage() {
 
       setActivities(activitiesData || []);
 
-      // Fetch bookings
+      // Fetch bookings with widget and affiliate info
       const { data: bookingsData } = await supabase
         .from("bookings")
         .select(`
@@ -229,14 +239,37 @@ export default function CustomerDetailPage() {
           guest_count,
           status,
           created_at,
+          widget_id,
           availability:availabilities(
             date,
             start_time,
             tour:tours(name)
-          )
+          ),
+          widget:widgets(name)
         `)
         .eq("customer_id", customerId)
         .order("created_at", { ascending: false });
+
+      // Fetch affiliate referrals for these bookings
+      const bookingIds = (bookingsData || []).map((b: any) => b.id);
+      let affiliateReferrals: Record<string, any> = {};
+
+      if (bookingIds.length > 0) {
+        const { data: referralsData } = await supabase
+          .from("affiliate_referrals")
+          .select(`
+            booking_id,
+            affiliate:affiliate_profiles(
+              affiliate_code,
+              staff:staff(first_name, last_name)
+            )
+          `)
+          .in("booking_id", bookingIds);
+
+        (referralsData || []).forEach((r: any) => {
+          affiliateReferrals[r.booking_id] = r;
+        });
+      }
 
       const transformedBookings: Booking[] = (bookingsData || []).map((b: any) => ({
         ...b,
@@ -245,8 +278,48 @@ export default function CustomerDetailPage() {
           start_time: b.availability[0].start_time,
           tour: b.availability[0].tour?.[0],
         } : undefined,
+        widget: b.widget?.[0] || null,
+        affiliate_referral: affiliateReferrals[b.id] || null,
       }));
       setBookings(transformedBookings);
+
+      // Determine customer source from first booking
+      if (transformedBookings.length > 0) {
+        const firstBooking = transformedBookings[transformedBookings.length - 1];
+        let source: CustomerSource;
+
+        if (firstBooking.affiliate_referral) {
+          const aff = firstBooking.affiliate_referral.affiliate;
+          source = {
+            type: "affiliate",
+            name: aff.staff
+              ? `${aff.staff.first_name} ${aff.staff.last_name}`
+              : aff.affiliate_code,
+            details: `Code: ${aff.affiliate_code}`,
+            firstSeen: firstBooking.created_at,
+          };
+        } else if (firstBooking.widget) {
+          source = {
+            type: "widget",
+            name: firstBooking.widget.name,
+            details: "Embedded booking widget",
+            firstSeen: firstBooking.created_at,
+          };
+        } else if (customerData.source) {
+          source = {
+            type: "direct",
+            name: customerData.source,
+            firstSeen: firstBooking.created_at,
+          };
+        } else {
+          source = {
+            type: "direct",
+            name: "Direct booking",
+            firstSeen: firstBooking.created_at,
+          };
+        }
+        setCustomerSource(source);
+      }
 
       // Fetch reminders
       const { data: remindersData } = await supabase

@@ -30,6 +30,7 @@ import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { createClient } from "@/lib/supabase/client";
 import type { User as SupabaseUser } from "@supabase/supabase-js";
 import { LanguageSwitcher } from "@/components/shared/language-switcher";
+import { useTranslation } from "@/lib/i18n/context";
 
 interface UserInfo {
   user: SupabaseUser | null;
@@ -40,6 +41,7 @@ interface UserInfo {
 
 export function Navbar() {
   const router = useRouter();
+  const { t } = useTranslation();
   const [isOpen, setIsOpen] = useState(false);
   const [userInfo, setUserInfo] = useState<UserInfo>({
     user: null,
@@ -131,10 +133,10 @@ export function Navbar() {
   };
 
   const navLinks = [
-    { href: "/tours", label: "Tours", icon: Ship },
-    { href: "/timeline", label: "Timeline", icon: Calendar },
-    { href: "/about", label: "About", icon: Users },
-    { href: "/contact", label: "Contact", icon: Phone },
+    { href: "/tours", label: t('public.navbar.tours') || 'Tours', icon: Ship },
+    { href: "/timeline", label: t('public.navbar.timeline') || 'Timeline', icon: Calendar },
+    { href: "/about", label: t('public.navbar.about') || 'About', icon: Users },
+    { href: "/contact", label: t('public.navbar.contact') || 'Contact', icon: Phone },
   ];
 
   const userInitials = userInfo.name
@@ -214,19 +216,19 @@ export function Navbar() {
                       <DropdownMenuItem asChild>
                         <Link href="/account/dashboard">
                           <LayoutDashboard className="mr-2 h-4 w-4" />
-                          Dashboard
+                          {t('public.navbar.dashboard') || 'Dashboard'}
                         </Link>
                       </DropdownMenuItem>
                       <DropdownMenuItem asChild>
                         <Link href="/account">
                           <ClipboardList className="mr-2 h-4 w-4" />
-                          My Bookings
+                          {t('public.navbar.myBookings') || 'My Bookings'}
                         </Link>
                       </DropdownMenuItem>
                       <DropdownMenuItem asChild>
                         <Link href="/account/settings">
                           <Settings className="mr-2 h-4 w-4" />
-                          Settings
+                          {t('public.navbar.settings') || 'Settings'}
                         </Link>
                       </DropdownMenuItem>
                     </>
@@ -236,7 +238,7 @@ export function Navbar() {
                     <DropdownMenuItem asChild>
                       <Link href={getDashboardLink()}>
                         <LayoutDashboard className="mr-2 h-4 w-4" />
-                        Dashboard
+                        {t('public.navbar.dashboard') || 'Dashboard'}
                       </Link>
                     </DropdownMenuItem>
                   )}
@@ -247,7 +249,7 @@ export function Navbar() {
                     onClick={handleLogout}
                   >
                     <LogOut className="mr-2 h-4 w-4" />
-                    Log out
+                    {t('public.navbar.logout') || 'Log out'}
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
@@ -257,13 +259,13 @@ export function Navbar() {
               <Link href="/login">
                 <Button variant="ghost" size="sm" className="gap-2">
                   <LogIn className="h-4 w-4" />
-                  Sign In
+                  {t('public.navbar.signIn') || 'Sign In'}
                 </Button>
               </Link>
               <Link href="/tours">
                 <Button size="sm" className="gap-2 gradient-primary border-0 shadow-lg shadow-primary/25">
                   <Calendar className="h-4 w-4" />
-                  Book Now
+                  {t('public.navbar.bookNow') || 'Book Now'}
                 </Button>
               </Link>
             </>
@@ -324,19 +326,19 @@ export function Navbar() {
                         <Link href="/account/dashboard" onClick={() => setIsOpen(false)}>
                           <Button variant="ghost" className="w-full justify-start gap-2">
                             <LayoutDashboard className="h-4 w-4" />
-                            Dashboard
+                            {t('public.navbar.dashboard') || 'Dashboard'}
                           </Button>
                         </Link>
                         <Link href="/account" onClick={() => setIsOpen(false)}>
                           <Button variant="ghost" className="w-full justify-start gap-2">
                             <ClipboardList className="h-4 w-4" />
-                            My Bookings
+                            {t('public.navbar.myBookings') || 'My Bookings'}
                           </Button>
                         </Link>
                         <Link href="/account/settings" onClick={() => setIsOpen(false)}>
                           <Button variant="ghost" className="w-full justify-start gap-2">
                             <Settings className="h-4 w-4" />
-                            Settings
+                            {t('public.navbar.settings') || 'Settings'}
                           </Button>
                         </Link>
                       </>
@@ -345,7 +347,7 @@ export function Navbar() {
                       <Link href={getDashboardLink()} onClick={() => setIsOpen(false)}>
                         <Button variant="ghost" className="w-full justify-start gap-2">
                           <LayoutDashboard className="h-4 w-4" />
-                          Dashboard
+                          {t('public.navbar.dashboard') || 'Dashboard'}
                         </Button>
                       </Link>
                     )}
@@ -355,7 +357,7 @@ export function Navbar() {
                       onClick={handleLogout}
                     >
                       <LogOut className="h-4 w-4" />
-                      Log out
+                      {t('public.navbar.logout') || 'Log out'}
                     </Button>
                   </>
                 ) : (
@@ -363,13 +365,13 @@ export function Navbar() {
                     <Link href="/login" onClick={() => setIsOpen(false)}>
                       <Button variant="outline" className="w-full justify-start gap-2">
                         <LogIn className="h-4 w-4" />
-                        Sign In
+                        {t('public.navbar.signIn') || 'Sign In'}
                       </Button>
                     </Link>
                     <Link href="/tours" onClick={() => setIsOpen(false)}>
                       <Button className="w-full justify-start gap-2 gradient-primary border-0">
                         <Calendar className="h-4 w-4" />
-                        Book Now
+                        {t('public.navbar.bookNow') || 'Book Now'}
                       </Button>
                     </Link>
                   </>
